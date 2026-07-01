@@ -1,0 +1,15 @@
+# SoWMods monorepo — build/IDE artifacts anywhere in the tree
+build/
+out/
+.vs/
+vcpkg_installed/
+*.user
+CMakeUserPresets.json
+
+# Ghidra projects (large, machine-local)
+ghidra/*.rep/
+ghidra/*.gpr
+ghidra/*.lock
+
+# Local logs
+*.log

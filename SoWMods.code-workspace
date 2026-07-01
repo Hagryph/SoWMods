@@ -1,0 +1,18 @@
+{
+  "folders": [
+    { "path": "." }
+  ],
+  "settings": {
+    "cmake.generator": "Ninja",
+    "cmake.configureArgs": [
+      "-DCMAKE_TOOLCHAIN_FILE=C:/dev/vcpkg/scripts/buildsystems/vcpkg.cmake"
+    ],
+    "C_Cpp.default.cppStandard": "c++23"
+  },
+  "extensions": {
+    "recommendations": [
+      "ms-vscode.cpptools-extension-pack",
+      "ms-vscode.cmake-tools"
+    ]
+  }
+}
