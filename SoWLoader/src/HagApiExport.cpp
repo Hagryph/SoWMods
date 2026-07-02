@@ -9,10 +9,13 @@ int  ApiRegisterPage(const char* t)                        { return sow::HagUI::
 void ApiAddLabel(int p, const char* t)                     { sow::HagUI::Get().AddLabel(p, t); }
 void ApiAddToggle(int p, const char* l, bool* v)           { sow::HagUI::Get().AddToggle(p, l, v); }
 void ApiAddButton(int p, const char* l, void (*f)())       { sow::HagUI::Get().AddButton(p, l, f); }
+void ApiAddList(int p, const char* const* it, const char* const* ct, int n) { sow::HagUI::Get().AddList(p, it, ct, n); }
 
-HagUIAPI g_api = { HAGUI_ABI_VERSION, &ApiRegisterPage, &ApiAddLabel, &ApiAddToggle, &ApiAddButton };
+HagUIAPI g_api = { HAGUI_ABI_VERSION, &ApiRegisterPage, &ApiAddLabel, &ApiAddToggle, &ApiAddButton, &ApiAddList };
 }  // namespace
 
+// Any ABI from 1..current is served the same struct: the layout is append-only, so a v1 caller simply
+// reads the first five members and never touches AddList.
 extern "C" __declspec(dllexport) HagUIAPI* HagUI_GetAPI(std::uint32_t abiVersion) {
-    return (abiVersion == HAGUI_ABI_VERSION) ? &g_api : nullptr;
+    return (abiVersion >= 1 && abiVersion <= HAGUI_ABI_VERSION) ? &g_api : nullptr;
 }

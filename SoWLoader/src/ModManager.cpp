@@ -1,5 +1,6 @@
 #include "ModManager.h"
 #include "Log.h"
+#include "HagUI.h"        // one tab per mod: the loader registers the mod's page
 #include "SoWModAPI.h"   // ../shared (on the include path)
 
 #include <string>
@@ -65,12 +66,20 @@ void ModManager::LoadAll() {
             log.Error(l);
             continue;
         }
+        // ONE tab per mod: name it via the mod's SoWMod_Name export, else the DLL name (minus .dll).
+        std::string tabName = nn;
+        if (auto namefn = reinterpret_cast<SoWMod_Name_t>(::GetProcAddress(mod, "SoWMod_Name"))) {
+            if (const char* n = namefn(); n && *n) tabName = n;
+        }
+        if (size_t dot = tabName.rfind(".dll"); dot != std::string::npos) tabName.erase(dot);
+        const int page = HagUI::Get().RegisterPage(tabName.c_str());   // the loader owns tab creation
+
         auto init = reinterpret_cast<SoWMod_Init_t>(::GetProcAddress(mod, "SoWMod_Init"));
-        char l[240];
-        ::wsprintfA(l, "[mods]  %2d. %-36s loaded @ %p%s", idx, nn.c_str(), (void*)mod,
-                    init ? "  -> SoWMod_Init()" : "  (no SoWMod_Init)");
+        char l[280];
+        ::wsprintfA(l, "[mods]  %2d. %-32s loaded @ %p  tab=\"%.40s\"%s", idx, nn.c_str(), (void*)mod,
+                    tabName.c_str(), init ? "" : " (no SoWMod_Init)");
         log.Good(l);
-        if (init) init();   // outside the loader lock now (LoadLibrary returned) -> safe to do real work
+        if (init) init(page);   // outside the loader lock now (LoadLibrary returned) -> safe to do real work
     }
     log.Line("[mods] done");
 }

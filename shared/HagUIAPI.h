@@ -13,7 +13,7 @@
 
 extern "C" {
 
-constexpr std::uint32_t HAGUI_ABI_VERSION = 1;
+constexpr std::uint32_t HAGUI_ABI_VERSION = 2;
 
 struct HagUIAPI {
     std::uint32_t abiVersion;                              // == HAGUI_ABI_VERSION
@@ -21,6 +21,11 @@ struct HagUIAPI {
     void (*AddLabel)(int page, const char* text);
     void (*AddToggle)(int page, const char* label, bool* value);   // HagUI reads/writes *value
     void (*AddButton)(int page, const char* label, void (*onClick)());
+    // v2: a searchable + filterable scrolling list that fills the page's content area. items[i] is the
+    // row text; cats[i] is its filter bucket (nullptr/"" = no bucket). HagUI COPIES all strings, then
+    // renders a search box, a filter dropdown (the distinct buckets, first-seen order, "All" first),
+    // and a scrollbar-backed list. The caller's arrays need not outlive the call.
+    void (*AddList)(int page, const char* const* items, const char* const* cats, int count);
 };
 
 // Exported by the loader DLL. Returns null if the requested ABI version is unsupported.

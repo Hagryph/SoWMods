@@ -23,10 +23,20 @@ public:
     void AddLabel(int page, const char* text);
     void AddToggle(int page, const char* label, bool* value);
     void AddButton(int page, const char* label, void (*onClick)());
+    void AddList(int page, const char* const* items, const char* const* cats, int count);
 
     // Read access for the renderer (Overlay::DrawHub): tabs exist ONLY for registered pages.
-    enum WType { WLabel = 0, WToggle = 1, WButton = 2 };
-    struct Widget { WType type; std::string text; bool* toggle; void (*onClick)(); };
+    enum WType { WLabel = 0, WToggle = 1, WButton = 2, WList = 3 };
+    struct Widget {
+        WType type; std::string text; bool* toggle; void (*onClick)();
+        // WList payload (set once at AddList) + live UI state (mutated by the renderer each frame).
+        std::vector<std::string> items;    // row strings
+        std::vector<std::string> cats;     // parallel filter bucket per item
+        std::vector<std::string> filters;  // distinct buckets, filters[0] == "All"
+        mutable int  filterSel = 0;        // selected filter index
+        mutable int  listSel   = -1;       // selected row (-1 = none)
+        mutable char search[64] = {};      // search box text (ImGui InputText buffer)
+    };
     struct Page   { std::string title; std::vector<Widget> widgets; };
     const std::vector<Page>& Pages() const { return pages_; }
 

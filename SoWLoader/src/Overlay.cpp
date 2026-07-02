@@ -631,6 +631,84 @@ void Overlay::DrawHub() {
                     AddTextCX(dl, fTab_, 15.0f * s,
                               ImVec2(pa.x + (pb.x - pa.x - lw) * 0.5f, pa.y + (pb.y - pa.y - lh) * 0.5f),
                               uAccent, wd.text.c_str(), XS);
+                } else if (wd.type == HagUI::WList) {
+                    // ---- searchable + filterable + scrollable item list ----
+                    // Mod content is clamped to the drawable band: BELOW the tab bar and ABOVE the
+                    // bottom-right corner marker (the BR flourish sits at AS y=440). ImGui's child
+                    // window supplies the scrollbar + wheel/drag and clips every row to the box.
+                    const float listX = 60.0f, listW = 712.0f;
+                    const float rowAS = ry, listTopAS = ry + 34.0f, listBotAS = 434.0f;
+                    ImGui::PushFont(fBody_, 16.0f * s);
+                    // input / text / border theme (black + gold)
+                    ImGui::PushStyleColor(ImGuiCol_FrameBg,        IM_COL32(0x23, 0x1E, 0x16, 235));
+                    ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, IM_COL32(0x2C, 0x25, 0x19, 235));
+                    ImGui::PushStyleColor(ImGuiCol_FrameBgActive,  IM_COL32(0x2C, 0x25, 0x19, 255));
+                    ImGui::PushStyleColor(ImGuiCol_Text,           uText);
+                    ImGui::PushStyleColor(ImGuiCol_TextDisabled,   uFaint);
+                    ImGui::PushStyleColor(ImGuiCol_Border,         IM_COL32(0xE0, 0xB3, 0x4A, 90));
+                    // selected/hovered row = gold tint
+                    ImGui::PushStyleColor(ImGuiCol_Header,         IM_COL32(0xE0, 0xB3, 0x4A, 56));
+                    ImGui::PushStyleColor(ImGuiCol_HeaderHovered,  IM_COL32(0xE0, 0xB3, 0x4A, 82));
+                    ImGui::PushStyleColor(ImGuiCol_HeaderActive,   IM_COL32(0xE0, 0xB3, 0x4A, 110));
+                    // scrollbar = gold on near-black
+                    ImGui::PushStyleColor(ImGuiCol_ChildBg,              IM_COL32(0x12, 0x10, 0x13, 180));
+                    ImGui::PushStyleColor(ImGuiCol_ScrollbarBg,          IM_COL32(0x0A, 0x0A, 0x0C, 120));
+                    ImGui::PushStyleColor(ImGuiCol_ScrollbarGrab,        IM_COL32(0xB8, 0x86, 0x2F, 160));
+                    ImGui::PushStyleColor(ImGuiCol_ScrollbarGrabHovered, IM_COL32(0xE0, 0xB3, 0x4A, 200));
+                    ImGui::PushStyleColor(ImGuiCol_ScrollbarGrabActive,  IM_COL32(0xE0, 0xB3, 0x4A, 240));
+
+                    // search box (left) + filter dropdown (right)
+                    ImGui::SetCursorScreenPos(ImVec2(X(listX), Y(rowAS)));
+                    ImGui::SetNextItemWidth(listW * 0.60f * sx);
+                    ImGui::InputTextWithHint("##search", "search\xE2\x80\xA6", wd.search, sizeof(wd.search));
+                    ImGui::SameLine(0.0f, 12.0f * sx);
+                    ImGui::SetNextItemWidth(listW * 0.28f * sx);
+                    if (wd.filterSel < 0 || wd.filterSel >= (int)wd.filters.size()) wd.filterSel = 0;
+                    const char* fprev = wd.filters.empty() ? "All" : wd.filters[wd.filterSel].c_str();
+                    if (ImGui::BeginCombo("##filter", fprev)) {
+                        for (int fi = 0; fi < (int)wd.filters.size(); ++fi) {
+                            const bool selF = fi == wd.filterSel;
+                            if (ImGui::Selectable(wd.filters[fi].c_str(), selF)) wd.filterSel = fi;
+                            if (selF) ImGui::SetItemDefaultFocus();
+                        }
+                        ImGui::EndCombo();
+                    }
+
+                    // build the filtered view (filter bucket + case-insensitive substring search)
+                    auto low = [](std::string v) {
+                        for (auto& c : v) c = (char)::tolower((unsigned char)c); return v; };
+                    const std::string q = low(wd.search);
+                    const std::string fsel = wd.filters.empty() ? std::string() : wd.filters[wd.filterSel];
+                    std::vector<int> vis; vis.reserve(wd.items.size());
+                    for (int k = 0; k < (int)wd.items.size(); ++k) {
+                        if (wd.filterSel > 0 && wd.cats[k] != fsel) continue;
+                        if (!q.empty() && low(wd.items[k]).find(q) == std::string::npos) continue;
+                        vis.push_back(k);
+                    }
+
+                    // scrolling list child (border on; ImGui adds the scrollbar when it overflows and
+                    // clips rows to the box). Inner padding insets the text off the gold border.
+                    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(10.0f * sx, 6.0f * sy));
+                    ImGui::SetCursorScreenPos(ImVec2(X(listX), Y(listTopAS)));
+                    ImGui::BeginChild("##itemlist", ImVec2(listW * sx, (listBotAS - listTopAS) * sy),
+                                      true, ImGuiWindowFlags_None);
+                    if (vis.empty()) {
+                        ImGui::TextDisabled("no matches");
+                    } else {
+                        ImGuiListClipper clip; clip.Begin((int)vis.size());
+                        while (clip.Step())
+                            for (int row = clip.DisplayStart; row < clip.DisplayEnd; ++row) {
+                                const int k = vis[row];
+                                ImGui::PushID(k);
+                                if (ImGui::Selectable(wd.items[k].c_str(), wd.listSel == k)) wd.listSel = k;
+                                ImGui::PopID();
+                            }
+                    }
+                    ImGui::EndChild();
+                    ImGui::PopStyleVar();
+                    ImGui::PopStyleColor(14);
+                    ImGui::PopFont();
+                    ry = listBotAS + 10.0f;
                 } else {
                     txt(fBody_, 17.0f * s, 60, ry + 3, uDim, wd.text.c_str());
                 }
@@ -664,11 +742,14 @@ void Overlay::DrawHub() {
             AddTextCX(dl, fSmall_, hintPx, ImVec2(X(230), ba.y + (bb.y - ba.y - hintH) * 0.5f), uFaint, "or press  ESC", XS);
         }
 
-        // ---- footer (AS: right edge x=cw-30, y=ch-40, bold size 11, right-aligned) — above the BR mark ----
-        const char* est = "HAGRYPH  \xC2\xB7  EST. MMXXVI";
-        const float fPx = 11.0f * s;
-        const float estW = measureW(fFoot_, fPx, est);
-        AddTextCX(dl, fFoot_, fPx, ImVec2(X(820 - 30) - estW, Y(462 - 40)), uFaint, est, XS);
+        // ---- footer (AS: right edge x=cw-30, y=ch-40, bold size 11, right-aligned) — above the BR mark.
+        //      WELCOME tab only: mod pages own the whole content band below the tabs. ----
+        if (activeTab_ == 0) {
+            const char* est = "HAGRYPH  \xC2\xB7  EST. MMXXVI";
+            const float fPx = 11.0f * s;
+            const float estW = measureW(fFoot_, fPx, est);
+            AddTextCX(dl, fFoot_, fPx, ImVec2(X(820 - 30) - estW, Y(462 - 40)), uFaint, est, XS);
+        }
     }
     ImGui::End();
     ImGui::PopStyleVar(3);

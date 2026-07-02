@@ -158,6 +158,24 @@ void HagUI::AddToggle(int page, const char* label, bool* value) {
 void HagUI::AddButton(int page, const char* label, void (*onClick)()) {
     if (page >= 0 && page < (int)pages_.size()) pages_[page].widgets.push_back({ WButton, label ? label : "", nullptr, onClick });
 }
+void HagUI::AddList(int page, const char* const* items, const char* const* cats, int count) {
+    if (page < 0 || page >= (int)pages_.size() || count < 0) return;
+    Widget w{}; w.type = WList; w.toggle = nullptr; w.onClick = nullptr;
+    w.items.reserve(count); w.cats.reserve(count);
+    for (int i = 0; i < count; ++i) {
+        w.items.emplace_back(items && items[i] ? items[i] : "");
+        w.cats.emplace_back(cats && cats[i] ? cats[i] : "");
+    }
+    // filter dropdown = "All" + the distinct buckets in first-seen order
+    w.filters.emplace_back("All");
+    for (const auto& c : w.cats) {
+        if (c.empty()) continue;
+        bool seen = false;
+        for (const auto& f : w.filters) if (f == c) { seen = true; break; }
+        if (!seen) w.filters.push_back(c);
+    }
+    pages_[page].widgets.push_back(std::move(w));
+}
 
 void HagUI::PollInput(Overlay& r) {
     auto d = [](int vk) { return (::GetAsyncKeyState(vk) & 0x8000) != 0; };
