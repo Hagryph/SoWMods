@@ -643,7 +643,9 @@ void Overlay::DrawHub() {
                     // the search box, the facet combo buttons AND their popups (4 vars, popped at the end).
                     ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding,  5.0f * s);
                     ImGui::PushStyleVar(ImGuiStyleVar_PopupRounding,  5.0f * s);
-                    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding,   ImVec2(8.0f * sx, 4.0f * sy));
+                    // vertical padding must clear the glyph ascenders/descenders, or the search text
+                    // pokes out the top and bottom of the field. Keep it generous relative to the font.
+                    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding,   ImVec2(8.0f * sx, 7.0f * sy));
                     ImGui::PushStyleVar(ImGuiStyleVar_ScrollbarSize,  11.0f * sx);
                     // theme (black + gold): inputs, text, borders, selectable/header, buttons, scrollbar
                     ImGui::PushStyleColor(ImGuiCol_FrameBg,        IM_COL32(0x23, 0x1E, 0x16, 235));  // 1
