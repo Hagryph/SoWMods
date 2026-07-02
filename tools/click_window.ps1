@@ -23,11 +23,30 @@ $ErrorActionPreference = 'Stop'
 Add-Type -Namespace Win -Name Mouse -MemberDefinition @'
 [DllImport("user32.dll")] public static extern bool PostMessageW(IntPtr h, uint msg, IntPtr w, IntPtr l);
 [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h);
+[DllImport("user32.dll")] public static extern bool BringWindowToTop(IntPtr h);
+[DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+[DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr h, IntPtr pid);
+[DllImport("kernel32.dll")] public static extern uint GetCurrentThreadId();
+[DllImport("user32.dll")] public static extern bool AttachThreadInput(uint from, uint to, bool attach);
 [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);
 [DllImport("user32.dll")] public static extern void mouse_event(uint flags, uint dx, uint dy, uint data, UIntPtr extra);
 [DllImport("user32.dll")] public static extern bool ClientToScreen(IntPtr h, ref POINT p);
 public struct POINT { public int X, Y; }
 '@
+
+# Reliably foreground despite Windows' foreground lock (see send_keys_window.ps1).
+function Force-Foreground([IntPtr]$h) {
+    $fg  = [Win.Mouse]::GetForegroundWindow()
+    $cur = [Win.Mouse]::GetCurrentThreadId()
+    $tTid  = [Win.Mouse]::GetWindowThreadProcessId($h,  [IntPtr]::Zero)
+    $fgTid = [Win.Mouse]::GetWindowThreadProcessId($fg, [IntPtr]::Zero)
+    [Win.Mouse]::AttachThreadInput($cur, $fgTid, $true) | Out-Null
+    [Win.Mouse]::AttachThreadInput($cur, $tTid,  $true) | Out-Null
+    [Win.Mouse]::BringWindowToTop($h) | Out-Null
+    [Win.Mouse]::SetForegroundWindow($h) | Out-Null
+    [Win.Mouse]::AttachThreadInput($cur, $tTid,  $false) | Out-Null
+    [Win.Mouse]::AttachThreadInput($cur, $fgTid, $false) | Out-Null
+}
 
 $p = Get-Process -Name $ProcessName -ErrorAction Stop |
      Where-Object { $_.MainWindowHandle -ne [IntPtr]::Zero } | Select-Object -First 1
@@ -46,7 +65,7 @@ $times = if ($Double) { 2 } else { 1 }
 if ($Foreground) {
     $pt = New-Object Win.Mouse+POINT; $pt.X = $X; $pt.Y = $Y
     [Win.Mouse]::ClientToScreen($h, [ref]$pt) | Out-Null
-    [Win.Mouse]::SetForegroundWindow($h) | Out-Null; Start-Sleep -Milliseconds 150
+    Force-Foreground $h; Start-Sleep -Milliseconds 200
     [Win.Mouse]::SetCursorPos($pt.X, $pt.Y) | Out-Null; Start-Sleep -Milliseconds 40
     $dn = switch ($Button) { 'Left' {0x0002} 'Right' {0x0008} 'Middle' {0x0020} }  # MOUSEEVENTF_*DOWN
     $up = switch ($Button) { 'Left' {0x0004} 'Right' {0x0010} 'Middle' {0x0040} }  # MOUSEEVENTF_*UP
