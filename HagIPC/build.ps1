@@ -10,6 +10,7 @@ $cmake = 'C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\Co
 
 if (-not $NoBuild) {
     Set-Location $root
+    if (-not $env:VCPKG_ROOT) { $env:VCPKG_ROOT = 'C:\dev\vcpkg' }   # minhook comes from vcpkg
     Write-Host '== configure =='
     & $cmake --preset vs2022 | Select-Object -Last 2
     Write-Host '== build =='

@@ -2,6 +2,7 @@
 #include "ipc/Server.h"
 #include "ipc/MemAccess.h"
 #include "ipc/CallExec.h"
+#include "ipc/HookProbe.h"
 #include "Offsets.h"
 #include "Log.h"
 
@@ -209,11 +210,12 @@ std::string Server::Dispatch(const std::string& line) {
     if (cmd == "base") return "ok " + Hex(offsets::Base());
     if (cmd == "help")
         return "ok cmds: ping | base | read <off> <type> [chain..] | readb <off> <len> [chain..] | "
-               "write <off> <type> <val> [chain..] | call <off> [a0..a7] | exec <hexblob>  "
+               "write <off> <type> <val> [chain..] | call <off> [a0..a7] | exec <hexblob> | "
+               "hook <off> | unhook <off|slot|all> | hooklog [max]  "
                "(off = file address off 0x140000000, e.g. 0x141976838, or abs:<VA>; "
                "type = u8/u16/u32/u64/i*/f32/f64/ptr; chain: each extra offset does p=*p+c; "
-               "call/exec args are 64-bit ints; all commands run inline on the socket thread so they "
-               "work from the front-end menu)";
+               "call/exec args are 64-bit ints; hook logs each call's 4 register args to a ring buffer "
+               "(<=4-arg targets only), hooklog drains it; all commands run inline on the socket thread)";
 
     if (cmd == "read") {
         if (tk.size() < 3) return "err usage: read <off> <type> [chain..]";
@@ -309,6 +311,26 @@ std::string Server::Dispatch(const std::string& line) {
         if (!exec::ExecBlob(code.data(), code.size(), rax))
             return "err exec faulted (seh)";
         return "ok " + Hex(rax);
+    }
+
+    // ---- runtime logging hooks (MinHook): trampoline a target, record each call's 4 register args ----
+    if (cmd == "hook") {
+        if (tk.size() < 2) return "err usage: hook <off>  (logs each call's 4 register args; <=4-arg targets only)";
+        std::uintptr_t addr = 0; std::string aerr;
+        if (!ParseAddr(tk[1], addr, aerr)) return "err " + aerr;
+        return HookProbe::Get().Install(addr);
+    }
+    if (cmd == "unhook") {
+        if (tk.size() < 2) return "err usage: unhook <off|slot>";
+        if (tk[1] == "all") return HookProbe::Get().RemoveAll();
+        std::uintptr_t addr = 0; std::string aerr;
+        if (!ParseAddr(tk[1], addr, aerr)) return "err " + aerr;
+        return HookProbe::Get().Remove(addr);
+    }
+    if (cmd == "hooklog") {
+        std::uint64_t max = 0;   // 0 = all buffered
+        if (tk.size() >= 2 && !ParseU64(tk[1], max)) return "err bad max";
+        return HookProbe::Get().Drain(static_cast<std::size_t>(max));
     }
 
     return "err unknown command (try 'help')";
