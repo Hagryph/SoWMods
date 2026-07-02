@@ -24,18 +24,26 @@ public:
     void AddToggle(int page, const char* label, bool* value);
     void AddButton(int page, const char* label, void (*onClick)());
     void AddList(int page, const char* const* items, const char* const* cats, int count);
+    void AddFacetedList(int page, const char* const* facetNames, int facetCount,
+                        const char* const* displays, int itemCount, const char* const* facetValues);
 
     // Read access for the renderer (Overlay::DrawHub): tabs exist ONLY for registered pages.
     enum WType { WLabel = 0, WToggle = 1, WButton = 2, WList = 3 };
+    // One filterable dimension: its distinct values + a live multi-select mask (parallel to opts).
+    struct Facet {
+        std::string name;
+        std::vector<std::string> opts;      // distinct values, first-seen order
+        mutable std::vector<char> sel;      // selected flag per opt (mutated by the renderer)
+        int selCount() const { int n = 0; for (char c : sel) n += c ? 1 : 0; return n; }
+    };
     struct Widget {
         WType type; std::string text; bool* toggle; void (*onClick)();
-        // WList payload (set once at AddList) + live UI state (mutated by the renderer each frame).
-        std::vector<std::string> items;    // row strings
-        std::vector<std::string> cats;     // parallel filter bucket per item
-        std::vector<std::string> filters;  // distinct buckets, filters[0] == "All"
-        mutable int  filterSel = 0;        // selected filter index
-        mutable int  listSel   = -1;       // selected row (-1 = none)
-        mutable char search[64] = {};      // search box text (ImGui InputText buffer)
+        // WList payload (set once) + live UI state (mutated by the renderer each frame).
+        std::vector<std::string>      items;         // row display strings
+        std::vector<std::vector<int>> itemFacetIdx;  // [item][facet] -> opt index in facets[f], or -1
+        std::vector<Facet>            facets;        // facet defs + live selection masks
+        mutable int  listSel   = -1;                 // selected row (-1 = none)
+        mutable char search[64] = {};                // search box text (ImGui InputText buffer)
     };
     struct Page   { std::string title; std::vector<Widget> widgets; };
     const std::vector<Page>& Pages() const { return pages_; }

@@ -17,7 +17,7 @@
 namespace {
 HMODULE g_self = nullptr;
 
-struct Row { std::string category, group, subgroup, tier, record, display; };
+struct Row { std::string category, slot, set, rarity, tier, record, display; };
 
 void Log(const std::string& m) { ::OutputDebugStringA(("[InventoryEditor] " + m + "\n").c_str()); }
 
@@ -39,8 +39,8 @@ std::vector<Row> LoadCatalog() {
         if (line.empty() || line[0] == '#') continue;
         std::vector<std::string> c; std::string tok; std::istringstream is(line);
         while (std::getline(is, tok, '\t')) c.push_back(tok);
-        // category, group, subgroup, tier, record, [display]. Old 5-col catalogs fall back to record.
-        if (c.size() >= 5) rows.push_back({ c[0], c[1], c[2], c[3], c[4], c.size() >= 6 ? c[5] : c[4] });
+        // category, slot, set, rarity, tier, record, display  (7 cols)
+        if (c.size() >= 7) rows.push_back({ c[0], c[1], c[2], c[3], c[4], c[5], c[6] });
     }
     return rows;
 }
@@ -60,21 +60,30 @@ extern "C" __declspec(dllexport) void SoWMod_Init(int page) {
     if (rows.empty()) { ui->AddLabel(page, "Item catalog not loaded (InventoryEditor.catalog missing)."); return; }
     Log("loaded " + std::to_string(rows.size()) + " item records");
 
-    // One searchable + filterable + scrollable list of every item template. The filter bucket is the
-    // catalog's "group" (gear slot for GEAR: Sword/Dagger/Bow/Armor/Cloak/Talion; the category name
-    // for RUNE/GEM/WEAPON/ARMOR/...). The row text is the record name; search narrows within a bucket.
-    std::vector<std::string> items, cats;
-    items.reserve(rows.size()); cats.reserve(rows.size());
+    // One searchable, multi-facet-filtered, grouped list of every item template. Facets: Category
+    // (also the group header), Slot (sub-header), Set, Rarity, Tier. Rows are the human-readable
+    // display names. The catalog is already sorted by category then slot, so the grouping is tidy.
+    static const char* kFacets[] = { "Category", "Slot", "Set", "Rarity", "Tier" };
+    const int nf = (int)(sizeof(kFacets) / sizeof(kFacets[0]));
+
+    std::vector<std::string> displays;                 // owns the row strings
+    std::vector<std::string> values;                   // owns the facet-value strings (row-major)
+    displays.reserve(rows.size());
+    values.reserve(rows.size() * nf);
     for (const auto& r : rows) {
-        items.push_back(r.display);   // human-readable display name (see tools/extract_sow_items.py)
-        cats.push_back(r.group);
+        displays.push_back(r.display);
+        values.push_back(r.category);                  // facet 0
+        values.push_back(r.slot);                      // facet 1
+        values.push_back(r.set);                       // facet 2
+        values.push_back(r.rarity);                    // facet 3
+        values.push_back(r.tier);                      // facet 4
     }
-    std::vector<const char*> ip, cp;
-    ip.reserve(items.size()); cp.reserve(cats.size());
-    for (const auto& s : items) ip.push_back(s.c_str());
-    for (const auto& s : cats)  cp.push_back(s.c_str());
-    ui->AddList(page, ip.data(), cp.data(), (int)items.size());   // HagUI copies the strings
-    Log("filled tab (page " + std::to_string(page) + ") with " + std::to_string(items.size()) + " items");
+    std::vector<const char*> dp, vp;
+    dp.reserve(displays.size()); vp.reserve(values.size());
+    for (const auto& s : displays) dp.push_back(s.c_str());
+    for (const auto& s : values)   vp.push_back(s.c_str());
+    ui->AddFacetedList(page, kFacets, nf, dp.data(), (int)displays.size(), vp.data());  // HagUI copies
+    Log("filled tab (page " + std::to_string(page) + ") with " + std::to_string(displays.size()) + " items");
 }
 
 BOOL APIENTRY DllMain(HMODULE h, DWORD reason, LPVOID) {

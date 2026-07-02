@@ -1,1014 +1,777 @@
 # Shadow of War — item catalog
 
 
-## GEAR
+## Gear
 
 ### Sword
-
-**Rare**
-
-- Gondorian Sword Tint10 Rare  `GearArt_GondorianSwordTint10_3Rare`
-- Gondorian Sword Tint1 Rare  `GearArt_GondorianSwordTint1_3Rare`
-- Gondorian Sword Tint2 Rare  `GearArt_GondorianSwordTint2_3Rare`
-- Gondorian Sword Tint3 Rare  `GearArt_GondorianSwordTint3_3Rare`
-- Gondorian Sword Tint4 Rare  `GearArt_GondorianSwordTint4_3Rare`
-- Gondorian Sword Tint5 Rare  `GearArt_GondorianSwordTint5_3Rare`
-- Gondorian Sword Tint6 Rare  `GearArt_GondorianSwordTint6_3Rare`
-- Gondorian Sword Tint7 Rare  `GearArt_GondorianSwordTint7_3Rare`
-- Gondorian Sword Tint8 Rare  `GearArt_GondorianSwordTint8_3Rare`
-- Gondorian Sword Tint9 Rare  `GearArt_GondorianSwordTint9_3Rare`
-- Numenorean Sword Tint10 Rare  `GearArt_NumenoreanSwordTint10_3Rare`
-- Numenorean Sword Tint1 Rare  `GearArt_NumenoreanSwordTint1_3Rare`
-- Numenorean Sword Tint2 Rare  `GearArt_NumenoreanSwordTint2_3Rare`
-- Numenorean Sword Tint3 Rare  `GearArt_NumenoreanSwordTint3_3Rare`
-- Numenorean Sword Tint4 Rare  `GearArt_NumenoreanSwordTint4_3Rare`
-- Numenorean Sword Tint5 Rare  `GearArt_NumenoreanSwordTint5_3Rare`
-- Numenorean Sword Tint6 Rare  `GearArt_NumenoreanSwordTint6_3Rare`
-- Numenorean Sword Tint7 Rare  `GearArt_NumenoreanSwordTint7_3Rare`
-- Numenorean Sword Tint8 Rare  `GearArt_NumenoreanSwordTint8_3Rare`
-- Numenorean Sword Tint9 Rare  `GearArt_NumenoreanSwordTint9_3Rare`
-- Ranger Sword Tint10 Rare  `GearArt_RangerSwordTint10_3Rare`
-- Ranger Sword Tint1 Rare  `GearArt_RangerSwordTint1_3Rare`
-- Ranger Sword Tint2 Rare  `GearArt_RangerSwordTint2_3Rare`
-- Ranger Sword Tint3 Rare  `GearArt_RangerSwordTint3_3Rare`
-- Ranger Sword Tint4 Rare  `GearArt_RangerSwordTint4_3Rare`
-- Ranger Sword Tint5 Rare  `GearArt_RangerSwordTint5_3Rare`
-- Ranger Sword Tint6 Rare  `GearArt_RangerSwordTint6_3Rare`
-- Ranger Sword Tint7 Rare  `GearArt_RangerSwordTint7_3Rare`
-- Ranger Sword Tint8 Rare  `GearArt_RangerSwordTint8_3Rare`
-- Ranger Sword Tint9 Rare  `GearArt_RangerSwordTint9_3Rare`
-- Rohan Sword Tint10 Rare  `GearArt_RohanSwordTint10_3Rare`
-- Rohan Sword Tint1 Rare  `GearArt_RohanSwordTint1_3Rare`
-- Rohan Sword Tint2 Rare  `GearArt_RohanSwordTint2_3Rare`
-- Rohan Sword Tint3 Rare  `GearArt_RohanSwordTint3_3Rare`
-- Rohan Sword Tint4 Rare  `GearArt_RohanSwordTint4_3Rare`
-- Rohan Sword Tint5 Rare  `GearArt_RohanSwordTint5_3Rare`
-- Rohan Sword Tint6 Rare  `GearArt_RohanSwordTint6_3Rare`
-- Rohan Sword Tint7 Rare  `GearArt_RohanSwordTint7_3Rare`
-- Rohan Sword Tint8 Rare  `GearArt_RohanSwordTint8_3Rare`
-- Rohan Sword Tint9 Rare  `GearArt_RohanSwordTint9_3Rare`
-
-**Epic**
-
-- Gondorian Sword Tint10 Epic  `GearArt_GondorianSwordTint10_4Epic`
-- Gondorian Sword Tint1 Epic  `GearArt_GondorianSwordTint1_4Epic`
-- Gondorian Sword Tint2 Epic  `GearArt_GondorianSwordTint2_4Epic`
-- Gondorian Sword Tint3 Epic  `GearArt_GondorianSwordTint3_4Epic`
-- Gondorian Sword Tint4 Epic  `GearArt_GondorianSwordTint4_4Epic`
-- Gondorian Sword Tint5 Epic  `GearArt_GondorianSwordTint5_4Epic`
-- Gondorian Sword Tint6 Epic  `GearArt_GondorianSwordTint6_4Epic`
-- Gondorian Sword Tint7 Epic  `GearArt_GondorianSwordTint7_4Epic`
-- Gondorian Sword Tint8 Epic  `GearArt_GondorianSwordTint8_4Epic`
-- Gondorian Sword Tint9 Epic  `GearArt_GondorianSwordTint9_4Epic`
-- Numenorean Sword Tint10 Epic  `GearArt_NumenoreanSwordTint10_4Epic`
-- Numenorean Sword Tint1 Epic  `GearArt_NumenoreanSwordTint1_4Epic`
-- Numenorean Sword Tint2 Epic  `GearArt_NumenoreanSwordTint2_4Epic`
-- Numenorean Sword Tint3 Epic  `GearArt_NumenoreanSwordTint3_4Epic`
-- Numenorean Sword Tint4 Epic  `GearArt_NumenoreanSwordTint4_4Epic`
-- Numenorean Sword Tint5 Epic  `GearArt_NumenoreanSwordTint5_4Epic`
-- Numenorean Sword Tint6 Epic  `GearArt_NumenoreanSwordTint6_4Epic`
-- Numenorean Sword Tint7 Epic  `GearArt_NumenoreanSwordTint7_4Epic`
-- Numenorean Sword Tint8 Epic  `GearArt_NumenoreanSwordTint8_4Epic`
-- Numenorean Sword Tint9 Epic  `GearArt_NumenoreanSwordTint9_4Epic`
-- Ranger Sword Tint10 Epic  `GearArt_RangerSwordTint10_4Epic`
-- Ranger Sword Tint1 Epic  `GearArt_RangerSwordTint1_4Epic`
-- Ranger Sword Tint2 Epic  `GearArt_RangerSwordTint2_4Epic`
-- Ranger Sword Tint3 Epic  `GearArt_RangerSwordTint3_4Epic`
-- Ranger Sword Tint4 Epic  `GearArt_RangerSwordTint4_4Epic`
-- Ranger Sword Tint5 Epic  `GearArt_RangerSwordTint5_4Epic`
-- Ranger Sword Tint6 Epic  `GearArt_RangerSwordTint6_4Epic`
-- Ranger Sword Tint7 Epic  `GearArt_RangerSwordTint7_4Epic`
-- Ranger Sword Tint8 Epic  `GearArt_RangerSwordTint8_4Epic`
-- Ranger Sword Tint9 Epic  `GearArt_RangerSwordTint9_4Epic`
-- Rohan Sword Tint10 Epic  `GearArt_RohanSwordTint10_4Epic`
-- Rohan Sword Tint1 Epic  `GearArt_RohanSwordTint1_4Epic`
-- Rohan Sword Tint2 Epic  `GearArt_RohanSwordTint2_4Epic`
-- Rohan Sword Tint3 Epic  `GearArt_RohanSwordTint3_4Epic`
-- Rohan Sword Tint4 Epic  `GearArt_RohanSwordTint4_4Epic`
-- Rohan Sword Tint5 Epic  `GearArt_RohanSwordTint5_4Epic`
-- Rohan Sword Tint6 Epic  `GearArt_RohanSwordTint6_4Epic`
-- Rohan Sword Tint7 Epic  `GearArt_RohanSwordTint7_4Epic`
-- Rohan Sword Tint8 Epic  `GearArt_RohanSwordTint8_4Epic`
-- Rohan Sword Tint9 Epic  `GearArt_RohanSwordTint9_4Epic`
-
-**Celebrimbor**
-
-- Sword Celebrimbor T1  `GearArt_1Sword_Celebrimbor_T1`  (T1)
-- Sword Celebrimbor T2  `GearArt_1Sword_Celebrimbor_T2`  (T2)
-- Sword Celebrimbor T3  `GearArt_1Sword_Celebrimbor_T3`  (T3)
-- Sword Celebrimbor T4  `GearArt_1Sword_Celebrimbor_T4`  (T4)
-
-**Vendetta**
-
-- Sword Vendetta T1  `GearArt_1Sword_Vendetta_T1`  (T1)
-- Sword Vendetta T2  `GearArt_1Sword_Vendetta_T2`  (T2)
-- Sword Vendetta T3  `GearArt_1Sword_Vendetta_T3`  (T3)
-- Sword Vendetta T4  `GearArt_1Sword_Vendetta_T4`  (T4)
-
-**Dark**
-
-- Sword Dark T1  `GearArt_1Sword_Dark_T1`  (T1)
-- Sword Dark T2  `GearArt_1Sword_Dark_T2`  (T2)
-- Sword Dark T3  `GearArt_1Sword_Dark_T3`  (T3)
-- Sword Dark T4  `GearArt_1Sword_Dark_T4`  (T4)
-
-**Feral**
-
-- Sword Feral T1  `GearArt_1Sword_Feral_T1`  (T1)
-- Sword Feral T2  `GearArt_1Sword_Feral_T2`  (T2)
-- Sword Feral T3  `GearArt_1Sword_Feral_T3`  (T3)
-- Sword Feral T4  `GearArt_1Sword_Feral_T4`  (T4)
-
-**Machine**
-
-- Sword Machine T1  `GearArt_1Sword_Machine_T1`  (T1)
-- Sword Machine T2  `GearArt_1Sword_Machine_T2`  (T2)
-- Sword Machine T3  `GearArt_1Sword_Machine_T3`  (T3)
-- Sword Machine T4  `GearArt_1Sword_Machine_T4`  (T4)
-
-**Marauder**
-
-- Sword Marauder T1  `GearArt_1Sword_Marauder_T1`  (T1)
-- Sword Marauder T2  `GearArt_1Sword_Marauder_T2`  (T2)
-- Sword Marauder T3  `GearArt_1Sword_Marauder_T3`  (T3)
-- Sword Marauder T4  `GearArt_1Sword_Marauder_T4`  (T4)
-
-**Mystic**
-
-- Sword Mystic T1  `GearArt_1Sword_Mystic_T1`  (T1)
-- Sword Mystic T2  `GearArt_1Sword_Mystic_T2`  (T2)
-- Sword Mystic T3  `GearArt_1Sword_Mystic_T3`  (T3)
-- Sword Mystic T4  `GearArt_1Sword_Mystic_T4`  (T4)
-
-**Outlaw**
-
-- Sword Outlaw T1  `GearArt_1Sword_Outlaw_T1`  (T1)
-- Sword Outlaw T2  `GearArt_1Sword_Outlaw_T2`  (T2)
-- Sword Outlaw T3  `GearArt_1Sword_Outlaw_T3`  (T3)
-- Sword Outlaw T4  `GearArt_1Sword_Outlaw_T4`  (T4)
-
-**Ringwraith**
-
-- Sword Ringwraith T1  `GearArt_1Sword_Ringwraith_T1`  (T1)
-- Sword Ringwraith T2  `GearArt_1Sword_Ringwraith_T2`  (T2)
-- Sword Ringwraith T3  `GearArt_1Sword_Ringwraith_T3`  (T3)
-- Sword Ringwraith T4  `GearArt_1Sword_Ringwraith_T4`  (T4)
-
-**Slaughter**
-
-- Sword Slaughter T1  `GearArt_1Sword_Slaughter_T1`  (T1)
-- Sword Slaughter T2  `GearArt_1Sword_Slaughter_T2`  (T2)
-- Sword Slaughter T3  `GearArt_1Sword_Slaughter_T3`  (T3)
-- Sword Slaughter T4  `GearArt_1Sword_Slaughter_T4`  (T4)
-
-**Terror**
-
-- Sword Terror T1  `GearArt_1Sword_Terror_T1`  (T1)
-- Sword Terror T2  `GearArt_1Sword_Terror_T2`  (T2)
-- Sword Terror T3  `GearArt_1Sword_Terror_T3`  (T3)
-- Sword Terror T4  `GearArt_1Sword_Terror_T4`  (T4)
-
-**Warmonger**
-
-- Sword Warmonger T1  `GearArt_1Sword_Warmonger_T1`  (T1)
-- Sword Warmonger T2  `GearArt_1Sword_Warmonger_T2`  (T2)
-- Sword Warmonger T3  `GearArt_1Sword_Warmonger_T3`  (T3)
-- Sword Warmonger T4  `GearArt_1Sword_Warmonger_T4`  (T4)
+- Gondorian Sword Tint10 Rare  `GearArt_GondorianSwordTint10_3Rare`  (Gondorian  ·  Rare)
+- Gondorian Sword Tint1 Rare  `GearArt_GondorianSwordTint1_3Rare`  (Gondorian  ·  Rare)
+- Gondorian Sword Tint2 Rare  `GearArt_GondorianSwordTint2_3Rare`  (Gondorian  ·  Rare)
+- Gondorian Sword Tint3 Rare  `GearArt_GondorianSwordTint3_3Rare`  (Gondorian  ·  Rare)
+- Gondorian Sword Tint4 Rare  `GearArt_GondorianSwordTint4_3Rare`  (Gondorian  ·  Rare)
+- Gondorian Sword Tint5 Rare  `GearArt_GondorianSwordTint5_3Rare`  (Gondorian  ·  Rare)
+- Gondorian Sword Tint6 Rare  `GearArt_GondorianSwordTint6_3Rare`  (Gondorian  ·  Rare)
+- Gondorian Sword Tint7 Rare  `GearArt_GondorianSwordTint7_3Rare`  (Gondorian  ·  Rare)
+- Gondorian Sword Tint8 Rare  `GearArt_GondorianSwordTint8_3Rare`  (Gondorian  ·  Rare)
+- Gondorian Sword Tint9 Rare  `GearArt_GondorianSwordTint9_3Rare`  (Gondorian  ·  Rare)
+- Numenorean Sword Tint10 Rare  `GearArt_NumenoreanSwordTint10_3Rare`  (Numenorean  ·  Rare)
+- Numenorean Sword Tint1 Rare  `GearArt_NumenoreanSwordTint1_3Rare`  (Numenorean  ·  Rare)
+- Numenorean Sword Tint2 Rare  `GearArt_NumenoreanSwordTint2_3Rare`  (Numenorean  ·  Rare)
+- Numenorean Sword Tint3 Rare  `GearArt_NumenoreanSwordTint3_3Rare`  (Numenorean  ·  Rare)
+- Numenorean Sword Tint4 Rare  `GearArt_NumenoreanSwordTint4_3Rare`  (Numenorean  ·  Rare)
+- Numenorean Sword Tint5 Rare  `GearArt_NumenoreanSwordTint5_3Rare`  (Numenorean  ·  Rare)
+- Numenorean Sword Tint6 Rare  `GearArt_NumenoreanSwordTint6_3Rare`  (Numenorean  ·  Rare)
+- Numenorean Sword Tint7 Rare  `GearArt_NumenoreanSwordTint7_3Rare`  (Numenorean  ·  Rare)
+- Numenorean Sword Tint8 Rare  `GearArt_NumenoreanSwordTint8_3Rare`  (Numenorean  ·  Rare)
+- Numenorean Sword Tint9 Rare  `GearArt_NumenoreanSwordTint9_3Rare`  (Numenorean  ·  Rare)
+- Ranger Sword Tint10 Rare  `GearArt_RangerSwordTint10_3Rare`  (Ranger  ·  Rare)
+- Ranger Sword Tint1 Rare  `GearArt_RangerSwordTint1_3Rare`  (Ranger  ·  Rare)
+- Ranger Sword Tint2 Rare  `GearArt_RangerSwordTint2_3Rare`  (Ranger  ·  Rare)
+- Ranger Sword Tint3 Rare  `GearArt_RangerSwordTint3_3Rare`  (Ranger  ·  Rare)
+- Ranger Sword Tint4 Rare  `GearArt_RangerSwordTint4_3Rare`  (Ranger  ·  Rare)
+- Ranger Sword Tint5 Rare  `GearArt_RangerSwordTint5_3Rare`  (Ranger  ·  Rare)
+- Ranger Sword Tint6 Rare  `GearArt_RangerSwordTint6_3Rare`  (Ranger  ·  Rare)
+- Ranger Sword Tint7 Rare  `GearArt_RangerSwordTint7_3Rare`  (Ranger  ·  Rare)
+- Ranger Sword Tint8 Rare  `GearArt_RangerSwordTint8_3Rare`  (Ranger  ·  Rare)
+- Ranger Sword Tint9 Rare  `GearArt_RangerSwordTint9_3Rare`  (Ranger  ·  Rare)
+- Rohan Sword Tint10 Rare  `GearArt_RohanSwordTint10_3Rare`  (Rohan  ·  Rare)
+- Rohan Sword Tint1 Rare  `GearArt_RohanSwordTint1_3Rare`  (Rohan  ·  Rare)
+- Rohan Sword Tint2 Rare  `GearArt_RohanSwordTint2_3Rare`  (Rohan  ·  Rare)
+- Rohan Sword Tint3 Rare  `GearArt_RohanSwordTint3_3Rare`  (Rohan  ·  Rare)
+- Rohan Sword Tint4 Rare  `GearArt_RohanSwordTint4_3Rare`  (Rohan  ·  Rare)
+- Rohan Sword Tint5 Rare  `GearArt_RohanSwordTint5_3Rare`  (Rohan  ·  Rare)
+- Rohan Sword Tint6 Rare  `GearArt_RohanSwordTint6_3Rare`  (Rohan  ·  Rare)
+- Rohan Sword Tint7 Rare  `GearArt_RohanSwordTint7_3Rare`  (Rohan  ·  Rare)
+- Rohan Sword Tint8 Rare  `GearArt_RohanSwordTint8_3Rare`  (Rohan  ·  Rare)
+- Rohan Sword Tint9 Rare  `GearArt_RohanSwordTint9_3Rare`  (Rohan  ·  Rare)
+- Gondorian Sword Tint10 Epic  `GearArt_GondorianSwordTint10_4Epic`  (Gondorian  ·  Epic)
+- Gondorian Sword Tint1 Epic  `GearArt_GondorianSwordTint1_4Epic`  (Gondorian  ·  Epic)
+- Gondorian Sword Tint2 Epic  `GearArt_GondorianSwordTint2_4Epic`  (Gondorian  ·  Epic)
+- Gondorian Sword Tint3 Epic  `GearArt_GondorianSwordTint3_4Epic`  (Gondorian  ·  Epic)
+- Gondorian Sword Tint4 Epic  `GearArt_GondorianSwordTint4_4Epic`  (Gondorian  ·  Epic)
+- Gondorian Sword Tint5 Epic  `GearArt_GondorianSwordTint5_4Epic`  (Gondorian  ·  Epic)
+- Gondorian Sword Tint6 Epic  `GearArt_GondorianSwordTint6_4Epic`  (Gondorian  ·  Epic)
+- Gondorian Sword Tint7 Epic  `GearArt_GondorianSwordTint7_4Epic`  (Gondorian  ·  Epic)
+- Gondorian Sword Tint8 Epic  `GearArt_GondorianSwordTint8_4Epic`  (Gondorian  ·  Epic)
+- Gondorian Sword Tint9 Epic  `GearArt_GondorianSwordTint9_4Epic`  (Gondorian  ·  Epic)
+- Numenorean Sword Tint10 Epic  `GearArt_NumenoreanSwordTint10_4Epic`  (Numenorean  ·  Epic)
+- Numenorean Sword Tint1 Epic  `GearArt_NumenoreanSwordTint1_4Epic`  (Numenorean  ·  Epic)
+- Numenorean Sword Tint2 Epic  `GearArt_NumenoreanSwordTint2_4Epic`  (Numenorean  ·  Epic)
+- Numenorean Sword Tint3 Epic  `GearArt_NumenoreanSwordTint3_4Epic`  (Numenorean  ·  Epic)
+- Numenorean Sword Tint4 Epic  `GearArt_NumenoreanSwordTint4_4Epic`  (Numenorean  ·  Epic)
+- Numenorean Sword Tint5 Epic  `GearArt_NumenoreanSwordTint5_4Epic`  (Numenorean  ·  Epic)
+- Numenorean Sword Tint6 Epic  `GearArt_NumenoreanSwordTint6_4Epic`  (Numenorean  ·  Epic)
+- Numenorean Sword Tint7 Epic  `GearArt_NumenoreanSwordTint7_4Epic`  (Numenorean  ·  Epic)
+- Numenorean Sword Tint8 Epic  `GearArt_NumenoreanSwordTint8_4Epic`  (Numenorean  ·  Epic)
+- Numenorean Sword Tint9 Epic  `GearArt_NumenoreanSwordTint9_4Epic`  (Numenorean  ·  Epic)
+- Ranger Sword Tint10 Epic  `GearArt_RangerSwordTint10_4Epic`  (Ranger  ·  Epic)
+- Ranger Sword Tint1 Epic  `GearArt_RangerSwordTint1_4Epic`  (Ranger  ·  Epic)
+- Ranger Sword Tint2 Epic  `GearArt_RangerSwordTint2_4Epic`  (Ranger  ·  Epic)
+- Ranger Sword Tint3 Epic  `GearArt_RangerSwordTint3_4Epic`  (Ranger  ·  Epic)
+- Ranger Sword Tint4 Epic  `GearArt_RangerSwordTint4_4Epic`  (Ranger  ·  Epic)
+- Ranger Sword Tint5 Epic  `GearArt_RangerSwordTint5_4Epic`  (Ranger  ·  Epic)
+- Ranger Sword Tint6 Epic  `GearArt_RangerSwordTint6_4Epic`  (Ranger  ·  Epic)
+- Ranger Sword Tint7 Epic  `GearArt_RangerSwordTint7_4Epic`  (Ranger  ·  Epic)
+- Ranger Sword Tint8 Epic  `GearArt_RangerSwordTint8_4Epic`  (Ranger  ·  Epic)
+- Ranger Sword Tint9 Epic  `GearArt_RangerSwordTint9_4Epic`  (Ranger  ·  Epic)
+- Rohan Sword Tint10 Epic  `GearArt_RohanSwordTint10_4Epic`  (Rohan  ·  Epic)
+- Rohan Sword Tint1 Epic  `GearArt_RohanSwordTint1_4Epic`  (Rohan  ·  Epic)
+- Rohan Sword Tint2 Epic  `GearArt_RohanSwordTint2_4Epic`  (Rohan  ·  Epic)
+- Rohan Sword Tint3 Epic  `GearArt_RohanSwordTint3_4Epic`  (Rohan  ·  Epic)
+- Rohan Sword Tint4 Epic  `GearArt_RohanSwordTint4_4Epic`  (Rohan  ·  Epic)
+- Rohan Sword Tint5 Epic  `GearArt_RohanSwordTint5_4Epic`  (Rohan  ·  Epic)
+- Rohan Sword Tint6 Epic  `GearArt_RohanSwordTint6_4Epic`  (Rohan  ·  Epic)
+- Rohan Sword Tint7 Epic  `GearArt_RohanSwordTint7_4Epic`  (Rohan  ·  Epic)
+- Rohan Sword Tint8 Epic  `GearArt_RohanSwordTint8_4Epic`  (Rohan  ·  Epic)
+- Rohan Sword Tint9 Epic  `GearArt_RohanSwordTint9_4Epic`  (Rohan  ·  Epic)
+- Sword Celebrimbor T1  `GearArt_1Sword_Celebrimbor_T1`  (Celebrimbor  ·  Legendary  ·  T1)
+- Sword Celebrimbor T2  `GearArt_1Sword_Celebrimbor_T2`  (Celebrimbor  ·  Legendary  ·  T2)
+- Sword Celebrimbor T3  `GearArt_1Sword_Celebrimbor_T3`  (Celebrimbor  ·  Legendary  ·  T3)
+- Sword Celebrimbor T4  `GearArt_1Sword_Celebrimbor_T4`  (Celebrimbor  ·  Legendary  ·  T4)
+- Sword Vendetta T1  `GearArt_1Sword_Vendetta_T1`  (Vendetta  ·  Legendary  ·  T1)
+- Sword Vendetta T2  `GearArt_1Sword_Vendetta_T2`  (Vendetta  ·  Legendary  ·  T2)
+- Sword Vendetta T3  `GearArt_1Sword_Vendetta_T3`  (Vendetta  ·  Legendary  ·  T3)
+- Sword Vendetta T4  `GearArt_1Sword_Vendetta_T4`  (Vendetta  ·  Legendary  ·  T4)
+- Sword Dark T1  `GearArt_1Sword_Dark_T1`  (Dark  ·  Legendary  ·  T1)
+- Sword Dark T2  `GearArt_1Sword_Dark_T2`  (Dark  ·  Legendary  ·  T2)
+- Sword Dark T3  `GearArt_1Sword_Dark_T3`  (Dark  ·  Legendary  ·  T3)
+- Sword Dark T4  `GearArt_1Sword_Dark_T4`  (Dark  ·  Legendary  ·  T4)
+- Sword Feral T1  `GearArt_1Sword_Feral_T1`  (Feral  ·  Legendary  ·  T1)
+- Sword Feral T2  `GearArt_1Sword_Feral_T2`  (Feral  ·  Legendary  ·  T2)
+- Sword Feral T3  `GearArt_1Sword_Feral_T3`  (Feral  ·  Legendary  ·  T3)
+- Sword Feral T4  `GearArt_1Sword_Feral_T4`  (Feral  ·  Legendary  ·  T4)
+- Sword Machine T1  `GearArt_1Sword_Machine_T1`  (Machine  ·  Legendary  ·  T1)
+- Sword Machine T2  `GearArt_1Sword_Machine_T2`  (Machine  ·  Legendary  ·  T2)
+- Sword Machine T3  `GearArt_1Sword_Machine_T3`  (Machine  ·  Legendary  ·  T3)
+- Sword Machine T4  `GearArt_1Sword_Machine_T4`  (Machine  ·  Legendary  ·  T4)
+- Sword Marauder T1  `GearArt_1Sword_Marauder_T1`  (Marauder  ·  Legendary  ·  T1)
+- Sword Marauder T2  `GearArt_1Sword_Marauder_T2`  (Marauder  ·  Legendary  ·  T2)
+- Sword Marauder T3  `GearArt_1Sword_Marauder_T3`  (Marauder  ·  Legendary  ·  T3)
+- Sword Marauder T4  `GearArt_1Sword_Marauder_T4`  (Marauder  ·  Legendary  ·  T4)
+- Sword Mystic T1  `GearArt_1Sword_Mystic_T1`  (Mystic  ·  Legendary  ·  T1)
+- Sword Mystic T2  `GearArt_1Sword_Mystic_T2`  (Mystic  ·  Legendary  ·  T2)
+- Sword Mystic T3  `GearArt_1Sword_Mystic_T3`  (Mystic  ·  Legendary  ·  T3)
+- Sword Mystic T4  `GearArt_1Sword_Mystic_T4`  (Mystic  ·  Legendary  ·  T4)
+- Sword Outlaw T1  `GearArt_1Sword_Outlaw_T1`  (Outlaw  ·  Legendary  ·  T1)
+- Sword Outlaw T2  `GearArt_1Sword_Outlaw_T2`  (Outlaw  ·  Legendary  ·  T2)
+- Sword Outlaw T3  `GearArt_1Sword_Outlaw_T3`  (Outlaw  ·  Legendary  ·  T3)
+- Sword Outlaw T4  `GearArt_1Sword_Outlaw_T4`  (Outlaw  ·  Legendary  ·  T4)
+- Sword Ringwraith T1  `GearArt_1Sword_Ringwraith_T1`  (Ringwraith  ·  Legendary  ·  T1)
+- Sword Ringwraith T2  `GearArt_1Sword_Ringwraith_T2`  (Ringwraith  ·  Legendary  ·  T2)
+- Sword Ringwraith T3  `GearArt_1Sword_Ringwraith_T3`  (Ringwraith  ·  Legendary  ·  T3)
+- Sword Ringwraith T4  `GearArt_1Sword_Ringwraith_T4`  (Ringwraith  ·  Legendary  ·  T4)
+- Sword Slaughter T1  `GearArt_1Sword_Slaughter_T1`  (Slaughter  ·  Legendary  ·  T1)
+- Sword Slaughter T2  `GearArt_1Sword_Slaughter_T2`  (Slaughter  ·  Legendary  ·  T2)
+- Sword Slaughter T3  `GearArt_1Sword_Slaughter_T3`  (Slaughter  ·  Legendary  ·  T3)
+- Sword Slaughter T4  `GearArt_1Sword_Slaughter_T4`  (Slaughter  ·  Legendary  ·  T4)
+- Sword Terror T1  `GearArt_1Sword_Terror_T1`  (Terror  ·  Legendary  ·  T1)
+- Sword Terror T2  `GearArt_1Sword_Terror_T2`  (Terror  ·  Legendary  ·  T2)
+- Sword Terror T3  `GearArt_1Sword_Terror_T3`  (Terror  ·  Legendary  ·  T3)
+- Sword Terror T4  `GearArt_1Sword_Terror_T4`  (Terror  ·  Legendary  ·  T4)
+- Sword Warmonger T1  `GearArt_1Sword_Warmonger_T1`  (Warmonger  ·  Legendary  ·  T1)
+- Sword Warmonger T2  `GearArt_1Sword_Warmonger_T2`  (Warmonger  ·  Legendary  ·  T2)
+- Sword Warmonger T3  `GearArt_1Sword_Warmonger_T3`  (Warmonger  ·  Legendary  ·  T3)
+- Sword Warmonger T4  `GearArt_1Sword_Warmonger_T4`  (Warmonger  ·  Legendary  ·  T4)
 
 ### Dagger
-
-**Rare**
-
-- Gondorian Dagger Tint10 Rare  `GearArt_GondorianDaggerTint10_3Rare`
-- Gondorian Dagger Tint1 Rare  `GearArt_GondorianDaggerTint1_3Rare`
-- Gondorian Dagger Tint2 Rare  `GearArt_GondorianDaggerTint2_3Rare`
-- Gondorian Dagger Tint3 Rare  `GearArt_GondorianDaggerTint3_3Rare`
-- Gondorian Dagger Tint4 Rare  `GearArt_GondorianDaggerTint4_3Rare`
-- Gondorian Dagger Tint5 Rare  `GearArt_GondorianDaggerTint5_3Rare`
-- Gondorian Dagger Tint6 Rare  `GearArt_GondorianDaggerTint6_3Rare`
-- Gondorian Dagger Tint7 Rare  `GearArt_GondorianDaggerTint7_3Rare`
-- Gondorian Dagger Tint8 Rare  `GearArt_GondorianDaggerTint8_3Rare`
-- Gondorian Dagger Tint9 Rare  `GearArt_GondorianDaggerTint9_3Rare`
-- Numenorean Dagger Tint10 Rare  `GearArt_NumenoreanDaggerTint10_3Rare`
-- Numenorean Dagger Tint1 Rare  `GearArt_NumenoreanDaggerTint1_3Rare`
-- Numenorean Dagger Tint2 Rare  `GearArt_NumenoreanDaggerTint2_3Rare`
-- Numenorean Dagger Tint3 Rare  `GearArt_NumenoreanDaggerTint3_3Rare`
-- Numenorean Dagger Tint4 Rare  `GearArt_NumenoreanDaggerTint4_3Rare`
-- Numenorean Dagger Tint5 Rare  `GearArt_NumenoreanDaggerTint5_3Rare`
-- Numenorean Dagger Tint6 Rare  `GearArt_NumenoreanDaggerTint6_3Rare`
-- Numenorean Dagger Tint7 Rare  `GearArt_NumenoreanDaggerTint7_3Rare`
-- Numenorean Dagger Tint8 Rare  `GearArt_NumenoreanDaggerTint8_3Rare`
-- Numenorean Dagger Tint9 Rare  `GearArt_NumenoreanDaggerTint9_3Rare`
-- Ranger Dagger Tint10 Rare  `GearArt_RangerDaggerTint10_3Rare`
-- Ranger Dagger Tint1 Rare  `GearArt_RangerDaggerTint1_3Rare`
-- Ranger Dagger Tint2 Rare  `GearArt_RangerDaggerTint2_3Rare`
-- Ranger Dagger Tint3 Rare  `GearArt_RangerDaggerTint3_3Rare`
-- Ranger Dagger Tint4 Rare  `GearArt_RangerDaggerTint4_3Rare`
-- Ranger Dagger Tint5 Rare  `GearArt_RangerDaggerTint5_3Rare`
-- Ranger Dagger Tint6 Rare  `GearArt_RangerDaggerTint6_3Rare`
-- Ranger Dagger Tint7 Rare  `GearArt_RangerDaggerTint7_3Rare`
-- Ranger Dagger Tint8 Rare  `GearArt_RangerDaggerTint8_3Rare`
-- Ranger Dagger Tint9 Rare  `GearArt_RangerDaggerTint9_3Rare`
-- Rohan Dagger Tint10 Rare  `GearArt_RohanDaggerTint10_3Rare`
-- Rohan Dagger Tint1 Rare  `GearArt_RohanDaggerTint1_3Rare`
-- Rohan Dagger Tint2 Rare  `GearArt_RohanDaggerTint2_3Rare`
-- Rohan Dagger Tint3 Rare  `GearArt_RohanDaggerTint3_3Rare`
-- Rohan Dagger Tint4 Rare  `GearArt_RohanDaggerTint4_3Rare`
-- Rohan Dagger Tint5 Rare  `GearArt_RohanDaggerTint5_3Rare`
-- Rohan Dagger Tint6 Rare  `GearArt_RohanDaggerTint6_3Rare`
-- Rohan Dagger Tint7 Rare  `GearArt_RohanDaggerTint7_3Rare`
-- Rohan Dagger Tint8 Rare  `GearArt_RohanDaggerTint8_3Rare`
-- Rohan Dagger Tint9 Rare  `GearArt_RohanDaggerTint9_3Rare`
-
-**Epic**
-
-- Gondorian Dagger Tint10 Epic  `GearArt_GondorianDaggerTint10_4Epic`
-- Gondorian Dagger Tint1 Epic  `GearArt_GondorianDaggerTint1_4Epic`
-- Gondorian Dagger Tint2 Epic  `GearArt_GondorianDaggerTint2_4Epic`
-- Gondorian Dagger Tint3 Epic  `GearArt_GondorianDaggerTint3_4Epic`
-- Gondorian Dagger Tint4 Epic  `GearArt_GondorianDaggerTint4_4Epic`
-- Gondorian Dagger Tint5 Epic  `GearArt_GondorianDaggerTint5_4Epic`
-- Gondorian Dagger Tint6 Epic  `GearArt_GondorianDaggerTint6_4Epic`
-- Gondorian Dagger Tint7 Epic  `GearArt_GondorianDaggerTint7_4Epic`
-- Gondorian Dagger Tint8 Epic  `GearArt_GondorianDaggerTint8_4Epic`
-- Gondorian Dagger Tint9 Epic  `GearArt_GondorianDaggerTint9_4Epic`
-- Numenorean Dagger Tint10 Epic  `GearArt_NumenoreanDaggerTint10_4Epic`
-- Numenorean Dagger Tint1 Epic  `GearArt_NumenoreanDaggerTint1_4Epic`
-- Numenorean Dagger Tint2 Epic  `GearArt_NumenoreanDaggerTint2_4Epic`
-- Numenorean Dagger Tint3 Epic  `GearArt_NumenoreanDaggerTint3_4Epic`
-- Numenorean Dagger Tint4 Epic  `GearArt_NumenoreanDaggerTint4_4Epic`
-- Numenorean Dagger Tint5 Epic  `GearArt_NumenoreanDaggerTint5_4Epic`
-- Numenorean Dagger Tint6 Epic  `GearArt_NumenoreanDaggerTint6_4Epic`
-- Numenorean Dagger Tint7 Epic  `GearArt_NumenoreanDaggerTint7_4Epic`
-- Numenorean Dagger Tint8 Epic  `GearArt_NumenoreanDaggerTint8_4Epic`
-- Numenorean Dagger Tint9 Epic  `GearArt_NumenoreanDaggerTint9_4Epic`
-- Ranger Dagger Tint10 Epic  `GearArt_RangerDaggerTint10_4Epic`
-- Ranger Dagger Tint1 Epic  `GearArt_RangerDaggerTint1_4Epic`
-- Ranger Dagger Tint2 Epic  `GearArt_RangerDaggerTint2_4Epic`
-- Ranger Dagger Tint3 Epic  `GearArt_RangerDaggerTint3_4Epic`
-- Ranger Dagger Tint4 Epic  `GearArt_RangerDaggerTint4_4Epic`
-- Ranger Dagger Tint5 Epic  `GearArt_RangerDaggerTint5_4Epic`
-- Ranger Dagger Tint6 Epic  `GearArt_RangerDaggerTint6_4Epic`
-- Ranger Dagger Tint7 Epic  `GearArt_RangerDaggerTint7_4Epic`
-- Ranger Dagger Tint8 Epic  `GearArt_RangerDaggerTint8_4Epic`
-- Ranger Dagger Tint9 Epic  `GearArt_RangerDaggerTint9_4Epic`
-- Rohan Dagger Tint10 Epic  `GearArt_RohanDaggerTint10_4Epic`
-- Rohan Dagger Tint1 Epic  `GearArt_RohanDaggerTint1_4Epic`
-- Rohan Dagger Tint2 Epic  `GearArt_RohanDaggerTint2_4Epic`
-- Rohan Dagger Tint3 Epic  `GearArt_RohanDaggerTint3_4Epic`
-- Rohan Dagger Tint4 Epic  `GearArt_RohanDaggerTint4_4Epic`
-- Rohan Dagger Tint5 Epic  `GearArt_RohanDaggerTint5_4Epic`
-- Rohan Dagger Tint6 Epic  `GearArt_RohanDaggerTint6_4Epic`
-- Rohan Dagger Tint7 Epic  `GearArt_RohanDaggerTint7_4Epic`
-- Rohan Dagger Tint8 Epic  `GearArt_RohanDaggerTint8_4Epic`
-- Rohan Dagger Tint9 Epic  `GearArt_RohanDaggerTint9_4Epic`
-
-**Celebrimbor**
-
-- Dagger Celebrimbor T1  `GearArt_2Dagger_Celebrimbor_T1`  (T1)
-- Dagger Celebrimbor T2  `GearArt_2Dagger_Celebrimbor_T2`  (T2)
-- Dagger Celebrimbor T3  `GearArt_2Dagger_Celebrimbor_T3`  (T3)
-- Dagger Celebrimbor T4  `GearArt_2Dagger_Celebrimbor_T4`  (T4)
-
-**Vendetta**
-
-- Dagger Vendetta T1  `GearArt_2Dagger_Vendetta_T1`  (T1)
-- Dagger Vendetta T2  `GearArt_2Dagger_Vendetta_T2`  (T2)
-- Dagger Vendetta T3  `GearArt_2Dagger_Vendetta_T3`  (T3)
-- Dagger Vendetta T4  `GearArt_2Dagger_Vendetta_T4`  (T4)
-
-**Dark**
-
-- Dagger Dark T1  `GearArt_2Dagger_Dark_T1`  (T1)
-- Dagger Dark T2  `GearArt_2Dagger_Dark_T2`  (T2)
-- Dagger Dark T3  `GearArt_2Dagger_Dark_T3`  (T3)
-- Dagger Dark T4  `GearArt_2Dagger_Dark_T4`  (T4)
-
-**Feral**
-
-- Dagger Feral T1  `GearArt_2Dagger_Feral_T1`  (T1)
-- Dagger Feral T2  `GearArt_2Dagger_Feral_T2`  (T2)
-- Dagger Feral T3  `GearArt_2Dagger_Feral_T3`  (T3)
-- Dagger Feral T4  `GearArt_2Dagger_Feral_T4`  (T4)
-
-**Machine**
-
-- Dagger Machine T1  `GearArt_2Dagger_Machine_T1`  (T1)
-- Dagger Machine T2  `GearArt_2Dagger_Machine_T2`  (T2)
-- Dagger Machine T3  `GearArt_2Dagger_Machine_T3`  (T3)
-- Dagger Machine T4  `GearArt_2Dagger_Machine_T4`  (T4)
-
-**Marauder**
-
-- Dagger Marauder T1  `GearArt_2Dagger_Marauder_T1`  (T1)
-- Dagger Marauder T2  `GearArt_2Dagger_Marauder_T2`  (T2)
-- Dagger Marauder T3  `GearArt_2Dagger_Marauder_T3`  (T3)
-- Dagger Marauder T4  `GearArt_2Dagger_Marauder_T4`  (T4)
-
-**Mystic**
-
-- Dagger Mystic T1  `GearArt_2Dagger_Mystic_T1`  (T1)
-- Dagger Mystic T2  `GearArt_2Dagger_Mystic_T2`  (T2)
-- Dagger Mystic T3  `GearArt_2Dagger_Mystic_T3`  (T3)
-- Dagger Mystic T4  `GearArt_2Dagger_Mystic_T4`  (T4)
-
-**Outlaw**
-
-- Dagger Outlaw T1  `GearArt_2Dagger_Outlaw_T1`  (T1)
-- Dagger Outlaw T2  `GearArt_2Dagger_Outlaw_T2`  (T2)
-- Dagger Outlaw T3  `GearArt_2Dagger_Outlaw_T3`  (T3)
-- Dagger Outlaw T4  `GearArt_2Dagger_Outlaw_T4`  (T4)
-
-**Ringwraith**
-
-- Dagger Ringwraith T1  `GearArt_2Dagger_Ringwraith_T1`  (T1)
-- Dagger Ringwraith T2  `GearArt_2Dagger_Ringwraith_T2`  (T2)
-- Dagger Ringwraith T3  `GearArt_2Dagger_Ringwraith_T3`  (T3)
-- Dagger Ringwraith T4  `GearArt_2Dagger_Ringwraith_T4`  (T4)
-
-**Slaughter**
-
-- Dagger Slaughter T1  `GearArt_2Dagger_Slaughter_T1`  (T1)
-- Dagger Slaughter T2  `GearArt_2Dagger_Slaughter_T2`  (T2)
-- Dagger Slaughter T3  `GearArt_2Dagger_Slaughter_T3`  (T3)
-- Dagger Slaughter T4  `GearArt_2Dagger_Slaughter_T4`  (T4)
-
-**Terror**
-
-- Dagger Terror T1  `GearArt_2Dagger_Terror_T1`  (T1)
-- Dagger Terror T2  `GearArt_2Dagger_Terror_T2`  (T2)
-- Dagger Terror T3  `GearArt_2Dagger_Terror_T3`  (T3)
-- Dagger Terror T4  `GearArt_2Dagger_Terror_T4`  (T4)
-
-**Warmonger**
-
-- Dagger Warmonger T1  `GearArt_2Dagger_Warmonger_T1`  (T1)
-- Dagger Warmonger T2  `GearArt_2Dagger_Warmonger_T2`  (T2)
-- Dagger Warmonger T3  `GearArt_2Dagger_Warmonger_T3`  (T3)
-- Dagger Warmonger T4  `GearArt_2Dagger_Warmonger_T4`  (T4)
+- Gondorian Dagger Tint10 Rare  `GearArt_GondorianDaggerTint10_3Rare`  (Gondorian  ·  Rare)
+- Gondorian Dagger Tint1 Rare  `GearArt_GondorianDaggerTint1_3Rare`  (Gondorian  ·  Rare)
+- Gondorian Dagger Tint2 Rare  `GearArt_GondorianDaggerTint2_3Rare`  (Gondorian  ·  Rare)
+- Gondorian Dagger Tint3 Rare  `GearArt_GondorianDaggerTint3_3Rare`  (Gondorian  ·  Rare)
+- Gondorian Dagger Tint4 Rare  `GearArt_GondorianDaggerTint4_3Rare`  (Gondorian  ·  Rare)
+- Gondorian Dagger Tint5 Rare  `GearArt_GondorianDaggerTint5_3Rare`  (Gondorian  ·  Rare)
+- Gondorian Dagger Tint6 Rare  `GearArt_GondorianDaggerTint6_3Rare`  (Gondorian  ·  Rare)
+- Gondorian Dagger Tint7 Rare  `GearArt_GondorianDaggerTint7_3Rare`  (Gondorian  ·  Rare)
+- Gondorian Dagger Tint8 Rare  `GearArt_GondorianDaggerTint8_3Rare`  (Gondorian  ·  Rare)
+- Gondorian Dagger Tint9 Rare  `GearArt_GondorianDaggerTint9_3Rare`  (Gondorian  ·  Rare)
+- Numenorean Dagger Tint10 Rare  `GearArt_NumenoreanDaggerTint10_3Rare`  (Numenorean  ·  Rare)
+- Numenorean Dagger Tint1 Rare  `GearArt_NumenoreanDaggerTint1_3Rare`  (Numenorean  ·  Rare)
+- Numenorean Dagger Tint2 Rare  `GearArt_NumenoreanDaggerTint2_3Rare`  (Numenorean  ·  Rare)
+- Numenorean Dagger Tint3 Rare  `GearArt_NumenoreanDaggerTint3_3Rare`  (Numenorean  ·  Rare)
+- Numenorean Dagger Tint4 Rare  `GearArt_NumenoreanDaggerTint4_3Rare`  (Numenorean  ·  Rare)
+- Numenorean Dagger Tint5 Rare  `GearArt_NumenoreanDaggerTint5_3Rare`  (Numenorean  ·  Rare)
+- Numenorean Dagger Tint6 Rare  `GearArt_NumenoreanDaggerTint6_3Rare`  (Numenorean  ·  Rare)
+- Numenorean Dagger Tint7 Rare  `GearArt_NumenoreanDaggerTint7_3Rare`  (Numenorean  ·  Rare)
+- Numenorean Dagger Tint8 Rare  `GearArt_NumenoreanDaggerTint8_3Rare`  (Numenorean  ·  Rare)
+- Numenorean Dagger Tint9 Rare  `GearArt_NumenoreanDaggerTint9_3Rare`  (Numenorean  ·  Rare)
+- Ranger Dagger Tint10 Rare  `GearArt_RangerDaggerTint10_3Rare`  (Ranger  ·  Rare)
+- Ranger Dagger Tint1 Rare  `GearArt_RangerDaggerTint1_3Rare`  (Ranger  ·  Rare)
+- Ranger Dagger Tint2 Rare  `GearArt_RangerDaggerTint2_3Rare`  (Ranger  ·  Rare)
+- Ranger Dagger Tint3 Rare  `GearArt_RangerDaggerTint3_3Rare`  (Ranger  ·  Rare)
+- Ranger Dagger Tint4 Rare  `GearArt_RangerDaggerTint4_3Rare`  (Ranger  ·  Rare)
+- Ranger Dagger Tint5 Rare  `GearArt_RangerDaggerTint5_3Rare`  (Ranger  ·  Rare)
+- Ranger Dagger Tint6 Rare  `GearArt_RangerDaggerTint6_3Rare`  (Ranger  ·  Rare)
+- Ranger Dagger Tint7 Rare  `GearArt_RangerDaggerTint7_3Rare`  (Ranger  ·  Rare)
+- Ranger Dagger Tint8 Rare  `GearArt_RangerDaggerTint8_3Rare`  (Ranger  ·  Rare)
+- Ranger Dagger Tint9 Rare  `GearArt_RangerDaggerTint9_3Rare`  (Ranger  ·  Rare)
+- Rohan Dagger Tint10 Rare  `GearArt_RohanDaggerTint10_3Rare`  (Rohan  ·  Rare)
+- Rohan Dagger Tint1 Rare  `GearArt_RohanDaggerTint1_3Rare`  (Rohan  ·  Rare)
+- Rohan Dagger Tint2 Rare  `GearArt_RohanDaggerTint2_3Rare`  (Rohan  ·  Rare)
+- Rohan Dagger Tint3 Rare  `GearArt_RohanDaggerTint3_3Rare`  (Rohan  ·  Rare)
+- Rohan Dagger Tint4 Rare  `GearArt_RohanDaggerTint4_3Rare`  (Rohan  ·  Rare)
+- Rohan Dagger Tint5 Rare  `GearArt_RohanDaggerTint5_3Rare`  (Rohan  ·  Rare)
+- Rohan Dagger Tint6 Rare  `GearArt_RohanDaggerTint6_3Rare`  (Rohan  ·  Rare)
+- Rohan Dagger Tint7 Rare  `GearArt_RohanDaggerTint7_3Rare`  (Rohan  ·  Rare)
+- Rohan Dagger Tint8 Rare  `GearArt_RohanDaggerTint8_3Rare`  (Rohan  ·  Rare)
+- Rohan Dagger Tint9 Rare  `GearArt_RohanDaggerTint9_3Rare`  (Rohan  ·  Rare)
+- Gondorian Dagger Tint10 Epic  `GearArt_GondorianDaggerTint10_4Epic`  (Gondorian  ·  Epic)
+- Gondorian Dagger Tint1 Epic  `GearArt_GondorianDaggerTint1_4Epic`  (Gondorian  ·  Epic)
+- Gondorian Dagger Tint2 Epic  `GearArt_GondorianDaggerTint2_4Epic`  (Gondorian  ·  Epic)
+- Gondorian Dagger Tint3 Epic  `GearArt_GondorianDaggerTint3_4Epic`  (Gondorian  ·  Epic)
+- Gondorian Dagger Tint4 Epic  `GearArt_GondorianDaggerTint4_4Epic`  (Gondorian  ·  Epic)
+- Gondorian Dagger Tint5 Epic  `GearArt_GondorianDaggerTint5_4Epic`  (Gondorian  ·  Epic)
+- Gondorian Dagger Tint6 Epic  `GearArt_GondorianDaggerTint6_4Epic`  (Gondorian  ·  Epic)
+- Gondorian Dagger Tint7 Epic  `GearArt_GondorianDaggerTint7_4Epic`  (Gondorian  ·  Epic)
+- Gondorian Dagger Tint8 Epic  `GearArt_GondorianDaggerTint8_4Epic`  (Gondorian  ·  Epic)
+- Gondorian Dagger Tint9 Epic  `GearArt_GondorianDaggerTint9_4Epic`  (Gondorian  ·  Epic)
+- Numenorean Dagger Tint10 Epic  `GearArt_NumenoreanDaggerTint10_4Epic`  (Numenorean  ·  Epic)
+- Numenorean Dagger Tint1 Epic  `GearArt_NumenoreanDaggerTint1_4Epic`  (Numenorean  ·  Epic)
+- Numenorean Dagger Tint2 Epic  `GearArt_NumenoreanDaggerTint2_4Epic`  (Numenorean  ·  Epic)
+- Numenorean Dagger Tint3 Epic  `GearArt_NumenoreanDaggerTint3_4Epic`  (Numenorean  ·  Epic)
+- Numenorean Dagger Tint4 Epic  `GearArt_NumenoreanDaggerTint4_4Epic`  (Numenorean  ·  Epic)
+- Numenorean Dagger Tint5 Epic  `GearArt_NumenoreanDaggerTint5_4Epic`  (Numenorean  ·  Epic)
+- Numenorean Dagger Tint6 Epic  `GearArt_NumenoreanDaggerTint6_4Epic`  (Numenorean  ·  Epic)
+- Numenorean Dagger Tint7 Epic  `GearArt_NumenoreanDaggerTint7_4Epic`  (Numenorean  ·  Epic)
+- Numenorean Dagger Tint8 Epic  `GearArt_NumenoreanDaggerTint8_4Epic`  (Numenorean  ·  Epic)
+- Numenorean Dagger Tint9 Epic  `GearArt_NumenoreanDaggerTint9_4Epic`  (Numenorean  ·  Epic)
+- Ranger Dagger Tint10 Epic  `GearArt_RangerDaggerTint10_4Epic`  (Ranger  ·  Epic)
+- Ranger Dagger Tint1 Epic  `GearArt_RangerDaggerTint1_4Epic`  (Ranger  ·  Epic)
+- Ranger Dagger Tint2 Epic  `GearArt_RangerDaggerTint2_4Epic`  (Ranger  ·  Epic)
+- Ranger Dagger Tint3 Epic  `GearArt_RangerDaggerTint3_4Epic`  (Ranger  ·  Epic)
+- Ranger Dagger Tint4 Epic  `GearArt_RangerDaggerTint4_4Epic`  (Ranger  ·  Epic)
+- Ranger Dagger Tint5 Epic  `GearArt_RangerDaggerTint5_4Epic`  (Ranger  ·  Epic)
+- Ranger Dagger Tint6 Epic  `GearArt_RangerDaggerTint6_4Epic`  (Ranger  ·  Epic)
+- Ranger Dagger Tint7 Epic  `GearArt_RangerDaggerTint7_4Epic`  (Ranger  ·  Epic)
+- Ranger Dagger Tint8 Epic  `GearArt_RangerDaggerTint8_4Epic`  (Ranger  ·  Epic)
+- Ranger Dagger Tint9 Epic  `GearArt_RangerDaggerTint9_4Epic`  (Ranger  ·  Epic)
+- Rohan Dagger Tint10 Epic  `GearArt_RohanDaggerTint10_4Epic`  (Rohan  ·  Epic)
+- Rohan Dagger Tint1 Epic  `GearArt_RohanDaggerTint1_4Epic`  (Rohan  ·  Epic)
+- Rohan Dagger Tint2 Epic  `GearArt_RohanDaggerTint2_4Epic`  (Rohan  ·  Epic)
+- Rohan Dagger Tint3 Epic  `GearArt_RohanDaggerTint3_4Epic`  (Rohan  ·  Epic)
+- Rohan Dagger Tint4 Epic  `GearArt_RohanDaggerTint4_4Epic`  (Rohan  ·  Epic)
+- Rohan Dagger Tint5 Epic  `GearArt_RohanDaggerTint5_4Epic`  (Rohan  ·  Epic)
+- Rohan Dagger Tint6 Epic  `GearArt_RohanDaggerTint6_4Epic`  (Rohan  ·  Epic)
+- Rohan Dagger Tint7 Epic  `GearArt_RohanDaggerTint7_4Epic`  (Rohan  ·  Epic)
+- Rohan Dagger Tint8 Epic  `GearArt_RohanDaggerTint8_4Epic`  (Rohan  ·  Epic)
+- Rohan Dagger Tint9 Epic  `GearArt_RohanDaggerTint9_4Epic`  (Rohan  ·  Epic)
+- Dagger Celebrimbor T1  `GearArt_2Dagger_Celebrimbor_T1`  (Celebrimbor  ·  Legendary  ·  T1)
+- Dagger Celebrimbor T2  `GearArt_2Dagger_Celebrimbor_T2`  (Celebrimbor  ·  Legendary  ·  T2)
+- Dagger Celebrimbor T3  `GearArt_2Dagger_Celebrimbor_T3`  (Celebrimbor  ·  Legendary  ·  T3)
+- Dagger Celebrimbor T4  `GearArt_2Dagger_Celebrimbor_T4`  (Celebrimbor  ·  Legendary  ·  T4)
+- Dagger Vendetta T1  `GearArt_2Dagger_Vendetta_T1`  (Vendetta  ·  Legendary  ·  T1)
+- Dagger Vendetta T2  `GearArt_2Dagger_Vendetta_T2`  (Vendetta  ·  Legendary  ·  T2)
+- Dagger Vendetta T3  `GearArt_2Dagger_Vendetta_T3`  (Vendetta  ·  Legendary  ·  T3)
+- Dagger Vendetta T4  `GearArt_2Dagger_Vendetta_T4`  (Vendetta  ·  Legendary  ·  T4)
+- Dagger Dark T1  `GearArt_2Dagger_Dark_T1`  (Dark  ·  Legendary  ·  T1)
+- Dagger Dark T2  `GearArt_2Dagger_Dark_T2`  (Dark  ·  Legendary  ·  T2)
+- Dagger Dark T3  `GearArt_2Dagger_Dark_T3`  (Dark  ·  Legendary  ·  T3)
+- Dagger Dark T4  `GearArt_2Dagger_Dark_T4`  (Dark  ·  Legendary  ·  T4)
+- Dagger Feral T1  `GearArt_2Dagger_Feral_T1`  (Feral  ·  Legendary  ·  T1)
+- Dagger Feral T2  `GearArt_2Dagger_Feral_T2`  (Feral  ·  Legendary  ·  T2)
+- Dagger Feral T3  `GearArt_2Dagger_Feral_T3`  (Feral  ·  Legendary  ·  T3)
+- Dagger Feral T4  `GearArt_2Dagger_Feral_T4`  (Feral  ·  Legendary  ·  T4)
+- Dagger Machine T1  `GearArt_2Dagger_Machine_T1`  (Machine  ·  Legendary  ·  T1)
+- Dagger Machine T2  `GearArt_2Dagger_Machine_T2`  (Machine  ·  Legendary  ·  T2)
+- Dagger Machine T3  `GearArt_2Dagger_Machine_T3`  (Machine  ·  Legendary  ·  T3)
+- Dagger Machine T4  `GearArt_2Dagger_Machine_T4`  (Machine  ·  Legendary  ·  T4)
+- Dagger Marauder T1  `GearArt_2Dagger_Marauder_T1`  (Marauder  ·  Legendary  ·  T1)
+- Dagger Marauder T2  `GearArt_2Dagger_Marauder_T2`  (Marauder  ·  Legendary  ·  T2)
+- Dagger Marauder T3  `GearArt_2Dagger_Marauder_T3`  (Marauder  ·  Legendary  ·  T3)
+- Dagger Marauder T4  `GearArt_2Dagger_Marauder_T4`  (Marauder  ·  Legendary  ·  T4)
+- Dagger Mystic T1  `GearArt_2Dagger_Mystic_T1`  (Mystic  ·  Legendary  ·  T1)
+- Dagger Mystic T2  `GearArt_2Dagger_Mystic_T2`  (Mystic  ·  Legendary  ·  T2)
+- Dagger Mystic T3  `GearArt_2Dagger_Mystic_T3`  (Mystic  ·  Legendary  ·  T3)
+- Dagger Mystic T4  `GearArt_2Dagger_Mystic_T4`  (Mystic  ·  Legendary  ·  T4)
+- Dagger Outlaw T1  `GearArt_2Dagger_Outlaw_T1`  (Outlaw  ·  Legendary  ·  T1)
+- Dagger Outlaw T2  `GearArt_2Dagger_Outlaw_T2`  (Outlaw  ·  Legendary  ·  T2)
+- Dagger Outlaw T3  `GearArt_2Dagger_Outlaw_T3`  (Outlaw  ·  Legendary  ·  T3)
+- Dagger Outlaw T4  `GearArt_2Dagger_Outlaw_T4`  (Outlaw  ·  Legendary  ·  T4)
+- Dagger Ringwraith T1  `GearArt_2Dagger_Ringwraith_T1`  (Ringwraith  ·  Legendary  ·  T1)
+- Dagger Ringwraith T2  `GearArt_2Dagger_Ringwraith_T2`  (Ringwraith  ·  Legendary  ·  T2)
+- Dagger Ringwraith T3  `GearArt_2Dagger_Ringwraith_T3`  (Ringwraith  ·  Legendary  ·  T3)
+- Dagger Ringwraith T4  `GearArt_2Dagger_Ringwraith_T4`  (Ringwraith  ·  Legendary  ·  T4)
+- Dagger Slaughter T1  `GearArt_2Dagger_Slaughter_T1`  (Slaughter  ·  Legendary  ·  T1)
+- Dagger Slaughter T2  `GearArt_2Dagger_Slaughter_T2`  (Slaughter  ·  Legendary  ·  T2)
+- Dagger Slaughter T3  `GearArt_2Dagger_Slaughter_T3`  (Slaughter  ·  Legendary  ·  T3)
+- Dagger Slaughter T4  `GearArt_2Dagger_Slaughter_T4`  (Slaughter  ·  Legendary  ·  T4)
+- Dagger Terror T1  `GearArt_2Dagger_Terror_T1`  (Terror  ·  Legendary  ·  T1)
+- Dagger Terror T2  `GearArt_2Dagger_Terror_T2`  (Terror  ·  Legendary  ·  T2)
+- Dagger Terror T3  `GearArt_2Dagger_Terror_T3`  (Terror  ·  Legendary  ·  T3)
+- Dagger Terror T4  `GearArt_2Dagger_Terror_T4`  (Terror  ·  Legendary  ·  T4)
+- Dagger Warmonger T1  `GearArt_2Dagger_Warmonger_T1`  (Warmonger  ·  Legendary  ·  T1)
+- Dagger Warmonger T2  `GearArt_2Dagger_Warmonger_T2`  (Warmonger  ·  Legendary  ·  T2)
+- Dagger Warmonger T3  `GearArt_2Dagger_Warmonger_T3`  (Warmonger  ·  Legendary  ·  T3)
+- Dagger Warmonger T4  `GearArt_2Dagger_Warmonger_T4`  (Warmonger  ·  Legendary  ·  T4)
 
 ### Bow
-
-**Rare**
-
-- Gondorian Bow Snipe Tint10 Rare  `GearArt_GondorianBowSnipeTint10_3Rare`
-- Gondorian Bow Snipe Tint1 Rare  `GearArt_GondorianBowSnipeTint1_3Rare`
-- Gondorian Bow Snipe Tint2 Rare  `GearArt_GondorianBowSnipeTint2_3Rare`
-- Gondorian Bow Snipe Tint3 Rare  `GearArt_GondorianBowSnipeTint3_3Rare`
-- Gondorian Bow Snipe Tint4 Rare  `GearArt_GondorianBowSnipeTint4_3Rare`
-- Gondorian Bow Snipe Tint5 Rare  `GearArt_GondorianBowSnipeTint5_3Rare`
-- Gondorian Bow Snipe Tint6 Rare  `GearArt_GondorianBowSnipeTint6_3Rare`
-- Gondorian Bow Snipe Tint7 Rare  `GearArt_GondorianBowSnipeTint7_3Rare`
-- Gondorian Bow Snipe Tint8 Rare  `GearArt_GondorianBowSnipeTint8_3Rare`
-- Gondorian Bow Snipe Tint9 Rare  `GearArt_GondorianBowSnipeTint9_3Rare`
-- Gondorian Bow Tint10 Rare  `GearArt_GondorianBowTint10_3Rare`
-- Gondorian Bow Tint1 Rare  `GearArt_GondorianBowTint1_3Rare`
-- Gondorian Bow Tint2 Rare  `GearArt_GondorianBowTint2_3Rare`
-- Gondorian Bow Tint3 Rare  `GearArt_GondorianBowTint3_3Rare`
-- Gondorian Bow Tint4 Rare  `GearArt_GondorianBowTint4_3Rare`
-- Gondorian Bow Tint5 Rare  `GearArt_GondorianBowTint5_3Rare`
-- Gondorian Bow Tint6 Rare  `GearArt_GondorianBowTint6_3Rare`
-- Gondorian Bow Tint7 Rare  `GearArt_GondorianBowTint7_3Rare`
-- Gondorian Bow Tint8 Rare  `GearArt_GondorianBowTint8_3Rare`
-- Gondorian Bow Tint9 Rare  `GearArt_GondorianBowTint9_3Rare`
-- Numenorean Bow Snipe Tint10 Rare  `GearArt_NumenoreanBowSnipeTint10_3Rare`
-- Numenorean Bow Snipe Tint1 Rare  `GearArt_NumenoreanBowSnipeTint1_3Rare`
-- Numenorean Bow Snipe Tint2 Rare  `GearArt_NumenoreanBowSnipeTint2_3Rare`
-- Numenorean Bow Snipe Tint3 Rare  `GearArt_NumenoreanBowSnipeTint3_3Rare`
-- Numenorean Bow Snipe Tint4 Rare  `GearArt_NumenoreanBowSnipeTint4_3Rare`
-- Numenorean Bow Snipe Tint5 Rare  `GearArt_NumenoreanBowSnipeTint5_3Rare`
-- Numenorean Bow Snipe Tint6 Rare  `GearArt_NumenoreanBowSnipeTint6_3Rare`
-- Numenorean Bow Snipe Tint7 Rare  `GearArt_NumenoreanBowSnipeTint7_3Rare`
-- Numenorean Bow Snipe Tint8 Rare  `GearArt_NumenoreanBowSnipeTint8_3Rare`
-- Numenorean Bow Snipe Tint9 Rare  `GearArt_NumenoreanBowSnipeTint9_3Rare`
-- Numenorean Bow Tint10 Rare  `GearArt_NumenoreanBowTint10_3Rare`
-- Numenorean Bow Tint1 Rare  `GearArt_NumenoreanBowTint1_3Rare`
-- Numenorean Bow Tint2 Rare  `GearArt_NumenoreanBowTint2_3Rare`
-- Numenorean Bow Tint3 Rare  `GearArt_NumenoreanBowTint3_3Rare`
-- Numenorean Bow Tint4 Rare  `GearArt_NumenoreanBowTint4_3Rare`
-- Numenorean Bow Tint5 Rare  `GearArt_NumenoreanBowTint5_3Rare`
-- Numenorean Bow Tint6 Rare  `GearArt_NumenoreanBowTint6_3Rare`
-- Numenorean Bow Tint7 Rare  `GearArt_NumenoreanBowTint7_3Rare`
-- Numenorean Bow Tint8 Rare  `GearArt_NumenoreanBowTint8_3Rare`
-- Numenorean Bow Tint9 Rare  `GearArt_NumenoreanBowTint9_3Rare`
-- Ranger Bow Snipe Tint10 Rare  `GearArt_RangerBowSnipeTint10_3Rare`
-- Ranger Bow Snipe Tint1 Rare  `GearArt_RangerBowSnipeTint1_3Rare`
-- Ranger Bow Snipe Tint2 Rare  `GearArt_RangerBowSnipeTint2_3Rare`
-- Ranger Bow Snipe Tint3 Rare  `GearArt_RangerBowSnipeTint3_3Rare`
-- Ranger Bow Snipe Tint4 Rare  `GearArt_RangerBowSnipeTint4_3Rare`
-- Ranger Bow Snipe Tint5 Rare  `GearArt_RangerBowSnipeTint5_3Rare`
-- Ranger Bow Snipe Tint6 Rare  `GearArt_RangerBowSnipeTint6_3Rare`
-- Ranger Bow Snipe Tint7 Rare  `GearArt_RangerBowSnipeTint7_3Rare`
-- Ranger Bow Snipe Tint8 Rare  `GearArt_RangerBowSnipeTint8_3Rare`
-- Ranger Bow Snipe Tint9 Rare  `GearArt_RangerBowSnipeTint9_3Rare`
-- Ranger Bow Tint10 Rare  `GearArt_RangerBowTint10_3Rare`
-- Ranger Bow Tint1 Rare  `GearArt_RangerBowTint1_3Rare`
-- Ranger Bow Tint2 Rare  `GearArt_RangerBowTint2_3Rare`
-- Ranger Bow Tint3 Rare  `GearArt_RangerBowTint3_3Rare`
-- Ranger Bow Tint4 Rare  `GearArt_RangerBowTint4_3Rare`
-- Ranger Bow Tint5 Rare  `GearArt_RangerBowTint5_3Rare`
-- Ranger Bow Tint6 Rare  `GearArt_RangerBowTint6_3Rare`
-- Ranger Bow Tint7 Rare  `GearArt_RangerBowTint7_3Rare`
-- Ranger Bow Tint8 Rare  `GearArt_RangerBowTint8_3Rare`
-- Ranger Bow Tint9 Rare  `GearArt_RangerBowTint9_3Rare`
-- Rohan Bow Snipe Tint10 Rare  `GearArt_RohanBowSnipeTint10_3Rare`
-- Rohan Bow Snipe Tint1 Rare  `GearArt_RohanBowSnipeTint1_3Rare`
-- Rohan Bow Snipe Tint2 Rare  `GearArt_RohanBowSnipeTint2_3Rare`
-- Rohan Bow Snipe Tint3 Rare  `GearArt_RohanBowSnipeTint3_3Rare`
-- Rohan Bow Snipe Tint4 Rare  `GearArt_RohanBowSnipeTint4_3Rare`
-- Rohan Bow Snipe Tint5 Rare  `GearArt_RohanBowSnipeTint5_3Rare`
-- Rohan Bow Snipe Tint6 Rare  `GearArt_RohanBowSnipeTint6_3Rare`
-- Rohan Bow Snipe Tint7 Rare  `GearArt_RohanBowSnipeTint7_3Rare`
-- Rohan Bow Snipe Tint8 Rare  `GearArt_RohanBowSnipeTint8_3Rare`
-- Rohan Bow Snipe Tint9 Rare  `GearArt_RohanBowSnipeTint9_3Rare`
-- Rohan Bow Tint10 Rare  `GearArt_RohanBowTint10_3Rare`
-- Rohan Bow Tint1 Rare  `GearArt_RohanBowTint1_3Rare`
-- Rohan Bow Tint2 Rare  `GearArt_RohanBowTint2_3Rare`
-- Rohan Bow Tint3 Rare  `GearArt_RohanBowTint3_3Rare`
-- Rohan Bow Tint4 Rare  `GearArt_RohanBowTint4_3Rare`
-- Rohan Bow Tint5 Rare  `GearArt_RohanBowTint5_3Rare`
-- Rohan Bow Tint6 Rare  `GearArt_RohanBowTint6_3Rare`
-- Rohan Bow Tint7 Rare  `GearArt_RohanBowTint7_3Rare`
-- Rohan Bow Tint8 Rare  `GearArt_RohanBowTint8_3Rare`
-- Rohan Bow Tint9 Rare  `GearArt_RohanBowTint9_3Rare`
-
-**Epic**
-
-- Gondorian Bow Snipe Tint10 Epic  `GearArt_GondorianBowSnipeTint10_4Epic`
-- Gondorian Bow Snipe Tint1 Epic  `GearArt_GondorianBowSnipeTint1_4Epic`
-- Gondorian Bow Snipe Tint2 Epic  `GearArt_GondorianBowSnipeTint2_4Epic`
-- Gondorian Bow Snipe Tint3 Epic  `GearArt_GondorianBowSnipeTint3_4Epic`
-- Gondorian Bow Snipe Tint4 Epic  `GearArt_GondorianBowSnipeTint4_4Epic`
-- Gondorian Bow Snipe Tint5 Epic  `GearArt_GondorianBowSnipeTint5_4Epic`
-- Gondorian Bow Snipe Tint6 Epic  `GearArt_GondorianBowSnipeTint6_4Epic`
-- Gondorian Bow Snipe Tint7 Epic  `GearArt_GondorianBowSnipeTint7_4Epic`
-- Gondorian Bow Snipe Tint8 Epic  `GearArt_GondorianBowSnipeTint8_4Epic`
-- Gondorian Bow Snipe Tint9 Epic  `GearArt_GondorianBowSnipeTint9_4Epic`
-- Gondorian Bow Tint10 Epic  `GearArt_GondorianBowTint10_4Epic`
-- Gondorian Bow Tint1 Epic  `GearArt_GondorianBowTint1_4Epic`
-- Gondorian Bow Tint2 Epic  `GearArt_GondorianBowTint2_4Epic`
-- Gondorian Bow Tint3 Epic  `GearArt_GondorianBowTint3_4Epic`
-- Gondorian Bow Tint4 Epic  `GearArt_GondorianBowTint4_4Epic`
-- Gondorian Bow Tint5 Epic  `GearArt_GondorianBowTint5_4Epic`
-- Gondorian Bow Tint6 Epic  `GearArt_GondorianBowTint6_4Epic`
-- Gondorian Bow Tint7 Epic  `GearArt_GondorianBowTint7_4Epic`
-- Gondorian Bow Tint8 Epic  `GearArt_GondorianBowTint8_4Epic`
-- Gondorian Bow Tint9 Epic  `GearArt_GondorianBowTint9_4Epic`
-- Numenorean Bow Snipe Tint10 Epic  `GearArt_NumenoreanBowSnipeTint10_4Epic`
-- Numenorean Bow Snipe Tint1 Epic  `GearArt_NumenoreanBowSnipeTint1_4Epic`
-- Numenorean Bow Snipe Tint2 Epic  `GearArt_NumenoreanBowSnipeTint2_4Epic`
-- Numenorean Bow Snipe Tint3 Epic  `GearArt_NumenoreanBowSnipeTint3_4Epic`
-- Numenorean Bow Snipe Tint4 Epic  `GearArt_NumenoreanBowSnipeTint4_4Epic`
-- Numenorean Bow Snipe Tint5 Epic  `GearArt_NumenoreanBowSnipeTint5_4Epic`
-- Numenorean Bow Snipe Tint6 Epic  `GearArt_NumenoreanBowSnipeTint6_4Epic`
-- Numenorean Bow Snipe Tint7 Epic  `GearArt_NumenoreanBowSnipeTint7_4Epic`
-- Numenorean Bow Snipe Tint8 Epic  `GearArt_NumenoreanBowSnipeTint8_4Epic`
-- Numenorean Bow Snipe Tint9 Epic  `GearArt_NumenoreanBowSnipeTint9_4Epic`
-- Numenorean Bow Tint10 Epic  `GearArt_NumenoreanBowTint10_4Epic`
-- Numenorean Bow Tint1 Epic  `GearArt_NumenoreanBowTint1_4Epic`
-- Numenorean Bow Tint2 Epic  `GearArt_NumenoreanBowTint2_4Epic`
-- Numenorean Bow Tint3 Epic  `GearArt_NumenoreanBowTint3_4Epic`
-- Numenorean Bow Tint4 Epic  `GearArt_NumenoreanBowTint4_4Epic`
-- Numenorean Bow Tint5 Epic  `GearArt_NumenoreanBowTint5_4Epic`
-- Numenorean Bow Tint6 Epic  `GearArt_NumenoreanBowTint6_4Epic`
-- Numenorean Bow Tint7 Epic  `GearArt_NumenoreanBowTint7_4Epic`
-- Numenorean Bow Tint8 Epic  `GearArt_NumenoreanBowTint8_4Epic`
-- Numenorean Bow Tint9 Epic  `GearArt_NumenoreanBowTint9_4Epic`
-- Ranger Bow Snipe Tint10 Epic  `GearArt_RangerBowSnipeTint10_4Epic`
-- Ranger Bow Snipe Tint1 Epic  `GearArt_RangerBowSnipeTint1_4Epic`
-- Ranger Bow Snipe Tint2 Epic  `GearArt_RangerBowSnipeTint2_4Epic`
-- Ranger Bow Snipe Tint3 Epic  `GearArt_RangerBowSnipeTint3_4Epic`
-- Ranger Bow Snipe Tint4 Epic  `GearArt_RangerBowSnipeTint4_4Epic`
-- Ranger Bow Snipe Tint5 Epic  `GearArt_RangerBowSnipeTint5_4Epic`
-- Ranger Bow Snipe Tint6 Epic  `GearArt_RangerBowSnipeTint6_4Epic`
-- Ranger Bow Snipe Tint7 Epic  `GearArt_RangerBowSnipeTint7_4Epic`
-- Ranger Bow Snipe Tint8 Epic  `GearArt_RangerBowSnipeTint8_4Epic`
-- Ranger Bow Snipe Tint9 Epic  `GearArt_RangerBowSnipeTint9_4Epic`
-- Ranger Bow Tint10 Epic  `GearArt_RangerBowTint10_4Epic`
-- Ranger Bow Tint1 Epic  `GearArt_RangerBowTint1_4Epic`
-- Ranger Bow Tint2 Epic  `GearArt_RangerBowTint2_4Epic`
-- Ranger Bow Tint3 Epic  `GearArt_RangerBowTint3_4Epic`
-- Ranger Bow Tint4 Epic  `GearArt_RangerBowTint4_4Epic`
-- Ranger Bow Tint5 Epic  `GearArt_RangerBowTint5_4Epic`
-- Ranger Bow Tint6 Epic  `GearArt_RangerBowTint6_4Epic`
-- Ranger Bow Tint7 Epic  `GearArt_RangerBowTint7_4Epic`
-- Ranger Bow Tint8 Epic  `GearArt_RangerBowTint8_4Epic`
-- Ranger Bow Tint9 Epic  `GearArt_RangerBowTint9_4Epic`
-- Rohan Bow Snipe Tint10 Epic  `GearArt_RohanBowSnipeTint10_4Epic`
-- Rohan Bow Snipe Tint1 Epic  `GearArt_RohanBowSnipeTint1_4Epic`
-- Rohan Bow Snipe Tint2 Epic  `GearArt_RohanBowSnipeTint2_4Epic`
-- Rohan Bow Snipe Tint3 Epic  `GearArt_RohanBowSnipeTint3_4Epic`
-- Rohan Bow Snipe Tint4 Epic  `GearArt_RohanBowSnipeTint4_4Epic`
-- Rohan Bow Snipe Tint5 Epic  `GearArt_RohanBowSnipeTint5_4Epic`
-- Rohan Bow Snipe Tint6 Epic  `GearArt_RohanBowSnipeTint6_4Epic`
-- Rohan Bow Snipe Tint7 Epic  `GearArt_RohanBowSnipeTint7_4Epic`
-- Rohan Bow Snipe Tint8 Epic  `GearArt_RohanBowSnipeTint8_4Epic`
-- Rohan Bow Snipe Tint9 Epic  `GearArt_RohanBowSnipeTint9_4Epic`
-- Rohan Bow Tint10 Epic  `GearArt_RohanBowTint10_4Epic`
-- Rohan Bow Tint1 Epic  `GearArt_RohanBowTint1_4Epic`
-- Rohan Bow Tint2 Epic  `GearArt_RohanBowTint2_4Epic`
-- Rohan Bow Tint3 Epic  `GearArt_RohanBowTint3_4Epic`
-- Rohan Bow Tint4 Epic  `GearArt_RohanBowTint4_4Epic`
-- Rohan Bow Tint5 Epic  `GearArt_RohanBowTint5_4Epic`
-- Rohan Bow Tint6 Epic  `GearArt_RohanBowTint6_4Epic`
-- Rohan Bow Tint7 Epic  `GearArt_RohanBowTint7_4Epic`
-- Rohan Bow Tint8 Epic  `GearArt_RohanBowTint8_4Epic`
-- Rohan Bow Tint9 Epic  `GearArt_RohanBowTint9_4Epic`
-
-**Celebrimbor**
-
-- Bow Ham Celebrimbor T1  `GearArt_3BowHam_Celebrimbor_T1`  (T1)
-- Bow Celebrimbor T1  `GearArt_3Bow_Celebrimbor_T1`  (T1)
-- Bow Ham Celebrimbor T2  `GearArt_3BowHam_Celebrimbor_T2`  (T2)
-- Bow Celebrimbor T2  `GearArt_3Bow_Celebrimbor_T2`  (T2)
-- Bow Ham Celebrimbor T3  `GearArt_3BowHam_Celebrimbor_T3`  (T3)
-- Bow Celebrimbor T3  `GearArt_3Bow_Celebrimbor_T3`  (T3)
-- Bow Ham Celebrimbor T4  `GearArt_3BowHam_Celebrimbor_T4`  (T4)
-- Bow Celebrimbor T4  `GearArt_3Bow_Celebrimbor_T4`  (T4)
-
-**Vendetta**
-
-- Bow Snipe Vendetta T1  `GearArt_3BowSnipe_Vendetta_T1`  (T1)
-- Bow Vendetta T1  `GearArt_3Bow_Vendetta_T1`  (T1)
-- Bow Snipe Vendetta T2  `GearArt_3BowSnipe_Vendetta_T2`  (T2)
-- Bow Vendetta T2  `GearArt_3Bow_Vendetta_T2`  (T2)
-- Bow Snipe Vendetta T3  `GearArt_3BowSnipe_Vendetta_T3`  (T3)
-- Bow Vendetta T3  `GearArt_3Bow_Vendetta_T3`  (T3)
-- Bow Snipe Vendetta T4  `GearArt_3BowSnipe_Vendetta_T4`  (T4)
-
-**Dark**
-
-- Bow Snipe Dark T1  `GearArt_3BowSnipe_Dark_T1`  (T1)
-- Bow Snipe Dark T2  `GearArt_3BowSnipe_Dark_T2`  (T2)
-- Bow Snipe Dark T3  `GearArt_3BowSnipe_Dark_T3`  (T3)
-- Bow Snipe Dark T4  `GearArt_3BowSnipe_Dark_T4`  (T4)
-
-**Feral**
-
-- Bow Feral T1  `GearArt_3Bow_Feral_T1`  (T1)
-- Bow Feral T2  `GearArt_3Bow_Feral_T2`  (T2)
-- Bow Feral T3  `GearArt_3Bow_Feral_T3`  (T3)
-- Bow Feral T4  `GearArt_3Bow_Feral_T4`  (T4)
-
-**Machine**
-
-- Bow Ham Machine T1  `GearArt_3BowHam_Machine_T1`  (T1)
-- Bow Ham Machine T2  `GearArt_3BowHam_Machine_T2`  (T2)
-- Bow Ham Machine T3  `GearArt_3BowHam_Machine_T3`  (T3)
-- Bow Ham Machine T4  `GearArt_3BowHam_Machine_T4`  (T4)
-
-**Marauder**
-
-- Bow Ham Marauder T1  `GearArt_3BowHam_Marauder_T1`  (T1)
-- Bow Ham Marauder T2  `GearArt_3BowHam_Marauder_T2`  (T2)
-- Bow Ham Marauder T3  `GearArt_3BowHam_Marauder_T3`  (T3)
-- Bow Ham Marauder T4  `GearArt_3BowHam_Marauder_T4`  (T4)
-
-**Mystic**
-
-- Bow Mystic T1  `GearArt_3Bow_Mystic_T1`  (T1)
-- Bow Mystic T2  `GearArt_3Bow_Mystic_T2`  (T2)
-- Bow Mystic T3  `GearArt_3Bow_Mystic_T3`  (T3)
-- Bow Mystic T4  `GearArt_3Bow_Mystic_T4`  (T4)
-
-**Outlaw**
-
-- Bow Outlaw T1  `GearArt_3Bow_Outlaw_T1`  (T1)
-- Bow Outlaw T2  `GearArt_3Bow_Outlaw_T2`  (T2)
-- Bow Outlaw T3  `GearArt_3Bow_Outlaw_T3`  (T3)
-- Bow Outlaw T4  `GearArt_3Bow_Outlaw_T4`  (T4)
-
-**Ringwraith**
-
-- Bow Ham Ringwraith T1  `GearArt_3BowHam_Ringwraith_T1`  (T1)
-- Bow Ham Ringwraith T2  `GearArt_3BowHam_Ringwraith_T2`  (T2)
-- Bow Ham Ringwraith T3  `GearArt_3BowHam_Ringwraith_T3`  (T3)
-- Bow Ham Ringwraith T4  `GearArt_3BowHam_Ringwraith_T4`  (T4)
-
-**Slaughter**
-
-- Bow Snipe Slaughter T1  `GearArt_3BowSnipe_Slaughter_T1`  (T1)
-- Bow Snipe Slaughter T2  `GearArt_3BowSnipe_Slaughter_T2`  (T2)
-- Bow Snipe Slaughter T3  `GearArt_3BowSnipe_Slaughter_T3`  (T3)
-- Bow Snipe Slaughter T4  `GearArt_3BowSnipe_Slaughter_T4`  (T4)
-
-**Terror**
-
-- Bow Snipe Terror T1  `GearArt_3BowSnipe_Terror_T1`  (T1)
-- Bow Snipe Terror T2  `GearArt_3BowSnipe_Terror_T2`  (T2)
-- Bow Snipe Terror T3  `GearArt_3BowSnipe_Terror_T3`  (T3)
-- Bow Snipe Terror T4  `GearArt_3BowSnipe_Terror_T4`  (T4)
-
-**Warmonger**
-
-- Bow Ham Warmonger T1  `GearArt_3BowHam_Warmonger_T1`  (T1)
-- Bow Ham Warmonger T2  `GearArt_3BowHam_Warmonger_T2`  (T2)
-- Bow Ham Warmonger T3  `GearArt_3BowHam_Warmonger_T3`  (T3)
-- Bow Ham Warmonger T4  `GearArt_3BowHam_Warmonger_T4`  (T4)
+- Gondorian Bow Snipe Tint10 Rare  `GearArt_GondorianBowSnipeTint10_3Rare`  (Gondorian  ·  Rare)
+- Gondorian Bow Snipe Tint1 Rare  `GearArt_GondorianBowSnipeTint1_3Rare`  (Gondorian  ·  Rare)
+- Gondorian Bow Snipe Tint2 Rare  `GearArt_GondorianBowSnipeTint2_3Rare`  (Gondorian  ·  Rare)
+- Gondorian Bow Snipe Tint3 Rare  `GearArt_GondorianBowSnipeTint3_3Rare`  (Gondorian  ·  Rare)
+- Gondorian Bow Snipe Tint4 Rare  `GearArt_GondorianBowSnipeTint4_3Rare`  (Gondorian  ·  Rare)
+- Gondorian Bow Snipe Tint5 Rare  `GearArt_GondorianBowSnipeTint5_3Rare`  (Gondorian  ·  Rare)
+- Gondorian Bow Snipe Tint6 Rare  `GearArt_GondorianBowSnipeTint6_3Rare`  (Gondorian  ·  Rare)
+- Gondorian Bow Snipe Tint7 Rare  `GearArt_GondorianBowSnipeTint7_3Rare`  (Gondorian  ·  Rare)
+- Gondorian Bow Snipe Tint8 Rare  `GearArt_GondorianBowSnipeTint8_3Rare`  (Gondorian  ·  Rare)
+- Gondorian Bow Snipe Tint9 Rare  `GearArt_GondorianBowSnipeTint9_3Rare`  (Gondorian  ·  Rare)
+- Gondorian Bow Tint10 Rare  `GearArt_GondorianBowTint10_3Rare`  (Gondorian  ·  Rare)
+- Gondorian Bow Tint1 Rare  `GearArt_GondorianBowTint1_3Rare`  (Gondorian  ·  Rare)
+- Gondorian Bow Tint2 Rare  `GearArt_GondorianBowTint2_3Rare`  (Gondorian  ·  Rare)
+- Gondorian Bow Tint3 Rare  `GearArt_GondorianBowTint3_3Rare`  (Gondorian  ·  Rare)
+- Gondorian Bow Tint4 Rare  `GearArt_GondorianBowTint4_3Rare`  (Gondorian  ·  Rare)
+- Gondorian Bow Tint5 Rare  `GearArt_GondorianBowTint5_3Rare`  (Gondorian  ·  Rare)
+- Gondorian Bow Tint6 Rare  `GearArt_GondorianBowTint6_3Rare`  (Gondorian  ·  Rare)
+- Gondorian Bow Tint7 Rare  `GearArt_GondorianBowTint7_3Rare`  (Gondorian  ·  Rare)
+- Gondorian Bow Tint8 Rare  `GearArt_GondorianBowTint8_3Rare`  (Gondorian  ·  Rare)
+- Gondorian Bow Tint9 Rare  `GearArt_GondorianBowTint9_3Rare`  (Gondorian  ·  Rare)
+- Numenorean Bow Snipe Tint10 Rare  `GearArt_NumenoreanBowSnipeTint10_3Rare`  (Numenorean  ·  Rare)
+- Numenorean Bow Snipe Tint1 Rare  `GearArt_NumenoreanBowSnipeTint1_3Rare`  (Numenorean  ·  Rare)
+- Numenorean Bow Snipe Tint2 Rare  `GearArt_NumenoreanBowSnipeTint2_3Rare`  (Numenorean  ·  Rare)
+- Numenorean Bow Snipe Tint3 Rare  `GearArt_NumenoreanBowSnipeTint3_3Rare`  (Numenorean  ·  Rare)
+- Numenorean Bow Snipe Tint4 Rare  `GearArt_NumenoreanBowSnipeTint4_3Rare`  (Numenorean  ·  Rare)
+- Numenorean Bow Snipe Tint5 Rare  `GearArt_NumenoreanBowSnipeTint5_3Rare`  (Numenorean  ·  Rare)
+- Numenorean Bow Snipe Tint6 Rare  `GearArt_NumenoreanBowSnipeTint6_3Rare`  (Numenorean  ·  Rare)
+- Numenorean Bow Snipe Tint7 Rare  `GearArt_NumenoreanBowSnipeTint7_3Rare`  (Numenorean  ·  Rare)
+- Numenorean Bow Snipe Tint8 Rare  `GearArt_NumenoreanBowSnipeTint8_3Rare`  (Numenorean  ·  Rare)
+- Numenorean Bow Snipe Tint9 Rare  `GearArt_NumenoreanBowSnipeTint9_3Rare`  (Numenorean  ·  Rare)
+- Numenorean Bow Tint10 Rare  `GearArt_NumenoreanBowTint10_3Rare`  (Numenorean  ·  Rare)
+- Numenorean Bow Tint1 Rare  `GearArt_NumenoreanBowTint1_3Rare`  (Numenorean  ·  Rare)
+- Numenorean Bow Tint2 Rare  `GearArt_NumenoreanBowTint2_3Rare`  (Numenorean  ·  Rare)
+- Numenorean Bow Tint3 Rare  `GearArt_NumenoreanBowTint3_3Rare`  (Numenorean  ·  Rare)
+- Numenorean Bow Tint4 Rare  `GearArt_NumenoreanBowTint4_3Rare`  (Numenorean  ·  Rare)
+- Numenorean Bow Tint5 Rare  `GearArt_NumenoreanBowTint5_3Rare`  (Numenorean  ·  Rare)
+- Numenorean Bow Tint6 Rare  `GearArt_NumenoreanBowTint6_3Rare`  (Numenorean  ·  Rare)
+- Numenorean Bow Tint7 Rare  `GearArt_NumenoreanBowTint7_3Rare`  (Numenorean  ·  Rare)
+- Numenorean Bow Tint8 Rare  `GearArt_NumenoreanBowTint8_3Rare`  (Numenorean  ·  Rare)
+- Numenorean Bow Tint9 Rare  `GearArt_NumenoreanBowTint9_3Rare`  (Numenorean  ·  Rare)
+- Ranger Bow Snipe Tint10 Rare  `GearArt_RangerBowSnipeTint10_3Rare`  (Ranger  ·  Rare)
+- Ranger Bow Snipe Tint1 Rare  `GearArt_RangerBowSnipeTint1_3Rare`  (Ranger  ·  Rare)
+- Ranger Bow Snipe Tint2 Rare  `GearArt_RangerBowSnipeTint2_3Rare`  (Ranger  ·  Rare)
+- Ranger Bow Snipe Tint3 Rare  `GearArt_RangerBowSnipeTint3_3Rare`  (Ranger  ·  Rare)
+- Ranger Bow Snipe Tint4 Rare  `GearArt_RangerBowSnipeTint4_3Rare`  (Ranger  ·  Rare)
+- Ranger Bow Snipe Tint5 Rare  `GearArt_RangerBowSnipeTint5_3Rare`  (Ranger  ·  Rare)
+- Ranger Bow Snipe Tint6 Rare  `GearArt_RangerBowSnipeTint6_3Rare`  (Ranger  ·  Rare)
+- Ranger Bow Snipe Tint7 Rare  `GearArt_RangerBowSnipeTint7_3Rare`  (Ranger  ·  Rare)
+- Ranger Bow Snipe Tint8 Rare  `GearArt_RangerBowSnipeTint8_3Rare`  (Ranger  ·  Rare)
+- Ranger Bow Snipe Tint9 Rare  `GearArt_RangerBowSnipeTint9_3Rare`  (Ranger  ·  Rare)
+- Ranger Bow Tint10 Rare  `GearArt_RangerBowTint10_3Rare`  (Ranger  ·  Rare)
+- Ranger Bow Tint1 Rare  `GearArt_RangerBowTint1_3Rare`  (Ranger  ·  Rare)
+- Ranger Bow Tint2 Rare  `GearArt_RangerBowTint2_3Rare`  (Ranger  ·  Rare)
+- Ranger Bow Tint3 Rare  `GearArt_RangerBowTint3_3Rare`  (Ranger  ·  Rare)
+- Ranger Bow Tint4 Rare  `GearArt_RangerBowTint4_3Rare`  (Ranger  ·  Rare)
+- Ranger Bow Tint5 Rare  `GearArt_RangerBowTint5_3Rare`  (Ranger  ·  Rare)
+- Ranger Bow Tint6 Rare  `GearArt_RangerBowTint6_3Rare`  (Ranger  ·  Rare)
+- Ranger Bow Tint7 Rare  `GearArt_RangerBowTint7_3Rare`  (Ranger  ·  Rare)
+- Ranger Bow Tint8 Rare  `GearArt_RangerBowTint8_3Rare`  (Ranger  ·  Rare)
+- Ranger Bow Tint9 Rare  `GearArt_RangerBowTint9_3Rare`  (Ranger  ·  Rare)
+- Rohan Bow Snipe Tint10 Rare  `GearArt_RohanBowSnipeTint10_3Rare`  (Rohan  ·  Rare)
+- Rohan Bow Snipe Tint1 Rare  `GearArt_RohanBowSnipeTint1_3Rare`  (Rohan  ·  Rare)
+- Rohan Bow Snipe Tint2 Rare  `GearArt_RohanBowSnipeTint2_3Rare`  (Rohan  ·  Rare)
+- Rohan Bow Snipe Tint3 Rare  `GearArt_RohanBowSnipeTint3_3Rare`  (Rohan  ·  Rare)
+- Rohan Bow Snipe Tint4 Rare  `GearArt_RohanBowSnipeTint4_3Rare`  (Rohan  ·  Rare)
+- Rohan Bow Snipe Tint5 Rare  `GearArt_RohanBowSnipeTint5_3Rare`  (Rohan  ·  Rare)
+- Rohan Bow Snipe Tint6 Rare  `GearArt_RohanBowSnipeTint6_3Rare`  (Rohan  ·  Rare)
+- Rohan Bow Snipe Tint7 Rare  `GearArt_RohanBowSnipeTint7_3Rare`  (Rohan  ·  Rare)
+- Rohan Bow Snipe Tint8 Rare  `GearArt_RohanBowSnipeTint8_3Rare`  (Rohan  ·  Rare)
+- Rohan Bow Snipe Tint9 Rare  `GearArt_RohanBowSnipeTint9_3Rare`  (Rohan  ·  Rare)
+- Rohan Bow Tint10 Rare  `GearArt_RohanBowTint10_3Rare`  (Rohan  ·  Rare)
+- Rohan Bow Tint1 Rare  `GearArt_RohanBowTint1_3Rare`  (Rohan  ·  Rare)
+- Rohan Bow Tint2 Rare  `GearArt_RohanBowTint2_3Rare`  (Rohan  ·  Rare)
+- Rohan Bow Tint3 Rare  `GearArt_RohanBowTint3_3Rare`  (Rohan  ·  Rare)
+- Rohan Bow Tint4 Rare  `GearArt_RohanBowTint4_3Rare`  (Rohan  ·  Rare)
+- Rohan Bow Tint5 Rare  `GearArt_RohanBowTint5_3Rare`  (Rohan  ·  Rare)
+- Rohan Bow Tint6 Rare  `GearArt_RohanBowTint6_3Rare`  (Rohan  ·  Rare)
+- Rohan Bow Tint7 Rare  `GearArt_RohanBowTint7_3Rare`  (Rohan  ·  Rare)
+- Rohan Bow Tint8 Rare  `GearArt_RohanBowTint8_3Rare`  (Rohan  ·  Rare)
+- Rohan Bow Tint9 Rare  `GearArt_RohanBowTint9_3Rare`  (Rohan  ·  Rare)
+- Gondorian Bow Snipe Tint10 Epic  `GearArt_GondorianBowSnipeTint10_4Epic`  (Gondorian  ·  Epic)
+- Gondorian Bow Snipe Tint1 Epic  `GearArt_GondorianBowSnipeTint1_4Epic`  (Gondorian  ·  Epic)
+- Gondorian Bow Snipe Tint2 Epic  `GearArt_GondorianBowSnipeTint2_4Epic`  (Gondorian  ·  Epic)
+- Gondorian Bow Snipe Tint3 Epic  `GearArt_GondorianBowSnipeTint3_4Epic`  (Gondorian  ·  Epic)
+- Gondorian Bow Snipe Tint4 Epic  `GearArt_GondorianBowSnipeTint4_4Epic`  (Gondorian  ·  Epic)
+- Gondorian Bow Snipe Tint5 Epic  `GearArt_GondorianBowSnipeTint5_4Epic`  (Gondorian  ·  Epic)
+- Gondorian Bow Snipe Tint6 Epic  `GearArt_GondorianBowSnipeTint6_4Epic`  (Gondorian  ·  Epic)
+- Gondorian Bow Snipe Tint7 Epic  `GearArt_GondorianBowSnipeTint7_4Epic`  (Gondorian  ·  Epic)
+- Gondorian Bow Snipe Tint8 Epic  `GearArt_GondorianBowSnipeTint8_4Epic`  (Gondorian  ·  Epic)
+- Gondorian Bow Snipe Tint9 Epic  `GearArt_GondorianBowSnipeTint9_4Epic`  (Gondorian  ·  Epic)
+- Gondorian Bow Tint10 Epic  `GearArt_GondorianBowTint10_4Epic`  (Gondorian  ·  Epic)
+- Gondorian Bow Tint1 Epic  `GearArt_GondorianBowTint1_4Epic`  (Gondorian  ·  Epic)
+- Gondorian Bow Tint2 Epic  `GearArt_GondorianBowTint2_4Epic`  (Gondorian  ·  Epic)
+- Gondorian Bow Tint3 Epic  `GearArt_GondorianBowTint3_4Epic`  (Gondorian  ·  Epic)
+- Gondorian Bow Tint4 Epic  `GearArt_GondorianBowTint4_4Epic`  (Gondorian  ·  Epic)
+- Gondorian Bow Tint5 Epic  `GearArt_GondorianBowTint5_4Epic`  (Gondorian  ·  Epic)
+- Gondorian Bow Tint6 Epic  `GearArt_GondorianBowTint6_4Epic`  (Gondorian  ·  Epic)
+- Gondorian Bow Tint7 Epic  `GearArt_GondorianBowTint7_4Epic`  (Gondorian  ·  Epic)
+- Gondorian Bow Tint8 Epic  `GearArt_GondorianBowTint8_4Epic`  (Gondorian  ·  Epic)
+- Gondorian Bow Tint9 Epic  `GearArt_GondorianBowTint9_4Epic`  (Gondorian  ·  Epic)
+- Numenorean Bow Snipe Tint10 Epic  `GearArt_NumenoreanBowSnipeTint10_4Epic`  (Numenorean  ·  Epic)
+- Numenorean Bow Snipe Tint1 Epic  `GearArt_NumenoreanBowSnipeTint1_4Epic`  (Numenorean  ·  Epic)
+- Numenorean Bow Snipe Tint2 Epic  `GearArt_NumenoreanBowSnipeTint2_4Epic`  (Numenorean  ·  Epic)
+- Numenorean Bow Snipe Tint3 Epic  `GearArt_NumenoreanBowSnipeTint3_4Epic`  (Numenorean  ·  Epic)
+- Numenorean Bow Snipe Tint4 Epic  `GearArt_NumenoreanBowSnipeTint4_4Epic`  (Numenorean  ·  Epic)
+- Numenorean Bow Snipe Tint5 Epic  `GearArt_NumenoreanBowSnipeTint5_4Epic`  (Numenorean  ·  Epic)
+- Numenorean Bow Snipe Tint6 Epic  `GearArt_NumenoreanBowSnipeTint6_4Epic`  (Numenorean  ·  Epic)
+- Numenorean Bow Snipe Tint7 Epic  `GearArt_NumenoreanBowSnipeTint7_4Epic`  (Numenorean  ·  Epic)
+- Numenorean Bow Snipe Tint8 Epic  `GearArt_NumenoreanBowSnipeTint8_4Epic`  (Numenorean  ·  Epic)
+- Numenorean Bow Snipe Tint9 Epic  `GearArt_NumenoreanBowSnipeTint9_4Epic`  (Numenorean  ·  Epic)
+- Numenorean Bow Tint10 Epic  `GearArt_NumenoreanBowTint10_4Epic`  (Numenorean  ·  Epic)
+- Numenorean Bow Tint1 Epic  `GearArt_NumenoreanBowTint1_4Epic`  (Numenorean  ·  Epic)
+- Numenorean Bow Tint2 Epic  `GearArt_NumenoreanBowTint2_4Epic`  (Numenorean  ·  Epic)
+- Numenorean Bow Tint3 Epic  `GearArt_NumenoreanBowTint3_4Epic`  (Numenorean  ·  Epic)
+- Numenorean Bow Tint4 Epic  `GearArt_NumenoreanBowTint4_4Epic`  (Numenorean  ·  Epic)
+- Numenorean Bow Tint5 Epic  `GearArt_NumenoreanBowTint5_4Epic`  (Numenorean  ·  Epic)
+- Numenorean Bow Tint6 Epic  `GearArt_NumenoreanBowTint6_4Epic`  (Numenorean  ·  Epic)
+- Numenorean Bow Tint7 Epic  `GearArt_NumenoreanBowTint7_4Epic`  (Numenorean  ·  Epic)
+- Numenorean Bow Tint8 Epic  `GearArt_NumenoreanBowTint8_4Epic`  (Numenorean  ·  Epic)
+- Numenorean Bow Tint9 Epic  `GearArt_NumenoreanBowTint9_4Epic`  (Numenorean  ·  Epic)
+- Ranger Bow Snipe Tint10 Epic  `GearArt_RangerBowSnipeTint10_4Epic`  (Ranger  ·  Epic)
+- Ranger Bow Snipe Tint1 Epic  `GearArt_RangerBowSnipeTint1_4Epic`  (Ranger  ·  Epic)
+- Ranger Bow Snipe Tint2 Epic  `GearArt_RangerBowSnipeTint2_4Epic`  (Ranger  ·  Epic)
+- Ranger Bow Snipe Tint3 Epic  `GearArt_RangerBowSnipeTint3_4Epic`  (Ranger  ·  Epic)
+- Ranger Bow Snipe Tint4 Epic  `GearArt_RangerBowSnipeTint4_4Epic`  (Ranger  ·  Epic)
+- Ranger Bow Snipe Tint5 Epic  `GearArt_RangerBowSnipeTint5_4Epic`  (Ranger  ·  Epic)
+- Ranger Bow Snipe Tint6 Epic  `GearArt_RangerBowSnipeTint6_4Epic`  (Ranger  ·  Epic)
+- Ranger Bow Snipe Tint7 Epic  `GearArt_RangerBowSnipeTint7_4Epic`  (Ranger  ·  Epic)
+- Ranger Bow Snipe Tint8 Epic  `GearArt_RangerBowSnipeTint8_4Epic`  (Ranger  ·  Epic)
+- Ranger Bow Snipe Tint9 Epic  `GearArt_RangerBowSnipeTint9_4Epic`  (Ranger  ·  Epic)
+- Ranger Bow Tint10 Epic  `GearArt_RangerBowTint10_4Epic`  (Ranger  ·  Epic)
+- Ranger Bow Tint1 Epic  `GearArt_RangerBowTint1_4Epic`  (Ranger  ·  Epic)
+- Ranger Bow Tint2 Epic  `GearArt_RangerBowTint2_4Epic`  (Ranger  ·  Epic)
+- Ranger Bow Tint3 Epic  `GearArt_RangerBowTint3_4Epic`  (Ranger  ·  Epic)
+- Ranger Bow Tint4 Epic  `GearArt_RangerBowTint4_4Epic`  (Ranger  ·  Epic)
+- Ranger Bow Tint5 Epic  `GearArt_RangerBowTint5_4Epic`  (Ranger  ·  Epic)
+- Ranger Bow Tint6 Epic  `GearArt_RangerBowTint6_4Epic`  (Ranger  ·  Epic)
+- Ranger Bow Tint7 Epic  `GearArt_RangerBowTint7_4Epic`  (Ranger  ·  Epic)
+- Ranger Bow Tint8 Epic  `GearArt_RangerBowTint8_4Epic`  (Ranger  ·  Epic)
+- Ranger Bow Tint9 Epic  `GearArt_RangerBowTint9_4Epic`  (Ranger  ·  Epic)
+- Rohan Bow Snipe Tint10 Epic  `GearArt_RohanBowSnipeTint10_4Epic`  (Rohan  ·  Epic)
+- Rohan Bow Snipe Tint1 Epic  `GearArt_RohanBowSnipeTint1_4Epic`  (Rohan  ·  Epic)
+- Rohan Bow Snipe Tint2 Epic  `GearArt_RohanBowSnipeTint2_4Epic`  (Rohan  ·  Epic)
+- Rohan Bow Snipe Tint3 Epic  `GearArt_RohanBowSnipeTint3_4Epic`  (Rohan  ·  Epic)
+- Rohan Bow Snipe Tint4 Epic  `GearArt_RohanBowSnipeTint4_4Epic`  (Rohan  ·  Epic)
+- Rohan Bow Snipe Tint5 Epic  `GearArt_RohanBowSnipeTint5_4Epic`  (Rohan  ·  Epic)
+- Rohan Bow Snipe Tint6 Epic  `GearArt_RohanBowSnipeTint6_4Epic`  (Rohan  ·  Epic)
+- Rohan Bow Snipe Tint7 Epic  `GearArt_RohanBowSnipeTint7_4Epic`  (Rohan  ·  Epic)
+- Rohan Bow Snipe Tint8 Epic  `GearArt_RohanBowSnipeTint8_4Epic`  (Rohan  ·  Epic)
+- Rohan Bow Snipe Tint9 Epic  `GearArt_RohanBowSnipeTint9_4Epic`  (Rohan  ·  Epic)
+- Rohan Bow Tint10 Epic  `GearArt_RohanBowTint10_4Epic`  (Rohan  ·  Epic)
+- Rohan Bow Tint1 Epic  `GearArt_RohanBowTint1_4Epic`  (Rohan  ·  Epic)
+- Rohan Bow Tint2 Epic  `GearArt_RohanBowTint2_4Epic`  (Rohan  ·  Epic)
+- Rohan Bow Tint3 Epic  `GearArt_RohanBowTint3_4Epic`  (Rohan  ·  Epic)
+- Rohan Bow Tint4 Epic  `GearArt_RohanBowTint4_4Epic`  (Rohan  ·  Epic)
+- Rohan Bow Tint5 Epic  `GearArt_RohanBowTint5_4Epic`  (Rohan  ·  Epic)
+- Rohan Bow Tint6 Epic  `GearArt_RohanBowTint6_4Epic`  (Rohan  ·  Epic)
+- Rohan Bow Tint7 Epic  `GearArt_RohanBowTint7_4Epic`  (Rohan  ·  Epic)
+- Rohan Bow Tint8 Epic  `GearArt_RohanBowTint8_4Epic`  (Rohan  ·  Epic)
+- Rohan Bow Tint9 Epic  `GearArt_RohanBowTint9_4Epic`  (Rohan  ·  Epic)
+- Bow Ham Celebrimbor T1  `GearArt_3BowHam_Celebrimbor_T1`  (Celebrimbor  ·  Legendary  ·  T1)
+- Bow Celebrimbor T1  `GearArt_3Bow_Celebrimbor_T1`  (Celebrimbor  ·  Legendary  ·  T1)
+- Bow Ham Celebrimbor T2  `GearArt_3BowHam_Celebrimbor_T2`  (Celebrimbor  ·  Legendary  ·  T2)
+- Bow Celebrimbor T2  `GearArt_3Bow_Celebrimbor_T2`  (Celebrimbor  ·  Legendary  ·  T2)
+- Bow Ham Celebrimbor T3  `GearArt_3BowHam_Celebrimbor_T3`  (Celebrimbor  ·  Legendary  ·  T3)
+- Bow Celebrimbor T3  `GearArt_3Bow_Celebrimbor_T3`  (Celebrimbor  ·  Legendary  ·  T3)
+- Bow Ham Celebrimbor T4  `GearArt_3BowHam_Celebrimbor_T4`  (Celebrimbor  ·  Legendary  ·  T4)
+- Bow Celebrimbor T4  `GearArt_3Bow_Celebrimbor_T4`  (Celebrimbor  ·  Legendary  ·  T4)
+- Bow Snipe Vendetta T1  `GearArt_3BowSnipe_Vendetta_T1`  (Vendetta  ·  Legendary  ·  T1)
+- Bow Vendetta T1  `GearArt_3Bow_Vendetta_T1`  (Vendetta  ·  Legendary  ·  T1)
+- Bow Snipe Vendetta T2  `GearArt_3BowSnipe_Vendetta_T2`  (Vendetta  ·  Legendary  ·  T2)
+- Bow Vendetta T2  `GearArt_3Bow_Vendetta_T2`  (Vendetta  ·  Legendary  ·  T2)
+- Bow Snipe Vendetta T3  `GearArt_3BowSnipe_Vendetta_T3`  (Vendetta  ·  Legendary  ·  T3)
+- Bow Vendetta T3  `GearArt_3Bow_Vendetta_T3`  (Vendetta  ·  Legendary  ·  T3)
+- Bow Snipe Vendetta T4  `GearArt_3BowSnipe_Vendetta_T4`  (Vendetta  ·  Legendary  ·  T4)
+- Bow Snipe Dark T1  `GearArt_3BowSnipe_Dark_T1`  (Dark  ·  Legendary  ·  T1)
+- Bow Snipe Dark T2  `GearArt_3BowSnipe_Dark_T2`  (Dark  ·  Legendary  ·  T2)
+- Bow Snipe Dark T3  `GearArt_3BowSnipe_Dark_T3`  (Dark  ·  Legendary  ·  T3)
+- Bow Snipe Dark T4  `GearArt_3BowSnipe_Dark_T4`  (Dark  ·  Legendary  ·  T4)
+- Bow Feral T1  `GearArt_3Bow_Feral_T1`  (Feral  ·  Legendary  ·  T1)
+- Bow Feral T2  `GearArt_3Bow_Feral_T2`  (Feral  ·  Legendary  ·  T2)
+- Bow Feral T3  `GearArt_3Bow_Feral_T3`  (Feral  ·  Legendary  ·  T3)
+- Bow Feral T4  `GearArt_3Bow_Feral_T4`  (Feral  ·  Legendary  ·  T4)
+- Bow Ham Machine T1  `GearArt_3BowHam_Machine_T1`  (Machine  ·  Legendary  ·  T1)
+- Bow Ham Machine T2  `GearArt_3BowHam_Machine_T2`  (Machine  ·  Legendary  ·  T2)
+- Bow Ham Machine T3  `GearArt_3BowHam_Machine_T3`  (Machine  ·  Legendary  ·  T3)
+- Bow Ham Machine T4  `GearArt_3BowHam_Machine_T4`  (Machine  ·  Legendary  ·  T4)
+- Bow Ham Marauder T1  `GearArt_3BowHam_Marauder_T1`  (Marauder  ·  Legendary  ·  T1)
+- Bow Ham Marauder T2  `GearArt_3BowHam_Marauder_T2`  (Marauder  ·  Legendary  ·  T2)
+- Bow Ham Marauder T3  `GearArt_3BowHam_Marauder_T3`  (Marauder  ·  Legendary  ·  T3)
+- Bow Ham Marauder T4  `GearArt_3BowHam_Marauder_T4`  (Marauder  ·  Legendary  ·  T4)
+- Bow Mystic T1  `GearArt_3Bow_Mystic_T1`  (Mystic  ·  Legendary  ·  T1)
+- Bow Mystic T2  `GearArt_3Bow_Mystic_T2`  (Mystic  ·  Legendary  ·  T2)
+- Bow Mystic T3  `GearArt_3Bow_Mystic_T3`  (Mystic  ·  Legendary  ·  T3)
+- Bow Mystic T4  `GearArt_3Bow_Mystic_T4`  (Mystic  ·  Legendary  ·  T4)
+- Bow Outlaw T1  `GearArt_3Bow_Outlaw_T1`  (Outlaw  ·  Legendary  ·  T1)
+- Bow Outlaw T2  `GearArt_3Bow_Outlaw_T2`  (Outlaw  ·  Legendary  ·  T2)
+- Bow Outlaw T3  `GearArt_3Bow_Outlaw_T3`  (Outlaw  ·  Legendary  ·  T3)
+- Bow Outlaw T4  `GearArt_3Bow_Outlaw_T4`  (Outlaw  ·  Legendary  ·  T4)
+- Bow Ham Ringwraith T1  `GearArt_3BowHam_Ringwraith_T1`  (Ringwraith  ·  Legendary  ·  T1)
+- Bow Ham Ringwraith T2  `GearArt_3BowHam_Ringwraith_T2`  (Ringwraith  ·  Legendary  ·  T2)
+- Bow Ham Ringwraith T3  `GearArt_3BowHam_Ringwraith_T3`  (Ringwraith  ·  Legendary  ·  T3)
+- Bow Ham Ringwraith T4  `GearArt_3BowHam_Ringwraith_T4`  (Ringwraith  ·  Legendary  ·  T4)
+- Bow Snipe Slaughter T1  `GearArt_3BowSnipe_Slaughter_T1`  (Slaughter  ·  Legendary  ·  T1)
+- Bow Snipe Slaughter T2  `GearArt_3BowSnipe_Slaughter_T2`  (Slaughter  ·  Legendary  ·  T2)
+- Bow Snipe Slaughter T3  `GearArt_3BowSnipe_Slaughter_T3`  (Slaughter  ·  Legendary  ·  T3)
+- Bow Snipe Slaughter T4  `GearArt_3BowSnipe_Slaughter_T4`  (Slaughter  ·  Legendary  ·  T4)
+- Bow Snipe Terror T1  `GearArt_3BowSnipe_Terror_T1`  (Terror  ·  Legendary  ·  T1)
+- Bow Snipe Terror T2  `GearArt_3BowSnipe_Terror_T2`  (Terror  ·  Legendary  ·  T2)
+- Bow Snipe Terror T3  `GearArt_3BowSnipe_Terror_T3`  (Terror  ·  Legendary  ·  T3)
+- Bow Snipe Terror T4  `GearArt_3BowSnipe_Terror_T4`  (Terror  ·  Legendary  ·  T4)
+- Bow Ham Warmonger T1  `GearArt_3BowHam_Warmonger_T1`  (Warmonger  ·  Legendary  ·  T1)
+- Bow Ham Warmonger T2  `GearArt_3BowHam_Warmonger_T2`  (Warmonger  ·  Legendary  ·  T2)
+- Bow Ham Warmonger T3  `GearArt_3BowHam_Warmonger_T3`  (Warmonger  ·  Legendary  ·  T3)
+- Bow Ham Warmonger T4  `GearArt_3BowHam_Warmonger_T4`  (Warmonger  ·  Legendary  ·  T4)
 
 ### Armor
-
-**Celebrimbor**
-
-- Armor Celebrimbor T1  `GearArt_4Armor_Celebrimbor_T1`  (T1)
-- Armor Celebrimbor T2  `GearArt_4Armor_Celebrimbor_T2`  (T2)
-- Armor Celebrimbor T3  `GearArt_4Armor_Celebrimbor_T3`  (T3)
-- Armor Celebrimbor T4  `GearArt_4Armor_Celebrimbor_T4`  (T4)
-
-**Vendetta**
-
-- Armor Vendetta T1  `GearArt_4Armor_Vendetta_T1`  (T1)
-- Armor Vendetta T2  `GearArt_4Armor_Vendetta_T2`  (T2)
-- Armor Vendetta T3  `GearArt_4Armor_Vendetta_T3`  (T3)
-- Armor Vendetta T4  `GearArt_4Armor_Vendetta_T4`  (T4)
-
-**Dark**
-
-- Armor Dark T1  `GearArt_4Armor_Dark_T1`  (T1)
-- Armor Dark T2  `GearArt_4Armor_Dark_T2`  (T2)
-- Armor Dark T3  `GearArt_4Armor_Dark_T3`  (T3)
-- Armor Dark T4  `GearArt_4Armor_Dark_T4`  (T4)
-
-**Feral**
-
-- Armor Feral T1  `GearArt_4Armor_Feral_T1`  (T1)
-- Armor Feral T2  `GearArt_4Armor_Feral_T2`  (T2)
-- Armor Feral T3  `GearArt_4Armor_Feral_T3`  (T3)
-- Armor Feral T4  `GearArt_4Armor_Feral_T4`  (T4)
-
-**Machine**
-
-- Armor Machine T1  `GearArt_4Armor_Machine_T1`  (T1)
-- Armor Machine T2  `GearArt_4Armor_Machine_T2`  (T2)
-- Armor Machine T3  `GearArt_4Armor_Machine_T3`  (T3)
-- Armor Machine T4  `GearArt_4Armor_Machine_T4`  (T4)
-
-**Marauder**
-
-- Armor Marauder T1  `GearArt_4Armor_Marauder_T1`  (T1)
-- Armor Marauder T2  `GearArt_4Armor_Marauder_T2`  (T2)
-- Armor Marauder T3  `GearArt_4Armor_Marauder_T3`  (T3)
-- Armor Marauder T4  `GearArt_4Armor_Marauder_T4`  (T4)
-
-**Mystic**
-
-- Armor Mystic T1  `GearArt_4Armor_Mystic_T1`  (T1)
-- Armor Mystic T2  `GearArt_4Armor_Mystic_T2`  (T2)
-- Armor Mystic T3  `GearArt_4Armor_Mystic_T3`  (T3)
-- Armor Mystic T4  `GearArt_4Armor_Mystic_T4`  (T4)
-
-**Outlaw**
-
-- Armor Outlaw T1  `GearArt_4Armor_Outlaw_T1`  (T1)
-- Armor Outlaw T2  `GearArt_4Armor_Outlaw_T2`  (T2)
-- Armor Outlaw T3  `GearArt_4Armor_Outlaw_T3`  (T3)
-- Armor Outlaw T4  `GearArt_4Armor_Outlaw_T4`  (T4)
-
-**Ringwraith**
-
-- Armor Ringwraith T1  `GearArt_4Armor_Ringwraith_T1`  (T1)
-- Armor Ringwraith T2  `GearArt_4Armor_Ringwraith_T2`  (T2)
-- Armor Ringwraith T3  `GearArt_4Armor_Ringwraith_T3`  (T3)
-- Armor Ringwraith T4  `GearArt_4Armor_Ringwraith_T4`  (T4)
-
-**Slaughter**
-
-- Armor Slaughter T1  `GearArt_4Armor_Slaughter_T1`  (T1)
-- Armor Slaughter T2  `GearArt_4Armor_Slaughter_T2`  (T2)
-- Armor Slaughter T3  `GearArt_4Armor_Slaughter_T3`  (T3)
-- Armor Slaughter T4  `GearArt_4Armor_Slaughter_T4`  (T4)
-
-**Terror**
-
-- Armor Terror T1  `GearArt_4Armor_Terror_T1`  (T1)
-- Armor Terror T2  `GearArt_4Armor_Terror_T2`  (T2)
-- Armor Terror T3  `GearArt_4Armor_Terror_T3`  (T3)
-- Armor Terror T4  `GearArt_4Armor_Terror_T4`  (T4)
-
-**Warmonger**
-
-- Armor Warmonger T1  `GearArt_4Armor_Warmonger_T1`  (T1)
-- Armor Warmonger T2  `GearArt_4Armor_Warmonger_T2`  (T2)
-- Armor Warmonger T3  `GearArt_4Armor_Warmonger_T3`  (T3)
-- Armor Warmonger T4  `GearArt_4Armor_Warmonger_T4`  (T4)
-
-**Gondorian**
-
-- Gondorian Armor Skin 10 Rare  `GearArt_GondorianArmor_Tint10_3Rare`  (3Rare)
-- Gondorian Armor Skin 10 Epic  `GearArt_GondorianArmor_Tint10_4Epic`  (4Epic)
-- Gondorian Armor Skin 1 Rare  `GearArt_GondorianArmor_Tint1_3Rare`  (3Rare)
-- Gondorian Armor Skin 1 Epic  `GearArt_GondorianArmor_Tint1_4Epic`  (4Epic)
-- Gondorian Armor Skin 2 Rare  `GearArt_GondorianArmor_Tint2_3Rare`  (3Rare)
-- Gondorian Armor Skin 2 Epic  `GearArt_GondorianArmor_Tint2_4Epic`  (4Epic)
-- Gondorian Armor Skin 3 Rare  `GearArt_GondorianArmor_Tint3_3Rare`  (3Rare)
-- Gondorian Armor Skin 3 Epic  `GearArt_GondorianArmor_Tint3_4Epic`  (4Epic)
-- Gondorian Armor Skin 4 Rare  `GearArt_GondorianArmor_Tint4_3Rare`  (3Rare)
-- Gondorian Armor Skin 4 Epic  `GearArt_GondorianArmor_Tint4_4Epic`  (4Epic)
-- Gondorian Armor Skin 5 Rare  `GearArt_GondorianArmor_Tint5_3Rare`  (3Rare)
-- Gondorian Armor Skin 5 Epic  `GearArt_GondorianArmor_Tint5_4Epic`  (4Epic)
-- Gondorian Armor Skin 6 Rare  `GearArt_GondorianArmor_Tint6_3Rare`  (3Rare)
-- Gondorian Armor Skin 6 Epic  `GearArt_GondorianArmor_Tint6_4Epic`  (4Epic)
-- Gondorian Armor Skin 7 Rare  `GearArt_GondorianArmor_Tint7_3Rare`  (3Rare)
-- Gondorian Armor Skin 7 Epic  `GearArt_GondorianArmor_Tint7_4Epic`  (4Epic)
-- Gondorian Armor Skin 8 Rare  `GearArt_GondorianArmor_Tint8_3Rare`  (3Rare)
-- Gondorian Armor Skin 8 Epic  `GearArt_GondorianArmor_Tint8_4Epic`  (4Epic)
-- Gondorian Armor Skin 9 Rare  `GearArt_GondorianArmor_Tint9_3Rare`  (3Rare)
-- Gondorian Armor Skin 9 Epic  `GearArt_GondorianArmor_Tint9_4Epic`  (4Epic)
-
-**Numenorean**
-
-- Numenorean Armor Skin 10 Rare  `GearArt_NumenoreanArmor_Tint10_3Rare`  (3Rare)
-- Numenorean Armor Skin 10 Epic  `GearArt_NumenoreanArmor_Tint10_4Epic`  (4Epic)
-- Numenorean Armor Skin 1 Rare  `GearArt_NumenoreanArmor_Tint1_3Rare`  (3Rare)
-- Numenorean Armor Skin 1 Epic  `GearArt_NumenoreanArmor_Tint1_4Epic`  (4Epic)
-- Numenorean Armor Skin 2 Rare  `GearArt_NumenoreanArmor_Tint2_3Rare`  (3Rare)
-- Numenorean Armor Skin 2 Epic  `GearArt_NumenoreanArmor_Tint2_4Epic`  (4Epic)
-- Numenorean Armor Skin 3 Rare  `GearArt_NumenoreanArmor_Tint3_3Rare`  (3Rare)
-- Numenorean Armor Skin 3 Epic  `GearArt_NumenoreanArmor_Tint3_4Epic`  (4Epic)
-- Numenorean Armor Skin 4 Rare  `GearArt_NumenoreanArmor_Tint4_3Rare`  (3Rare)
-- Numenorean Armor Skin 4 Epic  `GearArt_NumenoreanArmor_Tint4_4Epic`  (4Epic)
-- Numenorean Armor Skin 5 Rare  `GearArt_NumenoreanArmor_Tint5_3Rare`  (3Rare)
-- Numenorean Armor Skin 5 Epic  `GearArt_NumenoreanArmor_Tint5_4Epic`  (4Epic)
-- Numenorean Armor Skin 6 Rare  `GearArt_NumenoreanArmor_Tint6_3Rare`  (3Rare)
-- Numenorean Armor Skin 6 Epic  `GearArt_NumenoreanArmor_Tint6_4Epic`  (4Epic)
-- Numenorean Armor Skin 7 Rare  `GearArt_NumenoreanArmor_Tint7_3Rare`  (3Rare)
-- Numenorean Armor Skin 7 Epic  `GearArt_NumenoreanArmor_Tint7_4Epic`  (4Epic)
-- Numenorean Armor Skin 8 Rare  `GearArt_NumenoreanArmor_Tint8_3Rare`  (3Rare)
-- Numenorean Armor Skin 8 Epic  `GearArt_NumenoreanArmor_Tint8_4Epic`  (4Epic)
-- Numenorean Armor Skin 9 Rare  `GearArt_NumenoreanArmor_Tint9_3Rare`  (3Rare)
-- Numenorean Armor Skin 9 Epic  `GearArt_NumenoreanArmor_Tint9_4Epic`  (4Epic)
-
-**Ranger**
-
-- Ranger Armor Skin 10 Rare  `GearArt_RangerArmor_Tint10_3Rare`  (3Rare)
-- Ranger Armor Skin 10 Epic  `GearArt_RangerArmor_Tint10_4Epic`  (4Epic)
-- Ranger Armor Skin 1 Rare  `GearArt_RangerArmor_Tint1_3Rare`  (3Rare)
-- Ranger Armor Skin 1 Epic  `GearArt_RangerArmor_Tint1_4Epic`  (4Epic)
-- Ranger Armor Skin 2 Rare  `GearArt_RangerArmor_Tint2_3Rare`  (3Rare)
-- Ranger Armor Skin 2 Epic  `GearArt_RangerArmor_Tint2_4Epic`  (4Epic)
-- Ranger Armor Skin 3 Rare  `GearArt_RangerArmor_Tint3_3Rare`  (3Rare)
-- Ranger Armor Skin 3 Epic  `GearArt_RangerArmor_Tint3_4Epic`  (4Epic)
-- Ranger Armor Skin 4 Rare  `GearArt_RangerArmor_Tint4_3Rare`  (3Rare)
-- Ranger Armor Skin 4 Epic  `GearArt_RangerArmor_Tint4_4Epic`  (4Epic)
-- Ranger Armor Skin 5 Rare  `GearArt_RangerArmor_Tint5_3Rare`  (3Rare)
-- Ranger Armor Skin 5 Epic  `GearArt_RangerArmor_Tint5_4Epic`  (4Epic)
-- Ranger Armor Skin 6 Rare  `GearArt_RangerArmor_Tint6_3Rare`  (3Rare)
-- Ranger Armor Skin 6 Epic  `GearArt_RangerArmor_Tint6_4Epic`  (4Epic)
-- Ranger Armor Skin 7 Rare  `GearArt_RangerArmor_Tint7_3Rare`  (3Rare)
-- Ranger Armor Skin 7 Epic  `GearArt_RangerArmor_Tint7_4Epic`  (4Epic)
-- Ranger Armor Skin 8 Rare  `GearArt_RangerArmor_Tint8_3Rare`  (3Rare)
-- Ranger Armor Skin 8 Epic  `GearArt_RangerArmor_Tint8_4Epic`  (4Epic)
-- Ranger Armor Skin 9 Rare  `GearArt_RangerArmor_Tint9_3Rare`  (3Rare)
-- Ranger Armor Skin 9 Epic  `GearArt_RangerArmor_Tint9_4Epic`  (4Epic)
-
-**Rohan**
-
-- Rohan Armor Skin 10 Rare  `GearArt_RohanArmor_Tint10_3Rare`  (3Rare)
-- Rohan Armor Skin 10 Epic  `GearArt_RohanArmor_Tint10_4Epic`  (4Epic)
-- Rohan Armor Skin 1 Rare  `GearArt_RohanArmor_Tint1_3Rare`  (3Rare)
-- Rohan Armor Skin 1 Epic  `GearArt_RohanArmor_Tint1_4Epic`  (4Epic)
-- Rohan Armor Skin 2 Rare  `GearArt_RohanArmor_Tint2_3Rare`  (3Rare)
-- Rohan Armor Skin 2 Epic  `GearArt_RohanArmor_Tint2_4Epic`  (4Epic)
-- Rohan Armor Skin 3 Rare  `GearArt_RohanArmor_Tint3_3Rare`  (3Rare)
-- Rohan Armor Skin 3 Epic  `GearArt_RohanArmor_Tint3_4Epic`  (4Epic)
-- Rohan Armor Skin 4 Rare  `GearArt_RohanArmor_Tint4_3Rare`  (3Rare)
-- Rohan Armor Skin 4 Epic  `GearArt_RohanArmor_Tint4_4Epic`  (4Epic)
-- Rohan Armor Skin 5 Rare  `GearArt_RohanArmor_Tint5_3Rare`  (3Rare)
-- Rohan Armor Skin 5 Epic  `GearArt_RohanArmor_Tint5_4Epic`  (4Epic)
-- Rohan Armor Skin 6 Rare  `GearArt_RohanArmor_Tint6_3Rare`  (3Rare)
-- Rohan Armor Skin 6 Epic  `GearArt_RohanArmor_Tint6_4Epic`  (4Epic)
-- Rohan Armor Skin 7 Rare  `GearArt_RohanArmor_Tint7_3Rare`  (3Rare)
-- Rohan Armor Skin 7 Epic  `GearArt_RohanArmor_Tint7_4Epic`  (4Epic)
-- Rohan Armor Skin 8 Rare  `GearArt_RohanArmor_Tint8_3Rare`  (3Rare)
-- Rohan Armor Skin 8 Epic  `GearArt_RohanArmor_Tint8_4Epic`  (4Epic)
-- Rohan Armor Skin 9 Rare  `GearArt_RohanArmor_Tint9_3Rare`  (3Rare)
-- Rohan Armor Skin 9 Epic  `GearArt_RohanArmor_Tint9_4Epic`  (4Epic)
+- Armor Celebrimbor T1  `GearArt_4Armor_Celebrimbor_T1`  (Celebrimbor  ·  Legendary  ·  T1)
+- Armor Celebrimbor T2  `GearArt_4Armor_Celebrimbor_T2`  (Celebrimbor  ·  Legendary  ·  T2)
+- Armor Celebrimbor T3  `GearArt_4Armor_Celebrimbor_T3`  (Celebrimbor  ·  Legendary  ·  T3)
+- Armor Celebrimbor T4  `GearArt_4Armor_Celebrimbor_T4`  (Celebrimbor  ·  Legendary  ·  T4)
+- Armor Vendetta T1  `GearArt_4Armor_Vendetta_T1`  (Vendetta  ·  Legendary  ·  T1)
+- Armor Vendetta T2  `GearArt_4Armor_Vendetta_T2`  (Vendetta  ·  Legendary  ·  T2)
+- Armor Vendetta T3  `GearArt_4Armor_Vendetta_T3`  (Vendetta  ·  Legendary  ·  T3)
+- Armor Vendetta T4  `GearArt_4Armor_Vendetta_T4`  (Vendetta  ·  Legendary  ·  T4)
+- Armor Dark T1  `GearArt_4Armor_Dark_T1`  (Dark  ·  Legendary  ·  T1)
+- Armor Dark T2  `GearArt_4Armor_Dark_T2`  (Dark  ·  Legendary  ·  T2)
+- Armor Dark T3  `GearArt_4Armor_Dark_T3`  (Dark  ·  Legendary  ·  T3)
+- Armor Dark T4  `GearArt_4Armor_Dark_T4`  (Dark  ·  Legendary  ·  T4)
+- Armor Feral T1  `GearArt_4Armor_Feral_T1`  (Feral  ·  Legendary  ·  T1)
+- Armor Feral T2  `GearArt_4Armor_Feral_T2`  (Feral  ·  Legendary  ·  T2)
+- Armor Feral T3  `GearArt_4Armor_Feral_T3`  (Feral  ·  Legendary  ·  T3)
+- Armor Feral T4  `GearArt_4Armor_Feral_T4`  (Feral  ·  Legendary  ·  T4)
+- Armor Machine T1  `GearArt_4Armor_Machine_T1`  (Machine  ·  Legendary  ·  T1)
+- Armor Machine T2  `GearArt_4Armor_Machine_T2`  (Machine  ·  Legendary  ·  T2)
+- Armor Machine T3  `GearArt_4Armor_Machine_T3`  (Machine  ·  Legendary  ·  T3)
+- Armor Machine T4  `GearArt_4Armor_Machine_T4`  (Machine  ·  Legendary  ·  T4)
+- Armor Marauder T1  `GearArt_4Armor_Marauder_T1`  (Marauder  ·  Legendary  ·  T1)
+- Armor Marauder T2  `GearArt_4Armor_Marauder_T2`  (Marauder  ·  Legendary  ·  T2)
+- Armor Marauder T3  `GearArt_4Armor_Marauder_T3`  (Marauder  ·  Legendary  ·  T3)
+- Armor Marauder T4  `GearArt_4Armor_Marauder_T4`  (Marauder  ·  Legendary  ·  T4)
+- Armor Mystic T1  `GearArt_4Armor_Mystic_T1`  (Mystic  ·  Legendary  ·  T1)
+- Armor Mystic T2  `GearArt_4Armor_Mystic_T2`  (Mystic  ·  Legendary  ·  T2)
+- Armor Mystic T3  `GearArt_4Armor_Mystic_T3`  (Mystic  ·  Legendary  ·  T3)
+- Armor Mystic T4  `GearArt_4Armor_Mystic_T4`  (Mystic  ·  Legendary  ·  T4)
+- Armor Outlaw T1  `GearArt_4Armor_Outlaw_T1`  (Outlaw  ·  Legendary  ·  T1)
+- Armor Outlaw T2  `GearArt_4Armor_Outlaw_T2`  (Outlaw  ·  Legendary  ·  T2)
+- Armor Outlaw T3  `GearArt_4Armor_Outlaw_T3`  (Outlaw  ·  Legendary  ·  T3)
+- Armor Outlaw T4  `GearArt_4Armor_Outlaw_T4`  (Outlaw  ·  Legendary  ·  T4)
+- Armor Ringwraith T1  `GearArt_4Armor_Ringwraith_T1`  (Ringwraith  ·  Legendary  ·  T1)
+- Armor Ringwraith T2  `GearArt_4Armor_Ringwraith_T2`  (Ringwraith  ·  Legendary  ·  T2)
+- Armor Ringwraith T3  `GearArt_4Armor_Ringwraith_T3`  (Ringwraith  ·  Legendary  ·  T3)
+- Armor Ringwraith T4  `GearArt_4Armor_Ringwraith_T4`  (Ringwraith  ·  Legendary  ·  T4)
+- Armor Slaughter T1  `GearArt_4Armor_Slaughter_T1`  (Slaughter  ·  Legendary  ·  T1)
+- Armor Slaughter T2  `GearArt_4Armor_Slaughter_T2`  (Slaughter  ·  Legendary  ·  T2)
+- Armor Slaughter T3  `GearArt_4Armor_Slaughter_T3`  (Slaughter  ·  Legendary  ·  T3)
+- Armor Slaughter T4  `GearArt_4Armor_Slaughter_T4`  (Slaughter  ·  Legendary  ·  T4)
+- Armor Terror T1  `GearArt_4Armor_Terror_T1`  (Terror  ·  Legendary  ·  T1)
+- Armor Terror T2  `GearArt_4Armor_Terror_T2`  (Terror  ·  Legendary  ·  T2)
+- Armor Terror T3  `GearArt_4Armor_Terror_T3`  (Terror  ·  Legendary  ·  T3)
+- Armor Terror T4  `GearArt_4Armor_Terror_T4`  (Terror  ·  Legendary  ·  T4)
+- Armor Warmonger T1  `GearArt_4Armor_Warmonger_T1`  (Warmonger  ·  Legendary  ·  T1)
+- Armor Warmonger T2  `GearArt_4Armor_Warmonger_T2`  (Warmonger  ·  Legendary  ·  T2)
+- Armor Warmonger T3  `GearArt_4Armor_Warmonger_T3`  (Warmonger  ·  Legendary  ·  T3)
+- Armor Warmonger T4  `GearArt_4Armor_Warmonger_T4`  (Warmonger  ·  Legendary  ·  T4)
+- Gondorian Armor Skin 10 Rare  `GearArt_GondorianArmor_Tint10_3Rare`  (Skins  ·  3Rare)
+- Gondorian Armor Skin 10 Epic  `GearArt_GondorianArmor_Tint10_4Epic`  (Skins  ·  4Epic)
+- Gondorian Armor Skin 1 Rare  `GearArt_GondorianArmor_Tint1_3Rare`  (Skins  ·  3Rare)
+- Gondorian Armor Skin 1 Epic  `GearArt_GondorianArmor_Tint1_4Epic`  (Skins  ·  4Epic)
+- Gondorian Armor Skin 2 Rare  `GearArt_GondorianArmor_Tint2_3Rare`  (Skins  ·  3Rare)
+- Gondorian Armor Skin 2 Epic  `GearArt_GondorianArmor_Tint2_4Epic`  (Skins  ·  4Epic)
+- Gondorian Armor Skin 3 Rare  `GearArt_GondorianArmor_Tint3_3Rare`  (Skins  ·  3Rare)
+- Gondorian Armor Skin 3 Epic  `GearArt_GondorianArmor_Tint3_4Epic`  (Skins  ·  4Epic)
+- Gondorian Armor Skin 4 Rare  `GearArt_GondorianArmor_Tint4_3Rare`  (Skins  ·  3Rare)
+- Gondorian Armor Skin 4 Epic  `GearArt_GondorianArmor_Tint4_4Epic`  (Skins  ·  4Epic)
+- Gondorian Armor Skin 5 Rare  `GearArt_GondorianArmor_Tint5_3Rare`  (Skins  ·  3Rare)
+- Gondorian Armor Skin 5 Epic  `GearArt_GondorianArmor_Tint5_4Epic`  (Skins  ·  4Epic)
+- Gondorian Armor Skin 6 Rare  `GearArt_GondorianArmor_Tint6_3Rare`  (Skins  ·  3Rare)
+- Gondorian Armor Skin 6 Epic  `GearArt_GondorianArmor_Tint6_4Epic`  (Skins  ·  4Epic)
+- Gondorian Armor Skin 7 Rare  `GearArt_GondorianArmor_Tint7_3Rare`  (Skins  ·  3Rare)
+- Gondorian Armor Skin 7 Epic  `GearArt_GondorianArmor_Tint7_4Epic`  (Skins  ·  4Epic)
+- Gondorian Armor Skin 8 Rare  `GearArt_GondorianArmor_Tint8_3Rare`  (Skins  ·  3Rare)
+- Gondorian Armor Skin 8 Epic  `GearArt_GondorianArmor_Tint8_4Epic`  (Skins  ·  4Epic)
+- Gondorian Armor Skin 9 Rare  `GearArt_GondorianArmor_Tint9_3Rare`  (Skins  ·  3Rare)
+- Gondorian Armor Skin 9 Epic  `GearArt_GondorianArmor_Tint9_4Epic`  (Skins  ·  4Epic)
+- Numenorean Armor Skin 10 Rare  `GearArt_NumenoreanArmor_Tint10_3Rare`  (Skins  ·  3Rare)
+- Numenorean Armor Skin 10 Epic  `GearArt_NumenoreanArmor_Tint10_4Epic`  (Skins  ·  4Epic)
+- Numenorean Armor Skin 1 Rare  `GearArt_NumenoreanArmor_Tint1_3Rare`  (Skins  ·  3Rare)
+- Numenorean Armor Skin 1 Epic  `GearArt_NumenoreanArmor_Tint1_4Epic`  (Skins  ·  4Epic)
+- Numenorean Armor Skin 2 Rare  `GearArt_NumenoreanArmor_Tint2_3Rare`  (Skins  ·  3Rare)
+- Numenorean Armor Skin 2 Epic  `GearArt_NumenoreanArmor_Tint2_4Epic`  (Skins  ·  4Epic)
+- Numenorean Armor Skin 3 Rare  `GearArt_NumenoreanArmor_Tint3_3Rare`  (Skins  ·  3Rare)
+- Numenorean Armor Skin 3 Epic  `GearArt_NumenoreanArmor_Tint3_4Epic`  (Skins  ·  4Epic)
+- Numenorean Armor Skin 4 Rare  `GearArt_NumenoreanArmor_Tint4_3Rare`  (Skins  ·  3Rare)
+- Numenorean Armor Skin 4 Epic  `GearArt_NumenoreanArmor_Tint4_4Epic`  (Skins  ·  4Epic)
+- Numenorean Armor Skin 5 Rare  `GearArt_NumenoreanArmor_Tint5_3Rare`  (Skins  ·  3Rare)
+- Numenorean Armor Skin 5 Epic  `GearArt_NumenoreanArmor_Tint5_4Epic`  (Skins  ·  4Epic)
+- Numenorean Armor Skin 6 Rare  `GearArt_NumenoreanArmor_Tint6_3Rare`  (Skins  ·  3Rare)
+- Numenorean Armor Skin 6 Epic  `GearArt_NumenoreanArmor_Tint6_4Epic`  (Skins  ·  4Epic)
+- Numenorean Armor Skin 7 Rare  `GearArt_NumenoreanArmor_Tint7_3Rare`  (Skins  ·  3Rare)
+- Numenorean Armor Skin 7 Epic  `GearArt_NumenoreanArmor_Tint7_4Epic`  (Skins  ·  4Epic)
+- Numenorean Armor Skin 8 Rare  `GearArt_NumenoreanArmor_Tint8_3Rare`  (Skins  ·  3Rare)
+- Numenorean Armor Skin 8 Epic  `GearArt_NumenoreanArmor_Tint8_4Epic`  (Skins  ·  4Epic)
+- Numenorean Armor Skin 9 Rare  `GearArt_NumenoreanArmor_Tint9_3Rare`  (Skins  ·  3Rare)
+- Numenorean Armor Skin 9 Epic  `GearArt_NumenoreanArmor_Tint9_4Epic`  (Skins  ·  4Epic)
+- Ranger Armor Skin 10 Rare  `GearArt_RangerArmor_Tint10_3Rare`  (Skins  ·  3Rare)
+- Ranger Armor Skin 10 Epic  `GearArt_RangerArmor_Tint10_4Epic`  (Skins  ·  4Epic)
+- Ranger Armor Skin 1 Rare  `GearArt_RangerArmor_Tint1_3Rare`  (Skins  ·  3Rare)
+- Ranger Armor Skin 1 Epic  `GearArt_RangerArmor_Tint1_4Epic`  (Skins  ·  4Epic)
+- Ranger Armor Skin 2 Rare  `GearArt_RangerArmor_Tint2_3Rare`  (Skins  ·  3Rare)
+- Ranger Armor Skin 2 Epic  `GearArt_RangerArmor_Tint2_4Epic`  (Skins  ·  4Epic)
+- Ranger Armor Skin 3 Rare  `GearArt_RangerArmor_Tint3_3Rare`  (Skins  ·  3Rare)
+- Ranger Armor Skin 3 Epic  `GearArt_RangerArmor_Tint3_4Epic`  (Skins  ·  4Epic)
+- Ranger Armor Skin 4 Rare  `GearArt_RangerArmor_Tint4_3Rare`  (Skins  ·  3Rare)
+- Ranger Armor Skin 4 Epic  `GearArt_RangerArmor_Tint4_4Epic`  (Skins  ·  4Epic)
+- Ranger Armor Skin 5 Rare  `GearArt_RangerArmor_Tint5_3Rare`  (Skins  ·  3Rare)
+- Ranger Armor Skin 5 Epic  `GearArt_RangerArmor_Tint5_4Epic`  (Skins  ·  4Epic)
+- Ranger Armor Skin 6 Rare  `GearArt_RangerArmor_Tint6_3Rare`  (Skins  ·  3Rare)
+- Ranger Armor Skin 6 Epic  `GearArt_RangerArmor_Tint6_4Epic`  (Skins  ·  4Epic)
+- Ranger Armor Skin 7 Rare  `GearArt_RangerArmor_Tint7_3Rare`  (Skins  ·  3Rare)
+- Ranger Armor Skin 7 Epic  `GearArt_RangerArmor_Tint7_4Epic`  (Skins  ·  4Epic)
+- Ranger Armor Skin 8 Rare  `GearArt_RangerArmor_Tint8_3Rare`  (Skins  ·  3Rare)
+- Ranger Armor Skin 8 Epic  `GearArt_RangerArmor_Tint8_4Epic`  (Skins  ·  4Epic)
+- Ranger Armor Skin 9 Rare  `GearArt_RangerArmor_Tint9_3Rare`  (Skins  ·  3Rare)
+- Ranger Armor Skin 9 Epic  `GearArt_RangerArmor_Tint9_4Epic`  (Skins  ·  4Epic)
+- Rohan Armor Skin 10 Rare  `GearArt_RohanArmor_Tint10_3Rare`  (Skins  ·  3Rare)
+- Rohan Armor Skin 10 Epic  `GearArt_RohanArmor_Tint10_4Epic`  (Skins  ·  4Epic)
+- Rohan Armor Skin 1 Rare  `GearArt_RohanArmor_Tint1_3Rare`  (Skins  ·  3Rare)
+- Rohan Armor Skin 1 Epic  `GearArt_RohanArmor_Tint1_4Epic`  (Skins  ·  4Epic)
+- Rohan Armor Skin 2 Rare  `GearArt_RohanArmor_Tint2_3Rare`  (Skins  ·  3Rare)
+- Rohan Armor Skin 2 Epic  `GearArt_RohanArmor_Tint2_4Epic`  (Skins  ·  4Epic)
+- Rohan Armor Skin 3 Rare  `GearArt_RohanArmor_Tint3_3Rare`  (Skins  ·  3Rare)
+- Rohan Armor Skin 3 Epic  `GearArt_RohanArmor_Tint3_4Epic`  (Skins  ·  4Epic)
+- Rohan Armor Skin 4 Rare  `GearArt_RohanArmor_Tint4_3Rare`  (Skins  ·  3Rare)
+- Rohan Armor Skin 4 Epic  `GearArt_RohanArmor_Tint4_4Epic`  (Skins  ·  4Epic)
+- Rohan Armor Skin 5 Rare  `GearArt_RohanArmor_Tint5_3Rare`  (Skins  ·  3Rare)
+- Rohan Armor Skin 5 Epic  `GearArt_RohanArmor_Tint5_4Epic`  (Skins  ·  4Epic)
+- Rohan Armor Skin 6 Rare  `GearArt_RohanArmor_Tint6_3Rare`  (Skins  ·  3Rare)
+- Rohan Armor Skin 6 Epic  `GearArt_RohanArmor_Tint6_4Epic`  (Skins  ·  4Epic)
+- Rohan Armor Skin 7 Rare  `GearArt_RohanArmor_Tint7_3Rare`  (Skins  ·  3Rare)
+- Rohan Armor Skin 7 Epic  `GearArt_RohanArmor_Tint7_4Epic`  (Skins  ·  4Epic)
+- Rohan Armor Skin 8 Rare  `GearArt_RohanArmor_Tint8_3Rare`  (Skins  ·  3Rare)
+- Rohan Armor Skin 8 Epic  `GearArt_RohanArmor_Tint8_4Epic`  (Skins  ·  4Epic)
+- Rohan Armor Skin 9 Rare  `GearArt_RohanArmor_Tint9_3Rare`  (Skins  ·  3Rare)
+- Rohan Armor Skin 9 Epic  `GearArt_RohanArmor_Tint9_4Epic`  (Skins  ·  4Epic)
 
 ### Cloak
-
-**Celebrimbor**
-
-- Cape Celebrimbor T1  `GearArt_5Cape_Celebrimbor_T1`  (T1)
-- Cape Celebrimbor T2  `GearArt_5Cape_Celebrimbor_T2`  (T2)
-- Cape Celebrimbor T3  `GearArt_5Cape_Celebrimbor_T3`  (T3)
-- Cape Celebrimbor T4  `GearArt_5Cape_Celebrimbor_T4`  (T4)
-
-**Vendetta**
-
-- Cape Vendetta T1  `GearArt_5Cape_Vendetta_T1`  (T1)
-- Cape Vendetta T2  `GearArt_5Cape_Vendetta_T2`  (T2)
-- Cape Vendetta T3  `GearArt_5Cape_Vendetta_T3`  (T3)
-- Cape Vendetta T4  `GearArt_5Cape_Vendetta_T4`  (T4)
-
-**Dark**
-
-- Cape Dark T1  `GearArt_5Cape_Dark_T1`  (T1)
-- Cape Dark T2  `GearArt_5Cape_Dark_T2`  (T2)
-- Cape Dark T3  `GearArt_5Cape_Dark_T3`  (T3)
-- Cape Dark T4  `GearArt_5Cape_Dark_T4`  (T4)
-
-**Feral**
-
-- Cape Feral T1  `GearArt_5Cape_Feral_T1`  (T1)
-- Cape Feral T2  `GearArt_5Cape_Feral_T2`  (T2)
-- Cape Feral T3  `GearArt_5Cape_Feral_T3`  (T3)
-- Cape Feral T4  `GearArt_5Cape_Feral_T4`  (T4)
-
-**Machine**
-
-- Cape Machine T1  `GearArt_5Cape_Machine_T1`  (T1)
-- Cape Machine T2  `GearArt_5Cape_Machine_T2`  (T2)
-- Cape Machine T3  `GearArt_5Cape_Machine_T3`  (T3)
-- Cape Machine T4  `GearArt_5Cape_Machine_T4`  (T4)
-
-**Marauder**
-
-- Cape Marauder T1  `GearArt_5Cape_Marauder_T1`  (T1)
-- Cape Marauder T2  `GearArt_5Cape_Marauder_T2`  (T2)
-- Cape Marauder T3  `GearArt_5Cape_Marauder_T3`  (T3)
-- Cape Marauder T4  `GearArt_5Cape_Marauder_T4`  (T4)
-
-**Mystic**
-
-- Cape Mystic T1  `GearArt_5Cape_Mystic_T1`  (T1)
-- Cape Mystic T2  `GearArt_5Cape_Mystic_T2`  (T2)
-- Cape Mystic T3  `GearArt_5Cape_Mystic_T3`  (T3)
-- Cape Mystic T4  `GearArt_5Cape_Mystic_T4`  (T4)
-
-**Outlaw**
-
-- Cape Outlaw T1  `GearArt_5Cape_Outlaw_T1`  (T1)
-- Cape Outlaw T2  `GearArt_5Cape_Outlaw_T2`  (T2)
-- Cape Outlaw T3  `GearArt_5Cape_Outlaw_T3`  (T3)
-- Cape Outlaw T4  `GearArt_5Cape_Outlaw_T4`  (T4)
-
-**Ringwraith**
-
-- Cape Ringwraith T1  `GearArt_5Cape_Ringwraith_T1`  (T1)
-- Cape Ringwraith T2  `GearArt_5Cape_Ringwraith_T2`  (T2)
-- Cape Ringwraith T3  `GearArt_5Cape_Ringwraith_T3`  (T3)
-- Cape Ringwraith T4  `GearArt_5Cape_Ringwraith_T4`  (T4)
-
-**Slaughter**
-
-- Cape Slaughter T1  `GearArt_5Cape_Slaughter_T1`  (T1)
-- Cape Slaughter T2  `GearArt_5Cape_Slaughter_T2`  (T2)
-- Cape Slaughter T3  `GearArt_5Cape_Slaughter_T3`  (T3)
-- Cape Slaughter T4  `GearArt_5Cape_Slaughter_T4`  (T4)
-
-**Terror**
-
-- Cape Terror T1  `GearArt_5Cape_Terror_T1`  (T1)
-- Cape Terror T2  `GearArt_5Cape_Terror_T2`  (T2)
-- Cape Terror T3  `GearArt_5Cape_Terror_T3`  (T3)
-- Cape Terror T4  `GearArt_5Cape_Terror_T4`  (T4)
-
-**Warmonger**
-
-- Cape Warmonger T1  `GearArt_5Cape_Warmonger_T1`  (T1)
-- Cape Warmonger T2  `GearArt_5Cape_Warmonger_T2`  (T2)
-- Cape Warmonger T3  `GearArt_5Cape_Warmonger_T3`  (T3)
-- Cape Warmonger T4  `GearArt_5Cape_Warmonger_T4`  (T4)
-
-**Gondorian**
-
-- Gondorian Cloak Skin 10 Rare  `GearArt_GondorianCloak_Tint10_3Rare`  (3Rare)
-- Gondorian Cloak Skin 10 Epic  `GearArt_GondorianCloak_Tint10_4Epic`  (4Epic)
-- Gondorian Cloak Skin 1 Rare  `GearArt_GondorianCloak_Tint1_3Rare`  (3Rare)
-- Gondorian Cloak Skin 1 Epic  `GearArt_GondorianCloak_Tint1_4Epic`  (4Epic)
-- Gondorian Cloak Skin 2 Rare  `GearArt_GondorianCloak_Tint2_3Rare`  (3Rare)
-- Gondorian Cloak Skin 2 Epic  `GearArt_GondorianCloak_Tint2_4Epic`  (4Epic)
-- Gondorian Cloak Skin 3 Rare  `GearArt_GondorianCloak_Tint3_3Rare`  (3Rare)
-- Gondorian Cloak Skin 3 Epic  `GearArt_GondorianCloak_Tint3_4Epic`  (4Epic)
-- Gondorian Cloak Skin 4 Rare  `GearArt_GondorianCloak_Tint4_3Rare`  (3Rare)
-- Gondorian Cloak Skin 4 Epic  `GearArt_GondorianCloak_Tint4_4Epic`  (4Epic)
-- Gondorian Cloak Skin 5 Rare  `GearArt_GondorianCloak_Tint5_3Rare`  (3Rare)
-- Gondorian Cloak Skin 5 Epic  `GearArt_GondorianCloak_Tint5_4Epic`  (4Epic)
-- Gondorian Cloak Skin 6 Rare  `GearArt_GondorianCloak_Tint6_3Rare`  (3Rare)
-- Gondorian Cloak Skin 6 Epic  `GearArt_GondorianCloak_Tint6_4Epic`  (4Epic)
-- Gondorian Cloak Skin 7 Rare  `GearArt_GondorianCloak_Tint7_3Rare`  (3Rare)
-- Gondorian Cloak Skin 7 Epic  `GearArt_GondorianCloak_Tint7_4Epic`  (4Epic)
-- Gondorian Cloak Skin 8 Rare  `GearArt_GondorianCloak_Tint8_3Rare`  (3Rare)
-- Gondorian Cloak Skin 8 Epic  `GearArt_GondorianCloak_Tint8_4Epic`  (4Epic)
-- Gondorian Cloak Skin 9 Rare  `GearArt_GondorianCloak_Tint9_3Rare`  (3Rare)
-- Gondorian Cloak Skin 9 Epic  `GearArt_GondorianCloak_Tint9_4Epic`  (4Epic)
-
-**Numenorean**
-
-- Numenorean Cloak Skin 10 Rare  `GearArt_NumenoreanCloak_Tint10_3Rare`  (3Rare)
-- Numenorean Cloak Skin 10 Epic  `GearArt_NumenoreanCloak_Tint10_4Epic`  (4Epic)
-- Numenorean Cloak Skin 1 Rare  `GearArt_NumenoreanCloak_Tint1_3Rare`  (3Rare)
-- Numenorean Cloak Skin 1 Epic  `GearArt_NumenoreanCloak_Tint1_4Epic`  (4Epic)
-- Numenorean Cloak Skin 2 Rare  `GearArt_NumenoreanCloak_Tint2_3Rare`  (3Rare)
-- Numenorean Cloak Skin 2 Epic  `GearArt_NumenoreanCloak_Tint2_4Epic`  (4Epic)
-- Numenorean Cloak Skin 3 Rare  `GearArt_NumenoreanCloak_Tint3_3Rare`  (3Rare)
-- Numenorean Cloak Skin 3 Epic  `GearArt_NumenoreanCloak_Tint3_4Epic`  (4Epic)
-- Numenorean Cloak Skin 4 Rare  `GearArt_NumenoreanCloak_Tint4_3Rare`  (3Rare)
-- Numenorean Cloak Skin 4 Epic  `GearArt_NumenoreanCloak_Tint4_4Epic`  (4Epic)
-- Numenorean Cloak Skin 5 Rare  `GearArt_NumenoreanCloak_Tint5_3Rare`  (3Rare)
-- Numenorean Cloak Skin 5 Epic  `GearArt_NumenoreanCloak_Tint5_4Epic`  (4Epic)
-- Numenorean Cloak Skin 6 Rare  `GearArt_NumenoreanCloak_Tint6_3Rare`  (3Rare)
-- Numenorean Cloak Skin 6 Epic  `GearArt_NumenoreanCloak_Tint6_4Epic`  (4Epic)
-- Numenorean Cloak Skin 7 Rare  `GearArt_NumenoreanCloak_Tint7_3Rare`  (3Rare)
-- Numenorean Cloak Skin 7 Epic  `GearArt_NumenoreanCloak_Tint7_4Epic`  (4Epic)
-- Numenorean Cloak Skin 8 Rare  `GearArt_NumenoreanCloak_Tint8_3Rare`  (3Rare)
-- Numenorean Cloak Skin 8 Epic  `GearArt_NumenoreanCloak_Tint8_4Epic`  (4Epic)
-- Numenorean Cloak Skin 9 Rare  `GearArt_NumenoreanCloak_Tint9_3Rare`  (3Rare)
-- Numenorean Cloak Skin 9 Epic  `GearArt_NumenoreanCloak_Tint9_4Epic`  (4Epic)
-
-**Ranger**
-
-- Ranger Cloak Skin 10 Rare  `GearArt_RangerCloak_Tint10_3Rare`  (3Rare)
-- Ranger Cloak Skin 10 Epic  `GearArt_RangerCloak_Tint10_4Epic`  (4Epic)
-- Ranger Cloak Skin 1 Rare  `GearArt_RangerCloak_Tint1_3Rare`  (3Rare)
-- Ranger Cloak Skin 1 Epic  `GearArt_RangerCloak_Tint1_4Epic`  (4Epic)
-- Ranger Cloak Skin 2 Rare  `GearArt_RangerCloak_Tint2_3Rare`  (3Rare)
-- Ranger Cloak Skin 2 Epic  `GearArt_RangerCloak_Tint2_4Epic`  (4Epic)
-- Ranger Cloak Skin 3 Rare  `GearArt_RangerCloak_Tint3_3Rare`  (3Rare)
-- Ranger Cloak Skin 3 Epic  `GearArt_RangerCloak_Tint3_4Epic`  (4Epic)
-- Ranger Cloak Skin 4 Rare  `GearArt_RangerCloak_Tint4_3Rare`  (3Rare)
-- Ranger Cloak Skin 4 Epic  `GearArt_RangerCloak_Tint4_4Epic`  (4Epic)
-- Ranger Cloak Skin 5 Rare  `GearArt_RangerCloak_Tint5_3Rare`  (3Rare)
-- Ranger Cloak Skin 5 Epic  `GearArt_RangerCloak_Tint5_4Epic`  (4Epic)
-- Ranger Cloak Skin 6 Rare  `GearArt_RangerCloak_Tint6_3Rare`  (3Rare)
-- Ranger Cloak Skin 6 Epic  `GearArt_RangerCloak_Tint6_4Epic`  (4Epic)
-- Ranger Cloak Skin 7 Rare  `GearArt_RangerCloak_Tint7_3Rare`  (3Rare)
-- Ranger Cloak Skin 7 Epic  `GearArt_RangerCloak_Tint7_4Epic`  (4Epic)
-- Ranger Cloak Skin 8 Rare  `GearArt_RangerCloak_Tint8_3Rare`  (3Rare)
-- Ranger Cloak Skin 8 Epic  `GearArt_RangerCloak_Tint8_4Epic`  (4Epic)
-- Ranger Cloak Skin 9 Rare  `GearArt_RangerCloak_Tint9_3Rare`  (3Rare)
-- Ranger Cloak Skin 9 Epic  `GearArt_RangerCloak_Tint9_4Epic`  (4Epic)
-
-**Rohan**
-
-- Rohan Cloak Skin 10 Rare  `GearArt_RohanCloak_Tint10_3Rare`  (3Rare)
-- Rohan Cloak Skin 10 Epic  `GearArt_RohanCloak_Tint10_4Epic`  (4Epic)
-- Rohan Cloak Skin 1 Rare  `GearArt_RohanCloak_Tint1_3Rare`  (3Rare)
-- Rohan Cloak Skin 1 Epic  `GearArt_RohanCloak_Tint1_4Epic`  (4Epic)
-- Rohan Cloak Skin 2 Rare  `GearArt_RohanCloak_Tint2_3Rare`  (3Rare)
-- Rohan Cloak Skin 2 Epic  `GearArt_RohanCloak_Tint2_4Epic`  (4Epic)
-- Rohan Cloak Skin 3 Rare  `GearArt_RohanCloak_Tint3_3Rare`  (3Rare)
-- Rohan Cloak Skin 3 Epic  `GearArt_RohanCloak_Tint3_4Epic`  (4Epic)
-- Rohan Cloak Skin 4 Rare  `GearArt_RohanCloak_Tint4_3Rare`  (3Rare)
-- Rohan Cloak Skin 4 Epic  `GearArt_RohanCloak_Tint4_4Epic`  (4Epic)
-- Rohan Cloak Skin 5 Rare  `GearArt_RohanCloak_Tint5_3Rare`  (3Rare)
-- Rohan Cloak Skin 5 Epic  `GearArt_RohanCloak_Tint5_4Epic`  (4Epic)
-- Rohan Cloak Skin 6 Rare  `GearArt_RohanCloak_Tint6_3Rare`  (3Rare)
-- Rohan Cloak Skin 6 Epic  `GearArt_RohanCloak_Tint6_4Epic`  (4Epic)
-- Rohan Cloak Skin 7 Rare  `GearArt_RohanCloak_Tint7_3Rare`  (3Rare)
-- Rohan Cloak Skin 7 Epic  `GearArt_RohanCloak_Tint7_4Epic`  (4Epic)
-- Rohan Cloak Skin 8 Rare  `GearArt_RohanCloak_Tint8_3Rare`  (3Rare)
-- Rohan Cloak Skin 8 Epic  `GearArt_RohanCloak_Tint8_4Epic`  (4Epic)
-- Rohan Cloak Skin 9 Rare  `GearArt_RohanCloak_Tint9_3Rare`  (3Rare)
-- Rohan Cloak Skin 9 Epic  `GearArt_RohanCloak_Tint9_4Epic`  (4Epic)
+- Cape Celebrimbor T1  `GearArt_5Cape_Celebrimbor_T1`  (Celebrimbor  ·  Legendary  ·  T1)
+- Cape Celebrimbor T2  `GearArt_5Cape_Celebrimbor_T2`  (Celebrimbor  ·  Legendary  ·  T2)
+- Cape Celebrimbor T3  `GearArt_5Cape_Celebrimbor_T3`  (Celebrimbor  ·  Legendary  ·  T3)
+- Cape Celebrimbor T4  `GearArt_5Cape_Celebrimbor_T4`  (Celebrimbor  ·  Legendary  ·  T4)
+- Cape Vendetta T1  `GearArt_5Cape_Vendetta_T1`  (Vendetta  ·  Legendary  ·  T1)
+- Cape Vendetta T2  `GearArt_5Cape_Vendetta_T2`  (Vendetta  ·  Legendary  ·  T2)
+- Cape Vendetta T3  `GearArt_5Cape_Vendetta_T3`  (Vendetta  ·  Legendary  ·  T3)
+- Cape Vendetta T4  `GearArt_5Cape_Vendetta_T4`  (Vendetta  ·  Legendary  ·  T4)
+- Cape Dark T1  `GearArt_5Cape_Dark_T1`  (Dark  ·  Legendary  ·  T1)
+- Cape Dark T2  `GearArt_5Cape_Dark_T2`  (Dark  ·  Legendary  ·  T2)
+- Cape Dark T3  `GearArt_5Cape_Dark_T3`  (Dark  ·  Legendary  ·  T3)
+- Cape Dark T4  `GearArt_5Cape_Dark_T4`  (Dark  ·  Legendary  ·  T4)
+- Cape Feral T1  `GearArt_5Cape_Feral_T1`  (Feral  ·  Legendary  ·  T1)
+- Cape Feral T2  `GearArt_5Cape_Feral_T2`  (Feral  ·  Legendary  ·  T2)
+- Cape Feral T3  `GearArt_5Cape_Feral_T3`  (Feral  ·  Legendary  ·  T3)
+- Cape Feral T4  `GearArt_5Cape_Feral_T4`  (Feral  ·  Legendary  ·  T4)
+- Cape Machine T1  `GearArt_5Cape_Machine_T1`  (Machine  ·  Legendary  ·  T1)
+- Cape Machine T2  `GearArt_5Cape_Machine_T2`  (Machine  ·  Legendary  ·  T2)
+- Cape Machine T3  `GearArt_5Cape_Machine_T3`  (Machine  ·  Legendary  ·  T3)
+- Cape Machine T4  `GearArt_5Cape_Machine_T4`  (Machine  ·  Legendary  ·  T4)
+- Cape Marauder T1  `GearArt_5Cape_Marauder_T1`  (Marauder  ·  Legendary  ·  T1)
+- Cape Marauder T2  `GearArt_5Cape_Marauder_T2`  (Marauder  ·  Legendary  ·  T2)
+- Cape Marauder T3  `GearArt_5Cape_Marauder_T3`  (Marauder  ·  Legendary  ·  T3)
+- Cape Marauder T4  `GearArt_5Cape_Marauder_T4`  (Marauder  ·  Legendary  ·  T4)
+- Cape Mystic T1  `GearArt_5Cape_Mystic_T1`  (Mystic  ·  Legendary  ·  T1)
+- Cape Mystic T2  `GearArt_5Cape_Mystic_T2`  (Mystic  ·  Legendary  ·  T2)
+- Cape Mystic T3  `GearArt_5Cape_Mystic_T3`  (Mystic  ·  Legendary  ·  T3)
+- Cape Mystic T4  `GearArt_5Cape_Mystic_T4`  (Mystic  ·  Legendary  ·  T4)
+- Cape Outlaw T1  `GearArt_5Cape_Outlaw_T1`  (Outlaw  ·  Legendary  ·  T1)
+- Cape Outlaw T2  `GearArt_5Cape_Outlaw_T2`  (Outlaw  ·  Legendary  ·  T2)
+- Cape Outlaw T3  `GearArt_5Cape_Outlaw_T3`  (Outlaw  ·  Legendary  ·  T3)
+- Cape Outlaw T4  `GearArt_5Cape_Outlaw_T4`  (Outlaw  ·  Legendary  ·  T4)
+- Cape Ringwraith T1  `GearArt_5Cape_Ringwraith_T1`  (Ringwraith  ·  Legendary  ·  T1)
+- Cape Ringwraith T2  `GearArt_5Cape_Ringwraith_T2`  (Ringwraith  ·  Legendary  ·  T2)
+- Cape Ringwraith T3  `GearArt_5Cape_Ringwraith_T3`  (Ringwraith  ·  Legendary  ·  T3)
+- Cape Ringwraith T4  `GearArt_5Cape_Ringwraith_T4`  (Ringwraith  ·  Legendary  ·  T4)
+- Cape Slaughter T1  `GearArt_5Cape_Slaughter_T1`  (Slaughter  ·  Legendary  ·  T1)
+- Cape Slaughter T2  `GearArt_5Cape_Slaughter_T2`  (Slaughter  ·  Legendary  ·  T2)
+- Cape Slaughter T3  `GearArt_5Cape_Slaughter_T3`  (Slaughter  ·  Legendary  ·  T3)
+- Cape Slaughter T4  `GearArt_5Cape_Slaughter_T4`  (Slaughter  ·  Legendary  ·  T4)
+- Cape Terror T1  `GearArt_5Cape_Terror_T1`  (Terror  ·  Legendary  ·  T1)
+- Cape Terror T2  `GearArt_5Cape_Terror_T2`  (Terror  ·  Legendary  ·  T2)
+- Cape Terror T3  `GearArt_5Cape_Terror_T3`  (Terror  ·  Legendary  ·  T3)
+- Cape Terror T4  `GearArt_5Cape_Terror_T4`  (Terror  ·  Legendary  ·  T4)
+- Cape Warmonger T1  `GearArt_5Cape_Warmonger_T1`  (Warmonger  ·  Legendary  ·  T1)
+- Cape Warmonger T2  `GearArt_5Cape_Warmonger_T2`  (Warmonger  ·  Legendary  ·  T2)
+- Cape Warmonger T3  `GearArt_5Cape_Warmonger_T3`  (Warmonger  ·  Legendary  ·  T3)
+- Cape Warmonger T4  `GearArt_5Cape_Warmonger_T4`  (Warmonger  ·  Legendary  ·  T4)
+- Gondorian Cloak Skin 10 Rare  `GearArt_GondorianCloak_Tint10_3Rare`  (Skins  ·  3Rare)
+- Gondorian Cloak Skin 10 Epic  `GearArt_GondorianCloak_Tint10_4Epic`  (Skins  ·  4Epic)
+- Gondorian Cloak Skin 1 Rare  `GearArt_GondorianCloak_Tint1_3Rare`  (Skins  ·  3Rare)
+- Gondorian Cloak Skin 1 Epic  `GearArt_GondorianCloak_Tint1_4Epic`  (Skins  ·  4Epic)
+- Gondorian Cloak Skin 2 Rare  `GearArt_GondorianCloak_Tint2_3Rare`  (Skins  ·  3Rare)
+- Gondorian Cloak Skin 2 Epic  `GearArt_GondorianCloak_Tint2_4Epic`  (Skins  ·  4Epic)
+- Gondorian Cloak Skin 3 Rare  `GearArt_GondorianCloak_Tint3_3Rare`  (Skins  ·  3Rare)
+- Gondorian Cloak Skin 3 Epic  `GearArt_GondorianCloak_Tint3_4Epic`  (Skins  ·  4Epic)
+- Gondorian Cloak Skin 4 Rare  `GearArt_GondorianCloak_Tint4_3Rare`  (Skins  ·  3Rare)
+- Gondorian Cloak Skin 4 Epic  `GearArt_GondorianCloak_Tint4_4Epic`  (Skins  ·  4Epic)
+- Gondorian Cloak Skin 5 Rare  `GearArt_GondorianCloak_Tint5_3Rare`  (Skins  ·  3Rare)
+- Gondorian Cloak Skin 5 Epic  `GearArt_GondorianCloak_Tint5_4Epic`  (Skins  ·  4Epic)
+- Gondorian Cloak Skin 6 Rare  `GearArt_GondorianCloak_Tint6_3Rare`  (Skins  ·  3Rare)
+- Gondorian Cloak Skin 6 Epic  `GearArt_GondorianCloak_Tint6_4Epic`  (Skins  ·  4Epic)
+- Gondorian Cloak Skin 7 Rare  `GearArt_GondorianCloak_Tint7_3Rare`  (Skins  ·  3Rare)
+- Gondorian Cloak Skin 7 Epic  `GearArt_GondorianCloak_Tint7_4Epic`  (Skins  ·  4Epic)
+- Gondorian Cloak Skin 8 Rare  `GearArt_GondorianCloak_Tint8_3Rare`  (Skins  ·  3Rare)
+- Gondorian Cloak Skin 8 Epic  `GearArt_GondorianCloak_Tint8_4Epic`  (Skins  ·  4Epic)
+- Gondorian Cloak Skin 9 Rare  `GearArt_GondorianCloak_Tint9_3Rare`  (Skins  ·  3Rare)
+- Gondorian Cloak Skin 9 Epic  `GearArt_GondorianCloak_Tint9_4Epic`  (Skins  ·  4Epic)
+- Numenorean Cloak Skin 10 Rare  `GearArt_NumenoreanCloak_Tint10_3Rare`  (Skins  ·  3Rare)
+- Numenorean Cloak Skin 10 Epic  `GearArt_NumenoreanCloak_Tint10_4Epic`  (Skins  ·  4Epic)
+- Numenorean Cloak Skin 1 Rare  `GearArt_NumenoreanCloak_Tint1_3Rare`  (Skins  ·  3Rare)
+- Numenorean Cloak Skin 1 Epic  `GearArt_NumenoreanCloak_Tint1_4Epic`  (Skins  ·  4Epic)
+- Numenorean Cloak Skin 2 Rare  `GearArt_NumenoreanCloak_Tint2_3Rare`  (Skins  ·  3Rare)
+- Numenorean Cloak Skin 2 Epic  `GearArt_NumenoreanCloak_Tint2_4Epic`  (Skins  ·  4Epic)
+- Numenorean Cloak Skin 3 Rare  `GearArt_NumenoreanCloak_Tint3_3Rare`  (Skins  ·  3Rare)
+- Numenorean Cloak Skin 3 Epic  `GearArt_NumenoreanCloak_Tint3_4Epic`  (Skins  ·  4Epic)
+- Numenorean Cloak Skin 4 Rare  `GearArt_NumenoreanCloak_Tint4_3Rare`  (Skins  ·  3Rare)
+- Numenorean Cloak Skin 4 Epic  `GearArt_NumenoreanCloak_Tint4_4Epic`  (Skins  ·  4Epic)
+- Numenorean Cloak Skin 5 Rare  `GearArt_NumenoreanCloak_Tint5_3Rare`  (Skins  ·  3Rare)
+- Numenorean Cloak Skin 5 Epic  `GearArt_NumenoreanCloak_Tint5_4Epic`  (Skins  ·  4Epic)
+- Numenorean Cloak Skin 6 Rare  `GearArt_NumenoreanCloak_Tint6_3Rare`  (Skins  ·  3Rare)
+- Numenorean Cloak Skin 6 Epic  `GearArt_NumenoreanCloak_Tint6_4Epic`  (Skins  ·  4Epic)
+- Numenorean Cloak Skin 7 Rare  `GearArt_NumenoreanCloak_Tint7_3Rare`  (Skins  ·  3Rare)
+- Numenorean Cloak Skin 7 Epic  `GearArt_NumenoreanCloak_Tint7_4Epic`  (Skins  ·  4Epic)
+- Numenorean Cloak Skin 8 Rare  `GearArt_NumenoreanCloak_Tint8_3Rare`  (Skins  ·  3Rare)
+- Numenorean Cloak Skin 8 Epic  `GearArt_NumenoreanCloak_Tint8_4Epic`  (Skins  ·  4Epic)
+- Numenorean Cloak Skin 9 Rare  `GearArt_NumenoreanCloak_Tint9_3Rare`  (Skins  ·  3Rare)
+- Numenorean Cloak Skin 9 Epic  `GearArt_NumenoreanCloak_Tint9_4Epic`  (Skins  ·  4Epic)
+- Ranger Cloak Skin 10 Rare  `GearArt_RangerCloak_Tint10_3Rare`  (Skins  ·  3Rare)
+- Ranger Cloak Skin 10 Epic  `GearArt_RangerCloak_Tint10_4Epic`  (Skins  ·  4Epic)
+- Ranger Cloak Skin 1 Rare  `GearArt_RangerCloak_Tint1_3Rare`  (Skins  ·  3Rare)
+- Ranger Cloak Skin 1 Epic  `GearArt_RangerCloak_Tint1_4Epic`  (Skins  ·  4Epic)
+- Ranger Cloak Skin 2 Rare  `GearArt_RangerCloak_Tint2_3Rare`  (Skins  ·  3Rare)
+- Ranger Cloak Skin 2 Epic  `GearArt_RangerCloak_Tint2_4Epic`  (Skins  ·  4Epic)
+- Ranger Cloak Skin 3 Rare  `GearArt_RangerCloak_Tint3_3Rare`  (Skins  ·  3Rare)
+- Ranger Cloak Skin 3 Epic  `GearArt_RangerCloak_Tint3_4Epic`  (Skins  ·  4Epic)
+- Ranger Cloak Skin 4 Rare  `GearArt_RangerCloak_Tint4_3Rare`  (Skins  ·  3Rare)
+- Ranger Cloak Skin 4 Epic  `GearArt_RangerCloak_Tint4_4Epic`  (Skins  ·  4Epic)
+- Ranger Cloak Skin 5 Rare  `GearArt_RangerCloak_Tint5_3Rare`  (Skins  ·  3Rare)
+- Ranger Cloak Skin 5 Epic  `GearArt_RangerCloak_Tint5_4Epic`  (Skins  ·  4Epic)
+- Ranger Cloak Skin 6 Rare  `GearArt_RangerCloak_Tint6_3Rare`  (Skins  ·  3Rare)
+- Ranger Cloak Skin 6 Epic  `GearArt_RangerCloak_Tint6_4Epic`  (Skins  ·  4Epic)
+- Ranger Cloak Skin 7 Rare  `GearArt_RangerCloak_Tint7_3Rare`  (Skins  ·  3Rare)
+- Ranger Cloak Skin 7 Epic  `GearArt_RangerCloak_Tint7_4Epic`  (Skins  ·  4Epic)
+- Ranger Cloak Skin 8 Rare  `GearArt_RangerCloak_Tint8_3Rare`  (Skins  ·  3Rare)
+- Ranger Cloak Skin 8 Epic  `GearArt_RangerCloak_Tint8_4Epic`  (Skins  ·  4Epic)
+- Ranger Cloak Skin 9 Rare  `GearArt_RangerCloak_Tint9_3Rare`  (Skins  ·  3Rare)
+- Ranger Cloak Skin 9 Epic  `GearArt_RangerCloak_Tint9_4Epic`  (Skins  ·  4Epic)
+- Rohan Cloak Skin 10 Rare  `GearArt_RohanCloak_Tint10_3Rare`  (Skins  ·  3Rare)
+- Rohan Cloak Skin 10 Epic  `GearArt_RohanCloak_Tint10_4Epic`  (Skins  ·  4Epic)
+- Rohan Cloak Skin 1 Rare  `GearArt_RohanCloak_Tint1_3Rare`  (Skins  ·  3Rare)
+- Rohan Cloak Skin 1 Epic  `GearArt_RohanCloak_Tint1_4Epic`  (Skins  ·  4Epic)
+- Rohan Cloak Skin 2 Rare  `GearArt_RohanCloak_Tint2_3Rare`  (Skins  ·  3Rare)
+- Rohan Cloak Skin 2 Epic  `GearArt_RohanCloak_Tint2_4Epic`  (Skins  ·  4Epic)
+- Rohan Cloak Skin 3 Rare  `GearArt_RohanCloak_Tint3_3Rare`  (Skins  ·  3Rare)
+- Rohan Cloak Skin 3 Epic  `GearArt_RohanCloak_Tint3_4Epic`  (Skins  ·  4Epic)
+- Rohan Cloak Skin 4 Rare  `GearArt_RohanCloak_Tint4_3Rare`  (Skins  ·  3Rare)
+- Rohan Cloak Skin 4 Epic  `GearArt_RohanCloak_Tint4_4Epic`  (Skins  ·  4Epic)
+- Rohan Cloak Skin 5 Rare  `GearArt_RohanCloak_Tint5_3Rare`  (Skins  ·  3Rare)
+- Rohan Cloak Skin 5 Epic  `GearArt_RohanCloak_Tint5_4Epic`  (Skins  ·  4Epic)
+- Rohan Cloak Skin 6 Rare  `GearArt_RohanCloak_Tint6_3Rare`  (Skins  ·  3Rare)
+- Rohan Cloak Skin 6 Epic  `GearArt_RohanCloak_Tint6_4Epic`  (Skins  ·  4Epic)
+- Rohan Cloak Skin 7 Rare  `GearArt_RohanCloak_Tint7_3Rare`  (Skins  ·  3Rare)
+- Rohan Cloak Skin 7 Epic  `GearArt_RohanCloak_Tint7_4Epic`  (Skins  ·  4Epic)
+- Rohan Cloak Skin 8 Rare  `GearArt_RohanCloak_Tint8_3Rare`  (Skins  ·  3Rare)
+- Rohan Cloak Skin 8 Epic  `GearArt_RohanCloak_Tint8_4Epic`  (Skins  ·  4Epic)
+- Rohan Cloak Skin 9 Rare  `GearArt_RohanCloak_Tint9_3Rare`  (Skins  ·  3Rare)
+- Rohan Cloak Skin 9 Epic  `GearArt_RohanCloak_Tint9_4Epic`  (Skins  ·  4Epic)
 
 ### Talion
-
-**Ringcraft**
-
-- Talion Ringcraft Skin 1 Rare  `GearArt_Talion_Ringcraft_Tint1_3Rare`  (Tint1)
-- Talion Ringcraft Skin 1 Epic  `GearArt_Talion_Ringcraft_Tint1_4Epic`  (Tint1)
-- Talion Ringcraft Skin 2 Rare  `GearArt_Talion_Ringcraft_Tint2_3Rare`  (Tint2)
-- Talion Ringcraft Skin 2 Epic  `GearArt_Talion_Ringcraft_Tint2_4Epic`  (Tint2)
-- Talion Ringcraft Skin 3 Rare  `GearArt_Talion_Ringcraft_Tint3_3Rare`  (Tint3)
-- Talion Ringcraft Skin 3 Epic  `GearArt_Talion_Ringcraft_Tint3_4Epic`  (Tint3)
-- Talion Ringcraft Skin 4 Rare  `GearArt_Talion_Ringcraft_Tint4_3Rare`  (Tint4)
-- Talion Ringcraft Skin 4 Epic  `GearArt_Talion_Ringcraft_Tint4_4Epic`  (Tint4)
-- Talion Ringcraft Skin 5 Rare  `GearArt_Talion_Ringcraft_Tint5_3Rare`  (Tint5)
-- Talion Ringcraft Skin 5 Epic  `GearArt_Talion_Ringcraft_Tint5_4Epic`  (Tint5)
-- Talion Ringcraft Skin 6 Rare  `GearArt_Talion_Ringcraft_Tint6_3Rare`  (Tint6)
-- Talion Ringcraft Skin 6 Epic  `GearArt_Talion_Ringcraft_Tint6_4Epic`  (Tint6)
-- Talion Ringcraft Skin 7 Rare  `GearArt_Talion_Ringcraft_Tint7_3Rare`  (Tint7)
-- Talion Ringcraft Skin 7 Epic  `GearArt_Talion_Ringcraft_Tint7_4Epic`  (Tint7)
+- Talion Ringcraft Skin 1 Rare  `GearArt_Talion_Ringcraft_Tint1_3Rare`  (Ringcraft  ·  Legendary  ·  Tint1)
+- Talion Ringcraft Skin 1 Epic  `GearArt_Talion_Ringcraft_Tint1_4Epic`  (Ringcraft  ·  Legendary  ·  Tint1)
+- Talion Ringcraft Skin 2 Rare  `GearArt_Talion_Ringcraft_Tint2_3Rare`  (Ringcraft  ·  Legendary  ·  Tint2)
+- Talion Ringcraft Skin 2 Epic  `GearArt_Talion_Ringcraft_Tint2_4Epic`  (Ringcraft  ·  Legendary  ·  Tint2)
+- Talion Ringcraft Skin 3 Rare  `GearArt_Talion_Ringcraft_Tint3_3Rare`  (Ringcraft  ·  Legendary  ·  Tint3)
+- Talion Ringcraft Skin 3 Epic  `GearArt_Talion_Ringcraft_Tint3_4Epic`  (Ringcraft  ·  Legendary  ·  Tint3)
+- Talion Ringcraft Skin 4 Rare  `GearArt_Talion_Ringcraft_Tint4_3Rare`  (Ringcraft  ·  Legendary  ·  Tint4)
+- Talion Ringcraft Skin 4 Epic  `GearArt_Talion_Ringcraft_Tint4_4Epic`  (Ringcraft  ·  Legendary  ·  Tint4)
+- Talion Ringcraft Skin 5 Rare  `GearArt_Talion_Ringcraft_Tint5_3Rare`  (Ringcraft  ·  Legendary  ·  Tint5)
+- Talion Ringcraft Skin 5 Epic  `GearArt_Talion_Ringcraft_Tint5_4Epic`  (Ringcraft  ·  Legendary  ·  Tint5)
+- Talion Ringcraft Skin 6 Rare  `GearArt_Talion_Ringcraft_Tint6_3Rare`  (Ringcraft  ·  Legendary  ·  Tint6)
+- Talion Ringcraft Skin 6 Epic  `GearArt_Talion_Ringcraft_Tint6_4Epic`  (Ringcraft  ·  Legendary  ·  Tint6)
+- Talion Ringcraft Skin 7 Rare  `GearArt_Talion_Ringcraft_Tint7_3Rare`  (Ringcraft  ·  Legendary  ·  Tint7)
+- Talion Ringcraft Skin 7 Epic  `GearArt_Talion_Ringcraft_Tint7_4Epic`  (Ringcraft  ·  Legendary  ·  Tint7)
 
 ### RohanHam
-
-**Rohan**
-
-- Rohan Ham Skin 1 Rare  `GearArt_RohanHam_Tint1_3Rare`  (3Rare)
-- Rohan Ham Skin 1 Epic  `GearArt_RohanHam_Tint1_4Epic`  (4Epic)
-- Rohan Ham Skin 2 Rare  `GearArt_RohanHam_Tint2_3Rare`  (3Rare)
-- Rohan Ham Skin 2 Epic  `GearArt_RohanHam_Tint2_4Epic`  (4Epic)
-- Rohan Ham Skin 3 Rare  `GearArt_RohanHam_Tint3_3Rare`  (3Rare)
-- Rohan Ham Skin 3 Epic  `GearArt_RohanHam_Tint3_4Epic`  (4Epic)
-- Rohan Ham Skin 4 Rare  `GearArt_RohanHam_Tint4_3Rare`  (3Rare)
-- Rohan Ham Skin 4 Epic  `GearArt_RohanHam_Tint4_4Epic`  (4Epic)
+- Rohan Ham Skin 1 Rare  `GearArt_RohanHam_Tint1_3Rare`  (Skins  ·  3Rare)
+- Rohan Ham Skin 1 Epic  `GearArt_RohanHam_Tint1_4Epic`  (Skins  ·  4Epic)
+- Rohan Ham Skin 2 Rare  `GearArt_RohanHam_Tint2_3Rare`  (Skins  ·  3Rare)
+- Rohan Ham Skin 2 Epic  `GearArt_RohanHam_Tint2_4Epic`  (Skins  ·  4Epic)
+- Rohan Ham Skin 3 Rare  `GearArt_RohanHam_Tint3_3Rare`  (Skins  ·  3Rare)
+- Rohan Ham Skin 3 Epic  `GearArt_RohanHam_Tint3_4Epic`  (Skins  ·  4Epic)
+- Rohan Ham Skin 4 Rare  `GearArt_RohanHam_Tint4_3Rare`  (Skins  ·  3Rare)
+- Rohan Ham Skin 4 Epic  `GearArt_RohanHam_Tint4_4Epic`  (Skins  ·  4Epic)
 
 ### Rohan
+- Rohan DLC Dominion Epic  `GearArt_Rohan_DLC_Dominion_4Epic`  (Rohan  ·  Dominion)
 
-**Rohan**
-
-- Rohan DLC Dominion Epic  `GearArt_Rohan_DLC_Dominion_4Epic`  (Dominion)
-
-## ARMOR
-
-### Armor
-
-**-**
-
+## Armor
 - Armor Data  `ArmorData`
 - Armor Gold  `ArmorGold`
-- Armor Setup  `ArmorSetup`
 - Armor Slot  `ArmorSlot`
 - Armor White  `ArmorWhite`
 - Assassin All  `Armor_Assassin_All`
@@ -1084,32 +847,15 @@
 - Armored  `Armored`
 - Armorer  `Armorer`
 
-## GEM
-
-### Gem
-
-**-**
-
+## Gem
 - Gem Affix Tree  `GemAffix_Tree`
 - Gem BG Prompt Bar  `GemBG_PromptBar`
-- Gem Combine FX  `GemCombineFX`
-- Gem Combine Meter  `GemCombineMeter`
-- Gem Combine Preview  `GemCombinePreview`
-- Gem Combine Tree  `GemCombineTree`
-- Gem Combine Green1  `GemCombine_Green1`
-- Gem Combine Green2  `GemCombine_Green2`
-- Gem Combine Red1  `GemCombine_Red1`
-- Gem Combine Red2  `GemCombine_Red2`
-- Gem Combine White1  `GemCombine_White1`
-- Gem Combine White2  `GemCombine_White2`
 - Gem Data  `GemData`
 - Gem Forge  `GemForge`
 - Gem Group Prompt  `GemGroupPrompt`
 - Gem Header  `GemHeader`
 - Gem Layer  `GemLayer`
 - Gem Layer Highlight  `GemLayerHighlight`
-- Gem Layer Combine Dialog Active  `GemLayer_CombineDialog_Active`
-- Gem Layer Combine Dialog Inactive  `GemLayer_CombineDialog_Inactive`
 - Gem Layer Header Active  `GemLayer_Header_Active`
 - Gem Layer Row1 Active  `GemLayer_Row1_Active`
 - Gem Layer Row1 Inactive  `GemLayer_Row1_Inactive`
@@ -1132,7 +878,6 @@
 - Gem Mini  `GemMini`
 - Gem Name  `GemName`
 - Gem Pane Highlight  `GemPane_Highlight`
-- Gem Preview Tree  `GemPreviewTree`
 - Gem Quantity  `GemQuantity`
 - Gem Row1 Damage  `GemRow1_Damage`
 - Gem Row1 Potency  `GemRow1_Potency`
@@ -1161,13 +906,8 @@
 - Gem Sockets Clear  `GemSocketsClear`
 - Gem Sockets Restrict  `GemSocketsRestrict`
 - Gem Tree  `GemTree`
-- Gem Tutorial Delay  `GemTutorial_Delay`
-- Gem Tutorial Delay Item  `GemTutorial_DelayItem`
-- Gem Upgrade Child Preview  `GemUpgrade_ChildPreview`
 - Gem Upgrade Tree  `GemUpgrade_Tree`
-- Combine  `Gem_Combine`
 - Full  `Gem_Full`
-- Green Base  `Gem_Green_1Base`
 - Green Forged  `Gem_Green_2Forged`
 - Green Crafted  `Gem_Green_3Crafted`
 - Green Mighty  `Gem_Green_4Mighty`
@@ -1183,7 +923,6 @@
 - Highlighted Overview  `Gem_Highlighted_Overview`
 - Highlighted Pane  `Gem_Highlighted_Pane`
 - Main Header Side  `Gem_MainHeader_Side`
-- Red Base  `Gem_Red_1Base`
 - Red Forged  `Gem_Red_2Forged`
 - Red Crafted  `Gem_Red_3Crafted`
 - Red Mighty  `Gem_Red_4Mighty`
@@ -1207,9 +946,6 @@
 - Slotted Overview Override  `Gem_Slotted_OverviewOverride`
 - Slotted Pane  `Gem_Slotted_Pane`
 - Socket  `Gem_Socket`
-- Tutorial A  `Gem_Tutorial_A`
-- Tutorial LStick And A  `Gem_Tutorial_LStickAndA`
-- White Base  `Gem_White_1Base`
 - White Forged  `Gem_White_2Forged`
 - White Crafted  `Gem_White_3Crafted`
 - White Mighty  `Gem_White_4Mighty`
@@ -1219,17 +955,8 @@
 - Gems State01  `Gems_State01`
 - Gems State02  `Gems_State02`
 - Gems State03  `Gems_State03`
-- Gems Step01  `Gems_Step01`
-- Gems Step02  `Gems_Step02`
-- Gems Step03  `Gems_Step03`
-- Gems Tutorial  `Gems_Tutorial`
 
-## RUNE
-
-### Rune
-
-**-**
-
+## Rune
 - Rune01 Fill  `Rune01_Fill`
 - Rune01 Filled Active  `Rune01_FilledActive`
 - Rune01 Filled Inactive  `Rune01_FilledInactive`
@@ -1274,8 +1001,6 @@
 - Rune Pick Up Exit  `RunePickUp_Exit`
 - Rune Pickup  `RunePickup`
 - Rune Resale Value  `RuneResaleValue`
-- Rune Select Preview Active  `RuneSelect_Preview_Active`
-- Rune Select Preview Deactivate  `RuneSelect_Preview_Deactivate`
 - Rune Sell Confirm  `RuneSellConfirm`
 - Rune Slot Unlock Purchase Widget  `RuneSlotUnlockPurchaseWidget`
 - Rune Slots  `RuneSlots`
@@ -1284,7 +1009,6 @@
 - Rune Unlock Confirm Inactive  `RuneUnlockConfirm_Inactive`
 - Rune Unlock Confirmation  `RuneUnlockConfirmation`
 - Rune Wraith Fire  `RuneWraithFire`
-- Default  `Rune_1Default`
 - Crafted  `Rune_2Crafted`
 - Forged  `Rune_3Forged`
 - Mighty  `Rune_4Mighty`
@@ -1310,7 +1034,6 @@
 - Death Pose Spr  `Rune_DeathPose_Spr`
 - Death Pose Unknown  `Rune_DeathPose_Unknown`
 - Drop  `Rune_Drop`
-- Green Base  `Rune_Green_1Base`
 - Green Forged  `Rune_Green_2Forged`
 - Green Crafted  `Rune_Green_3Crafted`
 - Green Mighty  `Rune_Green_4Mighty`
@@ -1354,7 +1077,6 @@
 - Morale Hit  `Rune_Morale_Hit_6`
 - Pick Up Hammer  `Rune_PickUpHammer`
 - Rare  `Rune_Rare`
-- Red Base  `Rune_Red_1Base`
 - Red Forged  `Rune_Red_2Forged`
 - Red Crafted  `Rune_Red_3Crafted`
 - Red Mighty  `Rune_Red_4Mighty`
@@ -1404,7 +1126,6 @@
 - Skin Red Damage  `Rune_Tint_Red_Damage`
 - Skin Silver Mirian  `Rune_Tint_Silver_Mirian`
 - Skin White Defenses  `Rune_Tint_White_Defenses`
-- White Base  `Rune_White_1Base`
 - White Forged  `Rune_White_2Forged`
 - White Crafted  `Rune_White_3Crafted`
 - White Mighty  `Rune_White_4Mighty`
@@ -1460,49 +1181,36 @@
 - Mighty Resell Value  `Runegem_4Mighty_Resell_Value`
 - Wondrous Resell Value  `Runegem_5Wondrous_Resell_Value`
 - All Resell Value  `Runegem_All_Resell_Value`
-- Green Health Base  `Runegem_Green_Health_1Base`
 - Green Health Forged  `Runegem_Green_Health_2Forged`
 - Green Health Crafted  `Runegem_Green_Health_3Crafted`
 - Green Health Mighty  `Runegem_Green_Health_4Mighty`
 - Green Health Wondrous  `Runegem_Green_Health_5Wondrous`
-- Red Dmg Base  `Runegem_Red_Dmg_1Base`
 - Red Dmg Forged  `Runegem_Red_Dmg_2Forged`
 - Red Dmg Crafted  `Runegem_Red_Dmg_3Crafted`
 - Red Dmg Mighty  `Runegem_Red_Dmg_4Mighty`
 - Red Dmg Wondrous  `Runegem_Red_Dmg_5Wondrous`
-- White Resource Base  `Runegem_White_Resource_1Base`
 - White Resource Forged  `Runegem_White_Resource_2Forged`
 - White Resource Crafted  `Runegem_White_Resource_3Crafted`
 - White Resource Mighty  `Runegem_White_Resource_4Mighty`
 - White Resource Wondrous  `Runegem_White_Resource_5Wondrous`
-- Runegemdata Green Health Base  `Runegemdata_Green_Health_1Base`
 - Runegemdata Green Health Forged  `Runegemdata_Green_Health_2Forged`
 - Runegemdata Green Health Crafted  `Runegemdata_Green_Health_3Crafted`
 - Runegemdata Green Health Mighty  `Runegemdata_Green_Health_4Mighty`
 - Runegemdata Green Health Wondrous  `Runegemdata_Green_Health_5Wondrous`
-- Runegemdata Red Damage Base  `Runegemdata_Red_Damage_1Base`
 - Runegemdata Red Damage Forged  `Runegemdata_Red_Damage_2Forged`
 - Runegemdata Red Damage Crafted  `Runegemdata_Red_Damage_3Crafted`
 - Runegemdata Red Damage Mighty  `Runegemdata_Red_Damage_4Mighty`
 - Runegemdata Red Damage Wondrous  `Runegemdata_Red_Damage_5Wondrous`
-- Runegemdata White Resource Base  `Runegemdata_White_Resource_1Base`
 - Runegemdata White Resource Forged  `Runegemdata_White_Resource_2Forged`
 - Runegemdata White Resource Crafted  `Runegemdata_White_Resource_3Crafted`
 - Runegemdata White Resource Mighty  `Runegemdata_White_Resource_4Mighty`
 - Runegemdata White Resource Wondrous  `Runegemdata_White_Resource_5Wondrous`
-- Runegems Base  `Runegems_1Base`
 - Runegems Forged  `Runegems_2Forged`
 - Runegems Crafted  `Runegems_3Crafted`
 - Runegems Mighty  `Runegems_4Mighty`
 - Runegems Wondrous  `Runegems_5Wondrous`
-- Runegems Base  `Runegems_Base`
 
-## RUNEGEM
-
-### Runegem
-
-**-**
-
+## Runegem
 - Runegem Dropper  `RunegemDropper`
 - Fake Resell Value  `Runegem_0Fake_Resell_Value`
 - Basic Resell Value  `Runegem_1Basic_Resell_Value`
@@ -1511,49 +1219,36 @@
 - Mighty Resell Value  `Runegem_4Mighty_Resell_Value`
 - Wondrous Resell Value  `Runegem_5Wondrous_Resell_Value`
 - All Resell Value  `Runegem_All_Resell_Value`
-- Green Health Base  `Runegem_Green_Health_1Base`
 - Green Health Forged  `Runegem_Green_Health_2Forged`
 - Green Health Crafted  `Runegem_Green_Health_3Crafted`
 - Green Health Mighty  `Runegem_Green_Health_4Mighty`
 - Green Health Wondrous  `Runegem_Green_Health_5Wondrous`
-- Red Dmg Base  `Runegem_Red_Dmg_1Base`
 - Red Dmg Forged  `Runegem_Red_Dmg_2Forged`
 - Red Dmg Crafted  `Runegem_Red_Dmg_3Crafted`
 - Red Dmg Mighty  `Runegem_Red_Dmg_4Mighty`
 - Red Dmg Wondrous  `Runegem_Red_Dmg_5Wondrous`
-- White Resource Base  `Runegem_White_Resource_1Base`
 - White Resource Forged  `Runegem_White_Resource_2Forged`
 - White Resource Crafted  `Runegem_White_Resource_3Crafted`
 - White Resource Mighty  `Runegem_White_Resource_4Mighty`
 - White Resource Wondrous  `Runegem_White_Resource_5Wondrous`
-- Runegemdata Green Health Base  `Runegemdata_Green_Health_1Base`
 - Runegemdata Green Health Forged  `Runegemdata_Green_Health_2Forged`
 - Runegemdata Green Health Crafted  `Runegemdata_Green_Health_3Crafted`
 - Runegemdata Green Health Mighty  `Runegemdata_Green_Health_4Mighty`
 - Runegemdata Green Health Wondrous  `Runegemdata_Green_Health_5Wondrous`
-- Runegemdata Red Damage Base  `Runegemdata_Red_Damage_1Base`
 - Runegemdata Red Damage Forged  `Runegemdata_Red_Damage_2Forged`
 - Runegemdata Red Damage Crafted  `Runegemdata_Red_Damage_3Crafted`
 - Runegemdata Red Damage Mighty  `Runegemdata_Red_Damage_4Mighty`
 - Runegemdata Red Damage Wondrous  `Runegemdata_Red_Damage_5Wondrous`
-- Runegemdata White Resource Base  `Runegemdata_White_Resource_1Base`
 - Runegemdata White Resource Forged  `Runegemdata_White_Resource_2Forged`
 - Runegemdata White Resource Crafted  `Runegemdata_White_Resource_3Crafted`
 - Runegemdata White Resource Mighty  `Runegemdata_White_Resource_4Mighty`
 - Runegemdata White Resource Wondrous  `Runegemdata_White_Resource_5Wondrous`
-- Runegems Base  `Runegems_1Base`
 - Runegems Forged  `Runegems_2Forged`
 - Runegems Crafted  `Runegems_3Crafted`
 - Runegems Mighty  `Runegems_4Mighty`
 - Runegems Wondrous  `Runegems_5Wondrous`
-- Runegems Base  `Runegems_Base`
 
-## WEAPON
-
-### Weapon
-
-**-**
-
+## Weapon
 - Weapon Ability  `WeaponAbility`
 - Weapon Ability Bow  `WeaponAbility_Bow`
 - Weapon Ability Bow Charge  `WeaponAbility_Bow_Charge`
@@ -1592,23 +1287,6 @@
 - Weapon Lute  `WeaponLute`
 - Weapon Mace  `WeaponMace`
 - Weapon Mace Set  `WeaponMaceSet`
-- Weapon Mode AOE  `WeaponModeAOE`
-- Weapon Mode Audio  `WeaponModeAudio`
-- Weapon Mode Camera FX  `WeaponModeCameraFX`
-- Weapon Mode Data  `WeaponModeData`
-- Weapon Mode FX  `WeaponModeFX`
-- Weapon Mode FXAlt  `WeaponModeFXAlt`
-- Weapon Mode Free Aim  `WeaponModeFreeAim`
-- Weapon Mode Global FXContext  `WeaponModeGlobalFXContext`
-- Weapon Mode Item Giver Spatial  `WeaponModeItemGiverSpatial`
-- Weapon Mode Material Transform  `WeaponModeMaterialTransform`
-- Weapon Mode Predicate  `WeaponModePredicate`
-- Weapon Mode Slow Mo  `WeaponModeSlowMo`
-- Weapon Mode Target FX  `WeaponModeTargetFX`
-- Weapon Mode UIMode  `WeaponModeUIMode`
-- Weapon Mode Vision Mode  `WeaponModeVisionMode`
-- Weapon Mode Ranged Uppr Body Mounted  `WeaponMode_Ranged_UpprBody_Mounted`
-- Weapon Mode Ranged Uppr Body Rails  `WeaponMode_Ranged_UpprBody_Rails`
 - Weapon Quest Countering  `WeaponQuest_1_1_Countering`
 - Weapon Quest Chord Kill  `WeaponQuest_1_2_Chord_Kill`
 - Weapon Quest AOE  `WeaponQuest_1_3_AOE`
@@ -1653,7 +1331,6 @@
 - Ability  `Weapon_Ability`
 - Ability Rune Dur  `Weapon_Ability_Rune_Dur`
 - Abilty Dagger AOE Tick  `Weapon_Abilty_Dagger_AOE_Tick`
-- Base  `Weapon_Base`
 - Bloody  `Weapon_Bloody`
 - Cursed  `Weapon_Cursed`
 - Cursed Active  `Weapon_Cursed_Active`
@@ -1699,15 +1376,5 @@
 - Tip  `Weapon_Tip`
 - XSwing  `Weapon_XSwing`
 - Bow  `Weapons_Bow`
-- Bow Free Cam  `Weapons_Bow_FreeCam`
-- Bow Sub Menu  `Weapons_Bow_SubMenu`
 - Dagger  `Weapons_Dagger`
-- Dagger Free Cam  `Weapons_Dagger_FreeCam`
-- Dagger Sub Menu  `Weapons_Dagger_SubMenu`
-- Moment  `Weapons_Moment`
-- Moment2  `Weapons_Moment2`
-- Moment3  `Weapons_Moment3`
-- Select  `Weapons_Select`
 - Sword  `Weapons_Sword`
-- Sword Free Cam  `Weapons_Sword_FreeCam`
-- Sword Sub Menu  `Weapons_Sword_SubMenu`

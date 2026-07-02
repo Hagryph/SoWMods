@@ -159,21 +159,37 @@ void HagUI::AddButton(int page, const char* label, void (*onClick)()) {
     if (page >= 0 && page < (int)pages_.size()) pages_[page].widgets.push_back({ WButton, label ? label : "", nullptr, onClick });
 }
 void HagUI::AddList(int page, const char* const* items, const char* const* cats, int count) {
-    if (page < 0 || page >= (int)pages_.size() || count < 0) return;
+    // legacy single-facet list: one "Filter" facet built from cats
+    const char* names[1] = { "Filter" };
+    AddFacetedList(page, names, 1, items, count, cats);
+}
+void HagUI::AddFacetedList(int page, const char* const* facetNames, int facetCount,
+                           const char* const* displays, int itemCount, const char* const* facetValues) {
+    if (page < 0 || page >= (int)pages_.size() || itemCount < 0 || facetCount < 0) return;
     Widget w{}; w.type = WList; w.toggle = nullptr; w.onClick = nullptr;
-    w.items.reserve(count); w.cats.reserve(count);
-    for (int i = 0; i < count; ++i) {
-        w.items.emplace_back(items && items[i] ? items[i] : "");
-        w.cats.emplace_back(cats && cats[i] ? cats[i] : "");
+    w.facets.resize(facetCount);
+    for (int f = 0; f < facetCount; ++f)
+        w.facets[f].name = (facetNames && facetNames[f]) ? facetNames[f] : "";
+
+    auto blank = [](const std::string& v) { return v.empty() || v == "-"; };
+    w.items.reserve(itemCount); w.itemFacetIdx.reserve(itemCount);
+    for (int i = 0; i < itemCount; ++i) {
+        w.items.emplace_back(displays && displays[i] ? displays[i] : "");
+        std::vector<int> idx(facetCount, -1);
+        for (int f = 0; f < facetCount; ++f) {
+            // facetValues is row-major itemCount x facetCount (see HagUIAPI.h)
+            std::string v = facetValues && facetValues[i * facetCount + f]
+                                ? facetValues[i * facetCount + f] : "";
+            if (blank(v)) continue;                     // no value for this facet -> stays -1
+            auto& opts = w.facets[f].opts;
+            int found = -1;
+            for (int j = 0; j < (int)opts.size(); ++j) if (opts[j] == v) { found = j; break; }
+            if (found < 0) { found = (int)opts.size(); opts.push_back(v); }
+            idx[f] = found;
+        }
+        w.itemFacetIdx.push_back(std::move(idx));
     }
-    // filter dropdown = "All" + the distinct buckets in first-seen order
-    w.filters.emplace_back("All");
-    for (const auto& c : w.cats) {
-        if (c.empty()) continue;
-        bool seen = false;
-        for (const auto& f : w.filters) if (f == c) { seen = true; break; }
-        if (!seen) w.filters.push_back(c);
-    }
+    for (auto& f : w.facets) f.sel.assign(f.opts.size(), 0);
     pages_[page].widgets.push_back(std::move(w));
 }
 

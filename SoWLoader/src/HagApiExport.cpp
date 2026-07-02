@@ -10,8 +10,12 @@ void ApiAddLabel(int p, const char* t)                     { sow::HagUI::Get().A
 void ApiAddToggle(int p, const char* l, bool* v)           { sow::HagUI::Get().AddToggle(p, l, v); }
 void ApiAddButton(int p, const char* l, void (*f)())       { sow::HagUI::Get().AddButton(p, l, f); }
 void ApiAddList(int p, const char* const* it, const char* const* ct, int n) { sow::HagUI::Get().AddList(p, it, ct, n); }
+void ApiAddFacetedList(int p, const char* const* fn, int fc, const char* const* d, int ic, const char* const* fv) {
+    sow::HagUI::Get().AddFacetedList(p, fn, fc, d, ic, fv);
+}
 
-HagUIAPI g_api = { HAGUI_ABI_VERSION, &ApiRegisterPage, &ApiAddLabel, &ApiAddToggle, &ApiAddButton, &ApiAddList };
+HagUIAPI g_api = { HAGUI_ABI_VERSION, &ApiRegisterPage, &ApiAddLabel, &ApiAddToggle, &ApiAddButton,
+                   &ApiAddList, &ApiAddFacetedList };
 }  // namespace
 
 // Any ABI from 1..current is served the same struct: the layout is append-only, so a v1 caller simply

@@ -632,81 +632,151 @@ void Overlay::DrawHub() {
                               ImVec2(pa.x + (pb.x - pa.x - lw) * 0.5f, pa.y + (pb.y - pa.y - lh) * 0.5f),
                               uAccent, wd.text.c_str(), XS);
                 } else if (wd.type == HagUI::WList) {
-                    // ---- searchable + filterable + scrollable item list ----
-                    // Mod content is clamped to the drawable band: BELOW the tab bar and ABOVE the
-                    // bottom-right corner marker (the BR flourish sits at AS y=440). ImGui's child
-                    // window supplies the scrollbar + wheel/drag and clips every row to the box.
+                    // ---- search + MULTI-FACET filter + grouped, scrollable item list ----
+                    // Clamped to the drawable band (below the tabs, above the BR corner marker @ AS 440).
+                    // Row 1: search + Clear. Row 2: one multi-select dropdown per facet. Then a grouped
+                    // list (header on facet 0, sub-header on facet 1). ImGui's child gives scrollbar/wheel.
                     const float listX = 60.0f, listW = 712.0f;
-                    const float rowAS = ry, listTopAS = ry + 34.0f, listBotAS = 434.0f;
-                    ImGui::PushFont(fBody_, 16.0f * s);
-                    // input / text / border theme (black + gold)
-                    ImGui::PushStyleColor(ImGuiCol_FrameBg,        IM_COL32(0x23, 0x1E, 0x16, 235));
-                    ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, IM_COL32(0x2C, 0x25, 0x19, 235));
-                    ImGui::PushStyleColor(ImGuiCol_FrameBgActive,  IM_COL32(0x2C, 0x25, 0x19, 255));
-                    ImGui::PushStyleColor(ImGuiCol_Text,           uText);
-                    ImGui::PushStyleColor(ImGuiCol_TextDisabled,   uFaint);
-                    ImGui::PushStyleColor(ImGuiCol_Border,         IM_COL32(0xE0, 0xB3, 0x4A, 90));
-                    // selected/hovered row = gold tint
-                    ImGui::PushStyleColor(ImGuiCol_Header,         IM_COL32(0xE0, 0xB3, 0x4A, 56));
-                    ImGui::PushStyleColor(ImGuiCol_HeaderHovered,  IM_COL32(0xE0, 0xB3, 0x4A, 82));
-                    ImGui::PushStyleColor(ImGuiCol_HeaderActive,   IM_COL32(0xE0, 0xB3, 0x4A, 110));
-                    // scrollbar = gold on near-black
-                    ImGui::PushStyleColor(ImGuiCol_ChildBg,              IM_COL32(0x12, 0x10, 0x13, 180));
-                    ImGui::PushStyleColor(ImGuiCol_ScrollbarBg,          IM_COL32(0x0A, 0x0A, 0x0C, 120));
-                    ImGui::PushStyleColor(ImGuiCol_ScrollbarGrab,        IM_COL32(0xB8, 0x86, 0x2F, 160));
-                    ImGui::PushStyleColor(ImGuiCol_ScrollbarGrabHovered, IM_COL32(0xE0, 0xB3, 0x4A, 200));
-                    ImGui::PushStyleColor(ImGuiCol_ScrollbarGrabActive,  IM_COL32(0xE0, 0xB3, 0x4A, 240));
+                    const float searchAS = ry, filterAS = ry + 30.0f, listTopAS = ry + 62.0f, listBotAS = 434.0f;
+                    ImGui::PushFont(fBody_, 15.0f * s);
+                    // theme (black + gold): inputs, text, borders, selectable/header, buttons, scrollbar
+                    ImGui::PushStyleColor(ImGuiCol_FrameBg,        IM_COL32(0x23, 0x1E, 0x16, 235));  // 1
+                    ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, IM_COL32(0x2C, 0x25, 0x19, 235));  // 2
+                    ImGui::PushStyleColor(ImGuiCol_FrameBgActive,  IM_COL32(0x2C, 0x25, 0x19, 255));  // 3
+                    ImGui::PushStyleColor(ImGuiCol_Text,           uText);                            // 4
+                    ImGui::PushStyleColor(ImGuiCol_TextDisabled,   uFaint);                           // 5
+                    ImGui::PushStyleColor(ImGuiCol_Border,         IM_COL32(0xE0, 0xB3, 0x4A, 90));   // 6
+                    ImGui::PushStyleColor(ImGuiCol_Header,         IM_COL32(0xE0, 0xB3, 0x4A, 56));   // 7
+                    ImGui::PushStyleColor(ImGuiCol_HeaderHovered,  IM_COL32(0xE0, 0xB3, 0x4A, 82));   // 8
+                    ImGui::PushStyleColor(ImGuiCol_HeaderActive,   IM_COL32(0xE0, 0xB3, 0x4A, 110));  // 9
+                    ImGui::PushStyleColor(ImGuiCol_CheckMark,      uAccent);                          // 10
+                    ImGui::PushStyleColor(ImGuiCol_Button,         IM_COL32(0x23, 0x1E, 0x16, 235));  // 11
+                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered,  IM_COL32(0x3A, 0x30, 0x1E, 255));  // 12
+                    ImGui::PushStyleColor(ImGuiCol_ButtonActive,   IM_COL32(0x2C, 0x25, 0x19, 255));  // 13
+                    ImGui::PushStyleColor(ImGuiCol_PopupBg,        IM_COL32(0x14, 0x12, 0x10, 250));  // 14
+                    ImGui::PushStyleColor(ImGuiCol_ChildBg,              IM_COL32(0x12, 0x10, 0x13, 180)); // 15
+                    ImGui::PushStyleColor(ImGuiCol_ScrollbarBg,          IM_COL32(0x0A, 0x0A, 0x0C, 120)); // 16
+                    ImGui::PushStyleColor(ImGuiCol_ScrollbarGrab,        IM_COL32(0xB8, 0x86, 0x2F, 160)); // 17
+                    ImGui::PushStyleColor(ImGuiCol_ScrollbarGrabHovered, IM_COL32(0xE0, 0xB3, 0x4A, 200)); // 18
+                    ImGui::PushStyleColor(ImGuiCol_ScrollbarGrabActive,  IM_COL32(0xE0, 0xB3, 0x4A, 240)); // 19
 
-                    // search box (left) + filter dropdown (right)
-                    ImGui::SetCursorScreenPos(ImVec2(X(listX), Y(rowAS)));
-                    ImGui::SetNextItemWidth(listW * 0.60f * sx);
+                    // any active filter/search? (drives the Clear button)
+                    bool anyActive = wd.search[0] != '\0';
+                    for (const auto& f : wd.facets) if (f.selCount() > 0) { anyActive = true; break; }
+
+                    // --- row 1: search box + Clear ---
+                    ImGui::SetCursorScreenPos(ImVec2(X(listX), Y(searchAS)));
+                    ImGui::SetNextItemWidth(listW * 0.74f * sx);
                     ImGui::InputTextWithHint("##search", "search\xE2\x80\xA6", wd.search, sizeof(wd.search));
-                    ImGui::SameLine(0.0f, 12.0f * sx);
-                    ImGui::SetNextItemWidth(listW * 0.28f * sx);
-                    if (wd.filterSel < 0 || wd.filterSel >= (int)wd.filters.size()) wd.filterSel = 0;
-                    const char* fprev = wd.filters.empty() ? "All" : wd.filters[wd.filterSel].c_str();
-                    if (ImGui::BeginCombo("##filter", fprev)) {
-                        for (int fi = 0; fi < (int)wd.filters.size(); ++fi) {
-                            const bool selF = fi == wd.filterSel;
-                            if (ImGui::Selectable(wd.filters[fi].c_str(), selF)) wd.filterSel = fi;
-                            if (selF) ImGui::SetItemDefaultFocus();
+                    ImGui::SameLine(0.0f, 10.0f * sx);
+                    if (!anyActive) ImGui::BeginDisabled();
+                    if (ImGui::Button("Clear", ImVec2(listW * 0.22f * sx, 0))) {
+                        wd.search[0] = '\0';
+                        for (auto& f : wd.facets) std::fill(f.sel.begin(), f.sel.end(), (char)0);
+                    }
+                    if (!anyActive) ImGui::EndDisabled();
+
+                    // --- row 2: one multi-select dropdown per (non-empty) facet ---
+                    int nf = 0; for (const auto& f : wd.facets) if (!f.opts.empty()) ++nf;
+                    const float fw = nf > 0 ? (listW / nf - 6.0f) * sx : listW * sx;
+                    ImGui::SetCursorScreenPos(ImVec2(X(listX), Y(filterAS)));
+                    bool firstF = true;
+                    for (int fi = 0; fi < (int)wd.facets.size(); ++fi) {
+                        const HagUI::Facet& F = wd.facets[fi];
+                        if (F.opts.empty()) continue;
+                        if (!firstF) ImGui::SameLine(0.0f, 6.0f * sx);
+                        firstF = false;
+                        const int sc = F.selCount();
+                        std::string lbl = F.name;
+                        if (sc > 0) lbl += " (" + std::to_string(sc) + ")";
+                        ImGui::SetNextItemWidth(fw);
+                        ImGui::PushID(fi);
+                        if (ImGui::BeginCombo("##facet", lbl.c_str(), ImGuiComboFlags_HeightLargest)) {
+                            for (int j = 0; j < (int)F.opts.size(); ++j) {
+                                bool b = F.sel[j] != 0;
+                                ImGui::PushID(j);
+                                if (ImGui::Checkbox(F.opts[j].c_str(), &b)) F.sel[j] = b ? 1 : 0;
+                                ImGui::PopID();
+                            }
+                            ImGui::EndCombo();
                         }
-                        ImGui::EndCombo();
+                        ImGui::PopID();
                     }
 
-                    // build the filtered view (filter bucket + case-insensitive substring search)
+                    // --- filter + search over items ---
                     auto low = [](std::string v) {
                         for (auto& c : v) c = (char)::tolower((unsigned char)c); return v; };
                     const std::string q = low(wd.search);
-                    const std::string fsel = wd.filters.empty() ? std::string() : wd.filters[wd.filterSel];
                     std::vector<int> vis; vis.reserve(wd.items.size());
                     for (int k = 0; k < (int)wd.items.size(); ++k) {
-                        if (wd.filterSel > 0 && wd.cats[k] != fsel) continue;
+                        bool ok = true;
+                        for (int fi = 0; fi < (int)wd.facets.size() && ok; ++fi) {
+                            const HagUI::Facet& F = wd.facets[fi];
+                            if (F.selCount() == 0) continue;                 // facet inactive
+                            const int idx = wd.itemFacetIdx[k][fi];          // OR within facet
+                            if (idx < 0 || !F.sel[idx]) ok = false;          // AND across facets
+                        }
+                        if (!ok) continue;
                         if (!q.empty() && low(wd.items[k]).find(q) == std::string::npos) continue;
                         vis.push_back(k);
                     }
 
-                    // scrolling list child (border on; ImGui adds the scrollbar when it overflows and
-                    // clips rows to the box). Inner padding insets the text off the gold border.
+                    // --- grouped, scrolling list ---
                     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(10.0f * sx, 6.0f * sy));
                     ImGui::SetCursorScreenPos(ImVec2(X(listX), Y(listTopAS)));
                     ImGui::BeginChild("##itemlist", ImVec2(listW * sx, (listBotAS - listTopAS) * sy),
                                       true, ImGuiWindowFlags_None);
                     if (vis.empty()) {
-                        ImGui::TextDisabled("no matches");
+                        ImGui::TextDisabled("no items match the current filters");
                     } else {
-                        ImGuiListClipper clip; clip.Begin((int)vis.size());
-                        while (clip.Step())
-                            for (int row = clip.DisplayStart; row < clip.DisplayEnd; ++row) {
-                                const int k = vis[row];
-                                ImGui::PushID(k);
-                                if (ImGui::Selectable(wd.items[k].c_str(), wd.listSel == k)) wd.listSel = k;
-                                ImGui::PopID();
+                        const bool haveG0 = !wd.facets.empty(), haveG1 = wd.facets.size() > 1;
+                        int lastG0 = -2, lastG1 = -2;
+                        for (int k : vis) {
+                            // group header (facet 0) + sub-header (facet 1)
+                            if (haveG0) {
+                                const int g0 = wd.itemFacetIdx[k][0];
+                                if (g0 != lastG0) {
+                                    lastG0 = g0; lastG1 = -2;
+                                    ImGui::Dummy(ImVec2(0, 3.0f * sy));
+                                    ImGui::PushFont(fTab_, 15.0f * s);
+                                    ImGui::PushStyleColor(ImGuiCol_Text, uAccent);
+                                    ImGui::TextUnformatted(g0 >= 0 ? wd.facets[0].opts[g0].c_str() : "Other");
+                                    ImGui::PopStyleColor(); ImGui::PopFont();
+                                    ImGui::PushStyleColor(ImGuiCol_Separator, IM_COL32(0xE0, 0xB3, 0x4A, 60));
+                                    ImGui::Separator();
+                                    ImGui::PopStyleColor();
+                                }
                             }
+                            if (haveG1) {
+                                const int g1 = wd.itemFacetIdx[k][1];
+                                if (g1 >= 0 && g1 != lastG1) {
+                                    lastG1 = g1;
+                                    ImGui::PushStyleColor(ImGuiCol_Text, uDim);
+                                    ImGui::TextUnformatted(("  " + wd.facets[1].opts[g1]).c_str());
+                                    ImGui::PopStyleColor();
+                                }
+                            }
+                            // right-aligned dim tag = the remaining facets (set / rarity / tier ...)
+                            std::string tag;
+                            for (int fi = 2; fi < (int)wd.facets.size(); ++fi) {
+                                const int idx = wd.itemFacetIdx[k][fi];
+                                if (idx >= 0) { if (!tag.empty()) tag += "  \xC2\xB7  "; tag += wd.facets[fi].opts[idx]; }
+                            }
+                            ImGui::PushID(k);
+                            if (ImGui::Selectable(wd.items[k].c_str(), wd.listSel == k)) wd.listSel = k;
+                            if (!tag.empty()) {
+                                const float tw = ImGui::CalcTextSize(tag.c_str()).x;
+                                ImGui::SameLine();
+                                const float rx = ImGui::GetContentRegionMax().x - tw;
+                                if (rx > ImGui::GetCursorPosX()) ImGui::SetCursorPosX(rx);
+                                ImGui::TextDisabled("%s", tag.c_str());
+                            }
+                            ImGui::PopID();
+                        }
                     }
                     ImGui::EndChild();
                     ImGui::PopStyleVar();
-                    ImGui::PopStyleColor(14);
+                    ImGui::PopStyleColor(19);
                     ImGui::PopFont();
                     ry = listBotAS + 10.0f;
                 } else {
