@@ -406,12 +406,13 @@ void Overlay::LoadFonts() {
     auto add = [&](const char* path) -> ImFont* {
         return io.Fonts->AddFontFromFileTTF(path, base, nullptr, kRanges);  // nullptr if missing (safe)
     };
-    fBody_  = add("C:\\Windows\\Fonts\\segoeui.ttf");    // first == default font
-    fKick_  = add("C:\\Windows\\Fonts\\segoeuib.ttf");
-    fTab_   = add("C:\\Windows\\Fonts\\segoeuib.ttf");
-    fSmall_ = add("C:\\Windows\\Fonts\\segoeui.ttf");
-    fFoot_  = add("C:\\Windows\\Fonts\\segoeuib.ttf");
-    fWord_  = add("C:\\Windows\\Fonts\\georgiab.ttf");
+    // Bahnschrift (Windows DIN) is a narrow/condensed sans — much tighter than Segoe UI.
+    fBody_  = add("C:\\Windows\\Fonts\\bahnschrift.ttf");   // first == default font
+    fKick_  = add("C:\\Windows\\Fonts\\bahnschrift.ttf");
+    fTab_   = add("C:\\Windows\\Fonts\\bahnschrift.ttf");
+    fSmall_ = add("C:\\Windows\\Fonts\\bahnschrift.ttf");
+    fFoot_  = add("C:\\Windows\\Fonts\\bahnschrift.ttf");
+    fWord_  = add("C:\\Windows\\Fonts\\georgiab.ttf");      // serif hero wordmark
     io.Fonts->Build();
 }
 
@@ -465,17 +466,16 @@ void Overlay::DrawHub() {
             return f ? f->CalcTextSizeA(px, 3.4e38f, 0.0f, t) : ImGui::CalcTextSize(t);
         };
 
-        // ---- left accent: glow (x0..30, alpha 26->0) + rail (x0..6, vgrad accent->accent-dim),
-        //      both MASKED to the rounded card (draw card-wide rounded-left, clip to the band width) ----
-        auto glowLayer = [&](float wpx, int a) {
-            dl->PushClipRect(p0, ImVec2(p0.x + wpx, p0.y + ch), true);
-            dl->AddRectFilled(p0, ImVec2(p0.x + cw, p0.y + ch), IM_COL32(0xE0, 0xB3, 0x4A, a), r, ImDrawFlags_RoundCornersLeft);
-            dl->PopClipRect();
-        };
-        glowLayer(30.0f * sx, 10);
-        glowLayer(20.0f * sx, 16);
-        glowLayer(12.0f * sx, 24);
-        dl->PushClipRect(p0, ImVec2(p0.x + 6.0f * sx, p0.y + ch), true);
+        // ---- left accent ----
+        const float glowW = 30.0f * sx, railW = 6.0f * sx;
+        // glow: ONE smooth horizontal fade (gold -> transparent), inset by the radius. Replaces the
+        // banded multi-layer glow that looked mangled; single gradient = no visible steps/arcs.
+        dl->AddRectFilledMultiColor(ImVec2(p0.x, p0.y + r), ImVec2(p0.x + glowW, p0.y + ch - r),
+            IM_COL32(0xE0, 0xB3, 0x4A, 66), IM_COL32(0xE0, 0xB3, 0x4A, 0),
+            IM_COL32(0xE0, 0xB3, 0x4A, 0),  IM_COL32(0xE0, 0xB3, 0x4A, 66));
+        // rail: bright vertical gradient, MASKED to the rounded card (clip a card-wide RoundedVGrad to
+        // the 6px band so its left corners follow the card radius) — the rail the user approved.
+        dl->PushClipRect(p0, ImVec2(p0.x + railW, p0.y + ch), true);
         RoundedVGrad(dl, p0, ImVec2(p0.x + cw, p0.y + ch),
                      IM_COL32(0xE0, 0xB3, 0x4A, 255), IM_COL32(0xB8, 0x86, 0x2F, 255), r);
         dl->PopClipRect();
