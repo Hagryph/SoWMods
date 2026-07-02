@@ -68,17 +68,12 @@ void Loader::Worker() {
 
     log.Line("[worker] injection point VALIDATED — proxy is live in the game process.");
 
-    // Game-driven init: hook the front-end menu's root-UI-layer constructor so the overlay
-    // initializes exactly when the start menu is displayed. The static target exists from module
-    // load and the menu appears seconds later, so hooking it now is safe.
+    // Game-driven init: hook the front-end menu's root-UI-layer constructor. The overlay installs
+    // ONLY when that ctor actually runs (the start menu is really being built) — a deterministic
+    // signal, no timer/fallback. A timed fallback races the ctor and installs at an arbitrary
+    // moment (mid-load), which hangs the game; we do not do that.
     log.Line("[worker] installing start-menu (CUIFrontEndRootLayer ctor) trigger ...");
     GameHooks::Get().Install();
-
-    // Last-resort safety net only: the CUIFrontEndRootLayer ctor is the real trigger and fires
-    // ~33s in (start-menu build), so this long timeout lets the ctor win under normal conditions;
-    // the fallback installs the overlay only if the menu never appears (e.g. a very slow load).
-    ::Sleep(90000);
-    GameHooks::Get().InstallOverlayFallback();
     // TODO(next milestone): enumerate SoWLoader\\mods\\*.dll and LoadLibrary each here.
 }
 

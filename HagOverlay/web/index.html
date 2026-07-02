@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HagUI</title>
+<style>
+  :root{
+    --bg0:#0A0A0C; --bg1:#121013; --panel:#1A1712; --panel2:#231E16; --warm:#241D0F;
+    --accent:#E0B34A; --accent-dim:#B8862F; --text:#ECE6DA; --text-dim:#9C9486; --text-faint:#6B6456;
+    --serif: "Constantia","Georgia","Times New Roman",serif;
+    --sans: "Segoe UI",system-ui,sans-serif;
+  }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  html,body{ height:100%; width:100%; overflow:hidden; }
+  body{
+    font-family:var(--sans);
+    background:
+      radial-gradient(120% 90% at 86% 8%, rgba(36,29,15,.55) 0%, rgba(36,29,15,0) 55%),
+      linear-gradient(180deg,var(--bg1) 0%, var(--bg0) 100%);
+    color:var(--text);
+    display:flex; align-items:center; justify-content:center;
+    user-select:none; cursor:default;
+    animation:fade .18s ease-out;
+  }
+  @keyframes fade{ from{opacity:0} to{opacity:1} }
+
+  .card{
+    position:relative;
+    width:min(64vw,860px); height:min(64vh,470px);
+    background:rgba(26,23,18,.97);
+    border:1px solid rgba(224,179,74,.42);
+    border-radius:14px;
+    box-shadow:0 3px 22px rgba(0,0,0,.55), 0 12px 60px rgba(0,0,0,.45);
+    padding:34px 60px;
+    overflow:hidden;
+    animation:rise .22s cubic-bezier(.2,.7,.2,1);
+  }
+  @keyframes rise{ from{transform:translateY(10px) scale(.99); opacity:0} to{transform:none; opacity:1} }
+  /* left accent rail */
+  .card::before{
+    content:""; position:absolute; left:0; top:0; bottom:0; width:6px;
+    background:linear-gradient(180deg,var(--accent),var(--accent-dim));
+  }
+  .card::after{
+    content:""; position:absolute; left:6px; top:0; bottom:0; width:28px;
+    background:linear-gradient(90deg,rgba(224,179,74,.20),rgba(224,179,74,0));
+    pointer-events:none;
+  }
+  /* corner flourishes */
+  .flourish{ position:absolute; width:26px; height:18px; border:0 solid rgba(224,179,74,.30); }
+  .fl-tl{ left:30px; top:22px; border-left-width:2px; border-top-width:2px; }
+  .fl-br{ right:30px; bottom:22px; border-right-width:2px; border-bottom-width:2px; }
+
+  .tabs{ display:flex; gap:34px; align-items:flex-end; border-bottom:1px solid rgba(224,179,74,.14); padding-bottom:8px; }
+  .tab{ font-size:15px; letter-spacing:.14em; color:var(--text-dim); cursor:pointer; padding-bottom:6px; position:relative; }
+  .tab:hover{ color:var(--text); }
+  .tab.active{ color:var(--accent); }
+  .tab.active::after{ content:""; position:absolute; left:0; right:0; bottom:-9px; height:2px; background:var(--accent); }
+
+  .content{ padding-top:30px; }
+  .kicker{ font-family:var(--serif); font-size:13px; letter-spacing:.5em; color:var(--text-faint); }
+  .wordmark{ font-family:var(--serif); font-weight:700; font-size:64px; line-height:1.05; margin-top:10px; }
+  .wordmark .g{ color:var(--text); } .wordmark .u{ color:var(--accent); }
+  .divider{ width:250px; height:2px; margin:18px 0 16px;
+            background:linear-gradient(90deg,rgba(224,179,74,.6),rgba(224,179,74,0)); }
+  .tagline{ font-family:var(--serif); font-size:18px; color:var(--text-dim); max-width:640px; line-height:1.5; }
+
+  .footer{ position:absolute; right:30px; bottom:26px; font-family:var(--serif);
+           font-size:11px; letter-spacing:.18em; color:var(--text-faint); }
+  .actions{ position:absolute; left:60px; bottom:40px; display:flex; align-items:center; gap:16px; }
+  .btn{ font-family:var(--serif); font-weight:700; font-size:15px; letter-spacing:.14em;
+        color:var(--accent); background:var(--panel2); border:1px solid rgba(224,179,74,.55);
+        border-radius:7px; padding:11px 34px; cursor:pointer; transition:all .12s ease; }
+  .btn:hover{ color:var(--text); background:#3a2f18; border-color:var(--accent); }
+  .hint{ font-family:var(--serif); font-size:13px; color:var(--text-faint); }
+</style>
+</head>
+<body>
+  <div class="card">
+    <span class="flourish fl-tl"></span>
+    <span class="flourish fl-br"></span>
+    <div class="tabs">
+      <div class="tab active">WELCOME</div>
+      <div class="tab">GENERAL</div>
+    </div>
+    <div class="content">
+      <div class="kicker">W E L C O M E&nbsp;&nbsp;T O</div>
+      <div class="wordmark"><span class="g">Hag</span><span class="u">UI</span></div>
+      <div class="divider"></div>
+      <div class="tagline">Your private control room for every Hagryph mod &mdash; configuration,
+        tools, and more, gathered in one place.</div>
+    </div>
+    <div class="actions">
+      <button class="btn" id="close">CLOSE</button>
+      <span class="hint">or press ESC</span>
+    </div>
+    <div class="footer">HAGRYPH &middot; EST. MMXXVI</div>
+  </div>
+
+<script>
+  function close(){ try{ window.chrome.webview.postMessage('close'); }catch(e){} }
+  document.getElementById('close').addEventListener('click', close);
+  document.addEventListener('keydown', e => { if(e.key === 'Escape') close(); });
+  // tab switching (visual only for now)
+  document.querySelectorAll('.tab').forEach(t =>
+    t.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+      t.classList.add('active');
+    }));
+  window.addEventListener('load', () => document.body.focus());
+</script>
+</body>
+</html>

@@ -5,6 +5,8 @@
 
 #include <MinHook.h>
 #include <string>
+#include <string.h>   // _strnicmp
+#include <intrin.h>   // _ReturnAddress
 
 namespace sow {
 
@@ -102,6 +104,203 @@ static void* __fastcall HookFindFile(void* tree, const char* name) {
         }
     }
     return oFindFile(tree, name);
+}
+
+// ---- Scaleform resource-open probe + loose-SWF load proof ----
+// FUN_141205c80(resMgr, const char* path, uint flags) -> resource handle. Load-time, safe to hook.
+// We (1) log the paths the UI opens and capture the UI resource manager, then (2) ONCE, on the game
+// thread, open our loose file interface\hagui\HagUI.swf and log the returned handle — proving the
+// engine resolves + loads our loose .swf from Game\ (delivery + open, end to end).
+using ResOpenFn = void* (__fastcall*)(void*, const char*, unsigned);
+static ResOpenFn      oResOpen = nullptr;
+static void* volatile g_uiResMgr = nullptr;
+static volatile LONG  s_resCap = 60;
+static bool           g_ourLoadTried = false;
+static bool           g_triggered = false;   // one-shot route-2 hijack load test
+static void* volatile g_ourMovie = nullptr;  // our loaded movie resource (ref held)
+static bool           g_attached = false;    // one-shot display attach
+
+// One-shot: try opening our loose movie via several (path, flag) combos with the game's OWN valid
+// resource manager, DURING the active load phase (called from inside the open hook). oResOpen is the
+// trampoline (original), so these calls bypass our hook — no reentrancy. Logs each handle so we learn
+// which location/extension/flag the loose-file resolver accepts.
+static void ProveLooseSwf(void* resMgr) {
+    if (g_ourLoadTried || !resMgr || !oResOpen) return;
+    g_ourLoadTried = true;
+    auto& log = Log::Get();
+    struct Combo { const char* path; unsigned flags; };
+    static const Combo combos[] = {
+        { "interface\\flash\\HagUI.gfx", 0x10040 },
+        { "interface\\flash\\HagUI.swf", 0x10040 },
+        { "interface\\hagui\\HagUI.swf", 0x10040 },
+        { "interface\\flash\\HagUI.swf", 0x10002 },
+    };
+    for (const auto& c : combos) {
+        void* h = oResOpen(resMgr, c.path, c.flags);
+        char line[256];
+        ::wsprintfA(line, "[looseproof] open(\"%s\", 0x%x) rm=%p -> handle=%p", c.path, c.flags, resMgr, h);
+        if (h) log.Good(line); else log.Line(line);
+    }
+}
+
+// GFx URL file-opener FUN_14075ca08(resCtx, name, flags) -> GFx File* (a memory-file:
+// +0x118 buffer, +0x128 size, +0x130 pos, vtable +0x00). ROUTE-2 HIJACK: when OUR movie name is
+// requested, open a real movie to get a valid memory-file, then swap its buffer to OUR .swf bytes.
+// The game's own File methods then read our bytes and the whole pipeline renders our movie.
+using FileOpenFn = void* (__fastcall*)(void*, const char*, unsigned);
+using AllocFn    = void* (__fastcall*)(size_t);
+static FileOpenFn oFileOpen = nullptr;
+static bool       g_hijackLogged = false;
+
+// Our .swf bytes, loaded once into a game-allocator block (so the memory-file dtor frees cleanly).
+static void*  g_swf     = nullptr;
+static size_t g_swfSize = 0;
+
+static bool LoadOurSwf() {
+    if (g_swf) return true;
+    HANDLE h = ::CreateFileW(
+        L"C:\\Program Files (x86)\\Steam\\steamapps\\common\\ShadowOfWar\\Game\\interface\\hagui\\HagUI.swf",
+        GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+    if (h == INVALID_HANDLE_VALUE) { Log::Get().Error("[hijack] cannot open our HagUI.swf on disk"); return false; }
+    DWORD sz = ::GetFileSize(h, nullptr);
+    void* buf = nullptr;
+    if (sz && sz < 0x100000) {
+        auto alloc = reinterpret_cast<AllocFn>(game::FromRVA(game::kGameAlloc));
+        buf = alloc(sz);
+        DWORD rd = 0;
+        if (buf && (!::ReadFile(h, buf, sz, &rd, nullptr) || rd != sz)) buf = nullptr;
+    }
+    ::CloseHandle(h);
+    if (!buf) { Log::Get().Error("[hijack] failed to buffer our HagUI.swf"); return false; }
+    g_swf = buf; g_swfSize = sz;
+    char l[96]; ::wsprintfA(l, "[hijack] our HagUI.swf buffered: %u bytes @ %p", (unsigned)sz, buf);
+    Log::Get().Line(l);
+    return true;
+}
+
+static bool NameContains(const char* name, const char* needle, int nlen) {
+    if (!name || ::IsBadReadPtr(name, 6)) return false;
+    for (const char* p = name; *p; ++p) if (::_strnicmp(p, needle, nlen) == 0) return true;
+    return false;
+}
+
+// Dump an object's identity (vtable RVA, refcount, +0x10/+0x60) so we can compare the game's real
+// movie-resource against our resolved one before ever calling the view-create with it.
+static void DumpObj(const char* tag, void* o) {
+    auto& log = Log::Get();
+    const uintptr_t base = game::Base();
+    auto rva = [&](void* p) -> uintptr_t { uintptr_t v = (uintptr_t)p;
+        return (v >= base && v < base + 0x8000000) ? (v - base + 0x140000000ull) : v; };
+    if (!o || ::IsBadReadPtr(o, 0x68)) { char l[96]; ::wsprintfA(l, "%s = %p (unreadable)", tag, o); log.Line(l); return; }
+    void** vt = *reinterpret_cast<void***>(o);
+    void* m10 = *reinterpret_cast<void**>(reinterpret_cast<char*>(o) + 0x10);
+    void* m60 = *reinterpret_cast<void**>(reinterpret_cast<char*>(o) + 0x60);
+    int   rc  = *reinterpret_cast<int*>(reinterpret_cast<char*>(o) + 8);
+    char l[220]; ::wsprintfA(l, "%s=%p vt=0x%p rc=%d [+0x10]=%p [+0x60]=%p",
+                             tag, o, (void*)rva(vt), rc, m10, m60);
+    log.Good(l);
+}
+
+// View create+attach FUN_14128db14(sfSys, movieRes, level) -> view. Phase 1: capture sfSys+level and
+// dump a REAL movie-resource so we can attach OUR movie the same way (no call yet — compare first).
+using ViewCreateFn = void* (__fastcall*)(void*, void*, unsigned);
+static ViewCreateFn   oViewCreate   = nullptr;
+static void* volatile g_sfSys       = nullptr;
+static unsigned       g_viewLevel   = 0;
+static bool           g_viewCaptured = false;
+
+static void* __fastcall HookViewCreate(void* sfSys, void* movieRes, unsigned level) {
+    if (!g_viewCaptured) {
+        g_viewCaptured = true; g_sfSys = sfSys; g_viewLevel = level;
+        char l[128]; ::wsprintfA(l, "[view] real create: sfSys=%p level=0x%x", sfSys, level);
+        Log::Get().Good(l);
+        DumpObj("[view] real movieRes", movieRes);
+    }
+    return oViewCreate(sfSys, movieRes, level);
+}
+
+// Universal view-register FUN_141290980(viewMgr, level, view). ALL view-create paths funnel here,
+// so this captures the front-end's view + the view manager regardless of which path made it.
+using ViewRegFn = void* (__fastcall*)(void*, unsigned, void*);
+static ViewRegFn      oViewReg = nullptr;
+static void* volatile g_viewMgr = nullptr;   // first host
+static void*          g_hosts[4] = {};       // front-end hosts in registration order
+static volatile LONG  g_hostN = 0;
+static volatile LONG  s_vregCap = 12;
+
+// Hook FUN_14122d400(movie, descriptor, p3, p4, p5) = create-host-from-descriptor + bind movie.
+// Capture + HOLD a descriptor (vt 0x1422C9DF8) so we can call it with OUR movie -> a fresh,
+// render-registered host that nothing else drives. (FUN_14128e918(host,ourMovie) already proven OK.)
+using CH2Fn = void* (__fastcall*)(void*, void*, char, void*, void*);
+static CH2Fn          oCH2 = nullptr;
+static void*          g_descArr[4] = {};   // live descriptors held via addref, in creation order
+static volatile LONG  g_descN = 0;
+static void* volatile g_p1vt = nullptr;    // the movie arg's vtable (validate our substitution)
+static volatile LONG  s_ch2 = 6;
+
+static void* __fastcall HookCH2(void* p1, void* p2, char p3, void* p4, void* p5) {
+    void* host = oCH2(p1, p2, p3, p4, p5);
+    if (::InterlockedDecrement(&s_ch2) >= 0) {
+        LONG i = g_descN;
+        if (i < 4 && p2 && !::IsBadReadPtr(p2, 0x10)) {
+            g_descArr[i] = p2; g_descN = i + 1;
+            ::InterlockedIncrement(reinterpret_cast<volatile LONG*>(reinterpret_cast<char*>(p2) + 8));  // hold it
+            if (p1 && !::IsBadReadPtr(p1, 8)) g_p1vt = *reinterpret_cast<void**>(p1);
+        }
+        DumpObj("[ch2] p1(movie)", p1);
+        DumpObj("[ch2] p2(desc)", p2);
+    }
+    return host;
+}
+
+static void* __fastcall HookViewReg(void* viewMgr, unsigned level, void* view) {
+    if (::InterlockedDecrement(&s_vregCap) >= 0) {
+        if (!g_viewMgr) g_viewMgr = viewMgr;
+        LONG i = g_hostN;
+        if (i < 4) { g_hosts[i] = viewMgr; g_hostN = i + 1; }
+        char l[128]; ::wsprintfA(l, "[vreg] register #%d viewMgr=%p level=0x%x view=%p", (int)i, viewMgr, level, view);
+        Log::Get().Good(l);
+        DumpObj("[vreg] view", view);
+    }
+    return oViewReg(viewMgr, level, view);
+}
+static bool NameIsOurs(const char* name) {
+    // Additive only: serve our bytes solely for OUR path. (Shadowing a real menu movie like sp.gfx
+    // CRASHES — the game's C++ hard-derefs that movie's clips, which our dummy lacks.)
+    return NameContains(name, "hagui", 5);
+}
+
+static void* __fastcall HookFileOpen(void* resCtx, const char* name, unsigned flags) {
+    if (NameIsOurs(name) && LoadOurSwf()) {
+        // Get a real memory-file as a template, then repoint it at our bytes.
+        void* tmpl = oFileOpen(resCtx, "interface\\flash\\messageboxes.gfx", flags);
+        if (tmpl && !::IsBadReadPtr(tmpl, 0x138)) {
+            auto p = reinterpret_cast<uint8_t*>(tmpl);
+            *reinterpret_cast<void**> (p + 0x118) = g_swf;                 // buffer base
+            *reinterpret_cast<int64_t*>(p + 0x128) = (int64_t)g_swfSize;   // size / end
+            *reinterpret_cast<int64_t*>(p + 0x130) = 0;                    // position
+            if (!g_hijackLogged) { g_hijackLogged = true;
+                char l[160]; ::wsprintfA(l, "[hijack] served our .swf (%u b) as \"%.80s\" via file=%p",
+                                         (unsigned)g_swfSize, name, tmpl);
+                Log::Get().Good(l); }
+            return tmpl;
+        }
+        Log::Get().Error("[hijack] template open failed");
+    }
+    return oFileOpen(resCtx, name, flags);
+}
+
+static void* __fastcall HookResOpen(void* resMgr, const char* path, unsigned flags) {
+    if (path) {
+        const bool iface = (::_strnicmp(path, "interface", 9) == 0);
+        if (iface && !g_uiResMgr) g_uiResMgr = resMgr;   // capture the UI resource manager
+        if (s_resCap > 0 && ::InterlockedDecrement(&s_resCap) >= 0) {   // diagnostic: first N paths
+            char line[220]; ::wsprintfA(line, "[resopen] rm=%p f=0x%x %.170s", resMgr, flags, path);
+            Log::Get().Line(line);
+        }
+        return oResOpen(resMgr, path, flags);
+    }
+    return oResOpen(resMgr, path, flags);
 }
 
 // ---- Menu-item probe (route (b) groundwork): read the live START-menu item list ONCE ----
@@ -252,11 +451,46 @@ static void* __fastcall HookItemRefresh(void* self) {
             char hdr[160];
             ::wsprintfA(hdr, "[menuprobe] layer=%p container=%p count=%d - walking the 3 item lists:", self, container, count);
             log.Line(hdr);
-            WalkMenuList(container, 0x4b8, 0x4b0, "L0", false);
-            WalkMenuList(container, 0x490, 0x488, "L1", true);
-            WalkMenuList(container, 0x568, 0x560, "L2", false);
+            WalkMenuList(container, 0x490, 0x488, "L1", false);   // item names only (deep scan off)
             log.Line("[menuprobe] done");
-            RelabelExperiment(container);
+        }
+    }
+    // One-shot route-2 test: drive OUR path through the resmgr -> resolver -> file-opener HIJACK
+    // -> SWF parse -> MovieDef. Non-null handle == our loose .swf loaded additively (game thread).
+    if (!g_triggered && g_uiResMgr && oResOpen) {
+        g_triggered = true;
+        void* h = oResOpen(g_uiResMgr, "interface\\hagui\\HagUI.swf", 0x10040);
+        char l[160]; ::wsprintfA(l, "[route2] resmgr open(our path) via hijack -> handle=%p", h);
+        if (h) Log::Get().Good(l); else Log::Get().Error(l);
+        DumpObj("[route2] our movie", h);
+        if (h && !::IsBadReadPtr(h, 0x10)) {   // keep a ref so it survives to the attach
+            ::InterlockedIncrement(reinterpret_cast<volatile LONG*>(reinterpret_cast<char*>(h) + 8));
+            g_ourMovie = h;
+        }
+    }
+    // Route-2 DISPLAY attempt (game thread): create+register a view for OUR movie on a captured
+    // front-end host via FUN_14128e918(host, movieRes). Fires a few frames after the load so state
+    // is settled. Heavily logged so we see how far it gets if it faults.
+    // Route-2 DISPLAY (fresh host): drive the game's own "show movie" entry with OUR movie. This
+    // creates a brand-new host that nothing else drives (no crash) and shows our movie on top.
+    // Guarded: only if our movie is the same type the game passes (vtable match).
+    if (g_triggered && !g_attached && g_ourMovie && g_descN > 0 && oCH2) {
+        static int s_d = 0;
+        if (++s_d >= 3) {
+            g_attached = true;
+            void* ourVt = (!::IsBadReadPtr(g_ourMovie, 8)) ? *reinterpret_cast<void**>(g_ourMovie) : nullptr;
+            void* desc = g_descArr[g_descN - 1];   // LAST descriptor = sp.gfx (the visible main menu)
+            if (ourVt && ourVt == g_p1vt) {
+                char l[200]; ::wsprintfA(l, "[attach2] FUN_14122d400(ourMovie=%p, desc#%d=%p, p3=1, 0, 0) ...",
+                                         g_ourMovie, (int)g_descN - 1, desc);
+                Log::Get().Good(l);
+                void* host = oCH2(g_ourMovie, desc, 1, nullptr, nullptr);
+                char l2[128]; ::wsprintfA(l2, "[attach2] fresh host=%p (survived!)", host);
+                Log::Get().Good(l2);
+            } else {
+                char l[160]; ::wsprintfA(l, "[attach2] SKIP: vt mismatch ourVt=%p gameVt=%p", ourVt, g_p1vt);
+                Log::Get().Error(l);
+            }
         }
     }
     return oItemRefresh(self);
@@ -307,6 +541,51 @@ void GameHooks::Install() {
         log.Line("[gamehooks] hook Localization FAILED");
     }
 
+    // Scaleform resource-open (load-time, safe) — capture the UI resource manager + log opened paths.
+    void* roTgt = reinterpret_cast<void*>(game::FromRVA(0x141205c80ull));
+    if (MH_CreateHook(roTgt, reinterpret_cast<void*>(&HookResOpen),
+                      reinterpret_cast<void**>(&oResOpen)) == MH_OK && MH_EnableHook(roTgt) == MH_OK) {
+        log.Line("[gamehooks] Scaleform resource-open hooked");
+    } else {
+        log.Line("[gamehooks] hook Scaleform resource-open FAILED");
+    }
+
+    // GFx URL file-opener (route-2 injection point) — hijack: serve our .swf bytes for our path.
+    void* foTgt = reinterpret_cast<void*>(game::FromRVA(0x14075ca08ull));
+    if (MH_CreateHook(foTgt, reinterpret_cast<void*>(&HookFileOpen),
+                      reinterpret_cast<void**>(&oFileOpen)) == MH_OK && MH_EnableHook(foTgt) == MH_OK) {
+        log.Line("[gamehooks] GFx file-opener hooked (route-2 hijack)");
+    } else {
+        log.Line("[gamehooks] hook GFx file-opener FAILED");
+    }
+
+    // Movie view create+attach — capture the scaleform system + a real movie-resource shape.
+    void* vcTgt = reinterpret_cast<void*>(game::FromRVA(0x14128db14ull));
+    if (MH_CreateHook(vcTgt, reinterpret_cast<void*>(&HookViewCreate),
+                      reinterpret_cast<void**>(&oViewCreate)) == MH_OK && MH_EnableHook(vcTgt) == MH_OK) {
+        log.Line("[gamehooks] movie view-create hooked (attach capture)");
+    } else {
+        log.Line("[gamehooks] hook movie view-create FAILED");
+    }
+
+    // Create-host-from-descriptor — capture + hold a descriptor to reuse with our movie.
+    void* chTgt = reinterpret_cast<void*>(game::FromRVA(0x14122d400ull));
+    if (MH_CreateHook(chTgt, reinterpret_cast<void*>(&HookCH2),
+                      reinterpret_cast<void**>(&oCH2)) == MH_OK && MH_EnableHook(chTgt) == MH_OK) {
+        log.Line("[gamehooks] create-host hooked (descriptor capture)");
+    } else {
+        log.Line("[gamehooks] hook create-host FAILED");
+    }
+
+    // Universal view-register — captures the front-end view + view manager (whichever path made it).
+    void* vrTgt = reinterpret_cast<void*>(game::FromRVA(0x141290980ull));
+    if (MH_CreateHook(vrTgt, reinterpret_cast<void*>(&HookViewReg),
+                      reinterpret_cast<void**>(&oViewReg)) == MH_OK && MH_EnableHook(vrTgt) == MH_OK) {
+        log.Line("[gamehooks] view-register hooked (front-end view capture)");
+    } else {
+        log.Line("[gamehooks] hook view-register FAILED");
+    }
+
     // Archive file-find (load-time, safe) — to locate + in-memory-patch the menu-definition resource.
     void* ffTgt = reinterpret_cast<void*>(game::FromRVA(0x1403ddad8ull));
     if (MH_CreateHook(ffTgt, reinterpret_cast<void*>(&HookFindFile),
@@ -315,10 +594,6 @@ void GameHooks::Install() {
     } else {
         log.Line("[gamehooks] hook archive file-find FAILED");
     }
-}
-
-void GameHooks::InstallOverlayFallback() {
-    EnsureOverlay("worker-fallback");
 }
 
 }  // namespace sow

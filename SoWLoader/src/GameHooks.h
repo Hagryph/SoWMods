@@ -12,10 +12,8 @@ public:
     static GameHooks& Get();
 
     // Install the start-menu trigger hook (CUIFrontEndRootLayer ctor). Call from the worker thread.
+    // The overlay installs from that ctor only (real menu-load) — no timer, no fallback.
     void Install();
-
-    // Install the overlay if no trigger has fired yet (worker-thread safety fallback). Idempotent.
-    void InstallOverlayFallback();
 
     GameHooks(const GameHooks&) = delete;
     GameHooks& operator=(const GameHooks&) = delete;
