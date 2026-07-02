@@ -3,6 +3,7 @@
 #include "Config.h"
 #include "Console.h"
 #include "GameHooks.h"
+#include "WindowWatch.h"
 
 namespace sow {
 
@@ -48,9 +49,11 @@ void Loader::Worker() {
         if (c.find(L"-sowconsole") != std::wstring::npos) wantConsole_ = true;
     }
 
-    // Install hooks IMMEDIATELY after config — the CreateWindowExW hook must be armed before the game
-    // creates its main window (that window-created moment is when we open the console). Everything
-    // logged before the console attaches is buffered by Log and replayed on attach.
+    // Arm the window watcher FIRST (SetWinEventHook, in-context, own PID): it logs the instant the
+    // game window starts to exist and opens the console when that window BECOMES FOREGROUND — the
+    // only moment the console is guaranteed to drop behind the game instead of fronting it.
+    // Everything logged before the console attaches is buffered by Log and replayed on attach.
+    WindowWatch::Get().Install();
     GameHooks::Get().Install();
 
     auto& log = Log::Get();

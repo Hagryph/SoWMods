@@ -34,6 +34,19 @@ inline std::uintptr_t FromRVA(std::uintptr_t fileRVA) {
 // C:\dev\re\sow\ShadowOfWar.exe.unpacked.exe (image base 0x140000000).
 // ---------------------------------------------------------------------------
 
+// --- Platform / main window (RE'd 2026-07-02 from the "Shadow of War" class-string refs) ---
+// FUN_140c24db0 = the engine's MAIN-THREAD platform function (names its thread "MainThread"):
+// registers the L"Shadow of War" window class, creates THE game window via the engine's own
+// resolved-API table (DAT_141d92c18 = CreateWindowExW; style 0xcf0000, initially 336x239 — the
+// import is called through data slots, which is why the IAT entry has zero code refs), stores the
+// HWND into the globals below, sets icons/timer/hotkeys, ShowWindow(hwnd, 1), then enters the
+// message/frame loop. It never returns until game exit — so the window-created moment is NOT its
+// return, it is the first engine call AFTER the create+show sequence:
+inline constexpr std::uintptr_t kWinMainThread   = 0x140c24db0; // main-thread func (creates the window)
+inline constexpr std::uintptr_t kPostWindowInit  = 0x1411798ac; // first call AFTER create+ShowWindow; gates the main loop -> our console trigger
+inline constexpr std::uintptr_t kMainWindowHwnd  = 0x142702640; // global HWND of the game main window
+inline constexpr std::uintptr_t kMainWindowHwnd2 = 0x142c88000; // second copy the engine keeps
+
 // --- Front-end / start menu (LithTech "Kraken" ClientShell) ---
 // CUIFrontEndRootLayer::CUIFrontEndRootLayer — constructor of the front-end menu's ROOT UI layer.
 // Runs when the start-menu UI is built/shown, so this is our "start menu displayed" init trigger.

@@ -11,87 +11,14 @@
 
 namespace sow {
 
-// ---- game main-window creation: open the mod console the instant the game window exists ----
-// We hook CreateWindowExW/A (the Win32 window-creation API the game uses). When the game creates a
-// real top-level window (its main window, well before the start menu), we open the console right
-// then — the game window already exists, so the console goes behind it and never becomes the front
-// "main" process window. This is the deterministic "window just got created" signal the user wants.
-using CreateWinExWFn = HWND(WINAPI*)(DWORD, LPCWSTR, LPCWSTR, DWORD, int, int, int, int, HWND, HMENU, HINSTANCE, LPVOID);
-using CreateWinExAFn = HWND(WINAPI*)(DWORD, LPCSTR,  LPCSTR,  DWORD, int, int, int, int, HWND, HMENU, HINSTANCE, LPVOID);
-static CreateWinExWFn oCreateWinExW = nullptr;
-static CreateWinExAFn oCreateWinExA = nullptr;
-static bool           g_winConsole  = false;
-static volatile LONG  s_winLog      = 20;
-
-// Is `s` a real string pointer (not a class atom, which is packed in the low word)?
-static bool IsStrW(LPCWSTR s) { return s && reinterpret_cast<uintptr_t>(s) > 0xFFFF; }
-static bool IsStrA(LPCSTR s)  { return s && reinterpret_cast<uintptr_t>(s) > 0xFFFF; }
-
-// case-insensitive substring search (needle must be lowercase)
-static bool WideHas(LPCWSTR s, const wchar_t* needle) {
-    if (!IsStrW(s)) return false;
-    for (; *s; ++s) { const wchar_t* a = s; const wchar_t* b = needle;
-        while (*b) { wchar_t c = *a; if (c >= L'A' && c <= L'Z') c += 32; if (c != *b) break; ++a; ++b; }
-        if (!*b) return true; }
-    return false;
-}
-static bool NarrowHas(LPCSTR s, const char* needle) {
-    if (!IsStrA(s)) return false;
-    for (; *s; ++s) { const char* a = s; const char* b = needle;
-        while (*b) { char c = *a; if (c >= 'A' && c <= 'Z') c += 32; if (c != *b) break; ++a; ++b; }
-        if (!*b) return true; }
-    return false;
-}
-
-// The game's main window: class "Shadow of War", title "Middle-earth(tm): Shadow of War(tm)".
-static bool IsGameWindowW(HWND parent, LPCWSTR cls, LPCWSTR name) {
-    return parent == nullptr && (WideHas(cls, L"shadow of war") ||
-                                 WideHas(name, L"shadow of war") || WideHas(name, L"middle-earth"));
-}
-static bool IsGameWindowA(HWND parent, LPCSTR cls, LPCSTR name) {
-    return parent == nullptr && (NarrowHas(cls, "shadow of war") ||
-                                 NarrowHas(name, "shadow of war") || NarrowHas(name, "middle-earth"));
-}
-
-static void MaybeOpenConsoleForWindow(HWND hwnd, bool isGame) {
-    if (g_winConsole || !isGame || !hwnd) return;
-    g_winConsole = true;
-    Log::Get().Line("[win] game window created -> opening console now");
-    Loader::Get().OnRenderLive();   // opens the console (game window already exists, so it goes behind)
-}
-
-static HWND WINAPI HookCreateWinExW(DWORD ex, LPCWSTR cls, LPCWSTR name, DWORD style,
-                                    int x, int y, int w, int h, HWND parent, HMENU menu,
-                                    HINSTANCE inst, LPVOID p) {
-    HWND hwnd = oCreateWinExW(ex, cls, name, style, x, y, w, h, parent, menu, inst, p);
-    const bool dummy = IsStrW(cls) && ::wcscmp(cls, L"SoWLoaderDummyWnd") == 0;
-    if (!g_winConsole && parent == nullptr && !dummy && ::InterlockedExchangeAdd(&s_winLog, 0) > 0) {
-        ::InterlockedDecrement(&s_winLog);
-        char cb[128]{}, nb[160]{};
-        if (IsStrW(cls))  ::WideCharToMultiByte(CP_UTF8, 0, cls, -1, cb, 128, nullptr, nullptr);
-        else ::wsprintfA(cb, "#atom%u", (unsigned)(uintptr_t)cls);
-        if (IsStrW(name)) ::WideCharToMultiByte(CP_UTF8, 0, name, -1, nb, 160, nullptr, nullptr);
-        char line[360]; ::wsprintfA(line, "[win] CreateWindowExW cls=%.100s name=%.140s %dx%d style=0x%08x", cb, nb, w, h, style);
-        Log::Get().Line(line);
-    }
-    MaybeOpenConsoleForWindow(hwnd, IsGameWindowW(parent, cls, name));
-    return hwnd;
-}
-
-static HWND WINAPI HookCreateWinExA(DWORD ex, LPCSTR cls, LPCSTR name, DWORD style,
-                                    int x, int y, int w, int h, HWND parent, HMENU menu,
-                                    HINSTANCE inst, LPVOID p) {
-    HWND hwnd = oCreateWinExA(ex, cls, name, style, x, y, w, h, parent, menu, inst, p);
-    const bool dummy = IsStrA(cls) && ::_stricmp(cls, "SoWLoaderDummyWnd") == 0;
-    if (!g_winConsole && parent == nullptr && !dummy && ::InterlockedExchangeAdd(&s_winLog, 0) > 0) {
-        ::InterlockedDecrement(&s_winLog);
-        char line[360]; ::wsprintfA(line, "[win] CreateWindowExA cls=%.100s name=%.140s %dx%d style=0x%08x",
-                                    IsStrA(cls) ? cls : "#atom", IsStrA(name) ? name : "", w, h, style);
-        Log::Get().Line(line);
-    }
-    MaybeOpenConsoleForWindow(hwnd, IsGameWindowA(parent, cls, name));
-    return hwnd;
-}
+// ---- game main-window creation (RE'd 2026-07-02, kept in shared/GameOffsets.h) ----
+// kWinMainThread (FUN_140c24db0) registers + creates THE game window (class L"Shadow of War")
+// through the engine's own resolved-API table (NOT the IAT), and kPostWindowInit (0x1411798ac)
+// is the first engine call after CreateWindowExW + ShowWindow. Trampolining kPostWindowInit fired
+// correctly but proved TOO EARLY for the console: at that instant the window is an unactivated
+// 336x239 stub, so the console still won the foreground and became the "main" window. The console
+// trigger now lives in WindowWatch (SetWinEventHook in-context): the console opens when the game
+// window BECOMES FOREGROUND — the only moment that guarantees it drops behind the game.
 
 GameHooks& GameHooks::Get() { static GameHooks instance; return instance; }
 
@@ -584,22 +511,6 @@ void GameHooks::Install() {
 
     MH_STATUS s = MH_Initialize();
     if (s != MH_OK && s != MH_ERROR_ALREADY_INITIALIZED) { log.Line("[gamehooks] MH_Initialize failed"); return; }
-
-    // FIRST: hook window creation so we catch the game's main window the moment it's created and open
-    // the console right then (before the menu). Do this before any other hook to minimize the chance
-    // the game creates its window before we're watching.
-    if (HMODULE u32 = ::GetModuleHandleW(L"user32.dll")) {
-        if (void* pW = (void*)::GetProcAddress(u32, "CreateWindowExW")) {
-            if (MH_CreateHook(pW, (void*)&HookCreateWinExW, (void**)&oCreateWinExW) == MH_OK && MH_EnableHook(pW) == MH_OK)
-                log.Line("[gamehooks] CreateWindowExW hooked (game-window -> console trigger)");
-            else log.Line("[gamehooks] hook CreateWindowExW FAILED");
-        }
-        if (void* pA = (void*)::GetProcAddress(u32, "CreateWindowExA")) {
-            if (MH_CreateHook(pA, (void*)&HookCreateWinExA, (void**)&oCreateWinExA) == MH_OK && MH_EnableHook(pA) == MH_OK)
-                log.Line("[gamehooks] CreateWindowExA hooked");
-            else log.Line("[gamehooks] hook CreateWindowExA FAILED");
-        }
-    }
 
     void* target = reinterpret_cast<void*>(game::FromRVA(game::kCUIFrontEndRootLayerCtor));
     char addr[32]{}; ::wsprintfA(addr, "0x%p", target);
