@@ -373,14 +373,17 @@ static ImU32 LerpCol(ImU32 a, ImU32 b, float t) {
 // Left accent, 1:1 with the Skyrim HagUI (HagUI_Root.as buildWelcome, "railG" + "rmask"):
 //   glow: rect(cx, cy, glowW, ch), linear HORIZONTAL gradient gold alpha 26% -> 0
 //   rail: rect(cx, cy, railW, ch), linear VERTICAL gradient accent -> accent-dim, on top
-// Both are plain full-height bars flush with the card edge, MASKED by the card's own
-// rounded-rect path rrPath(cx, cy, cw, ch, r). ImGui has no masks, so the mask is applied
-// analytically: the bars are emitted as a straight middle quad plus arc-following trapezoids
-// in the corners, with per-vertex colors sampled from the UNCLIPPED gradient boxes — the cut
-// never shifts or squeezes the gradient, exactly like the Flash mask. The bars are straight
-// and get cut by the corner arc; they do not bend around it.
-static void AccentLeft(ImDrawList* dl, ImVec2 p0, float ch, float r, float railW, float glowW) {
+// Both are plain full-height bars MASKED by the card's own rounded-rect path rrPath(cx, cy, cw, ch, r),
+// but INSET by `d` px so a uniform d-px gold border sliver shows between the card border and the rail
+// EVERYWHERE — straight edges AND corners. ImGui has no masks, so the mask is applied analytically:
+// a straight middle quad plus arc-following trapezoids in the corners, per-vertex colors sampled from
+// the UNCLIPPED gradient boxes (the cut never shifts/squeezes the gradient, exactly like the Flash
+// mask). The bars stay straight and get cut by the arc; they don't bend around it. The inset contour
+// is concentric with the border: same corner centers (x0+r, yT+r) etc., radius r-d — so the rail's
+// curve begins d px earlier at top/bottom than the border, keeping the gap constant through the arc.
+static void AccentLeft(ImDrawList* dl, ImVec2 p0, float ch, float r, float railW, float glowW, float d) {
     const float x0 = p0.x, yT = p0.y, yB = p0.y + ch;
+    const float R = r - d;                                          // inset corner radius (same centers)
     const ImU32 aTop = IM_COL32(0xE0, 0xB3, 0x4A, 255), aBot = IM_COL32(0xB8, 0x86, 0x2F, 255);
     // AS gradient boxes: boxM(cx, cy, 30, ch) horizontal / boxM(cx, cy, 6, ch, pi/2) vertical
     auto glowCol = [&](float x, float) {
@@ -405,23 +408,23 @@ static void AccentLeft(ImDrawList* dl, ImVec2 p0, float ch, float r, float railW
         dl->PrimWriteIdx(i0);     dl->PrimWriteIdx(i0 + 2); dl->PrimWriteIdx(i0 + 3);
     };
 
-    // one full-height bar of width w, left edge clipped by the card's r-corners (the AS mask)
+    // one full-height bar of width w, left edge = card contour inset by d (the AS mask, d px in)
     auto bar = [&](float w, auto&& col) {
         const float xr = x0 + w;
-        quad(x0, x0, xr, yT + r, yB - r, col);                     // straight middle
+        quad(x0 + d, x0 + d, xr, yT + r, yB - r, col);             // straight middle (left edge x0+d)
         const int N = 12;                                          // arc slices per corner
         for (int i = 0; i < N; ++i) {
             const float t0 = 1.5707963f * i / N, t1 = 1.5707963f * (i + 1) / N;
-            const float xa = x0 + r * (1.0f - std::sin(t0));       // arc x, pole side of the slice
-            const float xb = x0 + r * (1.0f - std::sin(t1));       // arc x, equator side
-            const float da = r * (1.0f - std::cos(t0)), db = r * (1.0f - std::cos(t1));
-            quad(xa, xb, xr, yT + da, yT + db, col);               // top corner
-            quad(xb, xa, xr, yB - db, yB - da, col);               // bottom corner (mirrored)
+            const float xa = (x0 + r) - R * std::sin(t0);          // inset arc x, pole side of the slice
+            const float xb = (x0 + r) - R * std::sin(t1);          // inset arc x, equator side
+            const float da = r - R * std::cos(t0), db = r - R * std::cos(t1);  // y offset from the edge
+            quad(xa, xb, xr, yT + da, yT + db, col);               // top corner (starts at yT+d)
+            quad(xb, xa, xr, yB - db, yB - da, col);               // bottom corner (mirrored, ends yB-d)
         }
     };
 
     bar(glowW, glowCol);   // AS draw order: glow rect first...
-    bar(railW, railCol);   // ...bright rail on top, both under the same mask
+    bar(railW, railCol);   // ...bright rail on top, both under the same inset mask
 }
 
 // Draw text horizontally condensed by `xs` (0..1) around pos.x: emit the glyphs, then scale the new
@@ -538,8 +541,9 @@ void Overlay::DrawHub() {
             return (f ? f->CalcTextSizeA(px, 3.4e38f, 0.0f, t).x : ImGui::CalcTextSize(t).x) * XS;
         };
 
-        // ---- left accent (AS: glow 30w gold 26->0 + rail 6w accent->dim, masked to the card path) ----
-        AccentLeft(dl, p0, ch, r, 6.0f * sx, 30.0f * sx);
+        // ---- left accent (AS: glow 30w gold 26->0 + rail 6w accent->dim, masked to the card path,
+        //      inset 1px so a uniform 1px gold border sliver shows between border and rail) ----
+        AccentLeft(dl, p0, ch, r, 6.0f * sx, 30.0f * sx, 1.0f);
 
         // ---- corner flourishes (AS: gold alpha 30, TL x30..56 y22, BR x cw-56..cw-30 y ch-22) ----
         const ImU32 uFl = IM_COL32(0xE0, 0xB3, 0x4A, 77);
