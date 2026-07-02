@@ -3,6 +3,7 @@
 #include "ipc/MemAccess.h"
 #include "ipc/CallExec.h"
 #include "ipc/HookProbe.h"
+#include "ipc/WatchProbe.h"
 #include "ipc/MemScan.h"
 #include "Offsets.h"
 #include "Log.h"
@@ -332,6 +333,22 @@ std::string Server::Dispatch(const std::string& line) {
         std::uint64_t max = 0;   // 0 = all buffered
         if (tk.size() >= 2 && !ParseU64(tk[1], max)) return "err bad max";
         return HookProbe::Get().Drain(static_cast<std::size_t>(max));
+    }
+
+    // ---- hardware WRITE watchpoint (DR0 + VEH): catch the RIP that writes a heap address ----
+    if (cmd == "watch") {
+        if (tk.size() < 2) return "err usage: watch <off> [len=1|2|4|8]  (hardware write bp -> writer RIP; then 'watchlog')";
+        std::uintptr_t addr = 0; std::string aerr;
+        if (!ParseAddr(tk[1], addr, aerr)) return "err " + aerr;
+        int len = 1;
+        if (tk.size() >= 3) { std::uint64_t l = 0; if (!ParseU64(tk[2], l)) return "err bad len"; len = static_cast<int>(l); }
+        return WatchProbe::Get().Arm(addr, len);
+    }
+    if (cmd == "unwatch") { return WatchProbe::Get().Disarm(); }
+    if (cmd == "watchlog") {
+        std::uint64_t max = 0;
+        if (tk.size() >= 2 && !ParseU64(tk[1], max)) return "err bad max";
+        return WatchProbe::Get().Drain(static_cast<std::size_t>(max));
     }
 
     // ---- memory scan: find every 8-aligned occurrence of a value (e.g. a class vtable) ----

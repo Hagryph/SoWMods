@@ -16,6 +16,7 @@ add_library(HagIPC SHARED
     src/ipc/MemAccess.cpp
     src/ipc/CallExec.cpp
     src/ipc/HookProbe.cpp
+    src/ipc/WatchProbe.cpp
     src/ipc/MemScan.cpp
     src/HagIPCExport.cpp
 )
