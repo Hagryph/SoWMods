@@ -18,10 +18,12 @@ public partial class MainWindow : Window
     [DllImport("user32.dll")] static extern bool ClientToScreen(IntPtr h, ref POINT p);
     [DllImport("user32.dll")] static extern bool SetWindowPos(IntPtr h, IntPtr after, int x, int y, int cx, int cy, uint flags);
     [DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr h);
+    [DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
     [DllImport("user32.dll")] static extern bool IsWindow(IntPtr h);
     [DllImport("user32.dll")] static extern bool IsIconic(IntPtr h);
     [DllImport("user32.dll")] static extern bool RegisterHotKey(IntPtr h, int id, uint mod, uint vk);
     [DllImport("user32.dll")] static extern IntPtr SetWindowLongPtr(IntPtr h, int idx, IntPtr val);
+    [DllImport("user32.dll")] static extern IntPtr GetWindowLongPtr(IntPtr h, int idx);
     [DllImport("user32.dll")] static extern bool ClipCursor(IntPtr r);
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetWindowText(IntPtr h, StringBuilder s, int max);
     [DllImport("user32.dll")] static extern bool EnumWindows(EnumProc cb, IntPtr l);
@@ -31,7 +33,8 @@ public partial class MainWindow : Window
     [StructLayout(LayoutKind.Sequential)] struct RECT { public int L, T, R, B; }
     [StructLayout(LayoutKind.Sequential)] struct POINT { public int X, Y; }
 
-    const int GWLP_HWNDPARENT = -8;
+    const int GWLP_HWNDPARENT = -8, GWL_EXSTYLE = -20;
+    const long WS_EX_NOACTIVATE = 0x08000000;
     const uint SWP_NOACTIVATE = 0x10;
     static readonly IntPtr HWND_TOPMOST = new(-1);
     const int HOTKEY_ID = 0xB001;
@@ -40,7 +43,7 @@ public partial class MainWindow : Window
 
     IntPtr _game = IntPtr.Zero, _self = IntPtr.Zero;
     bool _open = false, _ready = false;
-    readonly DispatcherTimer _track = new() { Interval = TimeSpan.FromMilliseconds(120) };
+    readonly DispatcherTimer _track = new() { Interval = TimeSpan.FromMilliseconds(40) };
 
     public MainWindow()
     {
@@ -53,6 +56,11 @@ public partial class MainWindow : Window
         _self = new WindowInteropHelper(this).Handle;
         HwndSource.FromHwnd(_self)!.AddHook(WndProc);
         RegisterHotKey(_self, HOTKEY_ID, MOD_NOREPEAT, VK_F8);
+        // WS_EX_NOACTIVATE: the window can NEVER become active/foreground, so clicking it (or its
+        // WebView2 child) cannot steal focus from the game -> the game stays foreground and keeps
+        // its audio. Clicks/hit-testing still work; only activation is suppressed.
+        var ex = GetWindowLongPtr(_self, GWL_EXSTYLE).ToInt64();
+        SetWindowLongPtr(_self, GWL_EXSTYLE, new IntPtr(ex | WS_EX_NOACTIVATE));
 
         await Web.EnsureCoreWebView2Async();
         Web.CoreWebView2.Settings.AreDefaultContextMenusEnabled = false;
@@ -90,9 +98,21 @@ public partial class MainWindow : Window
     {
         if (!_open) return;
         FindGame();
-        if (_game == IntPtr.Zero || !IsWindow(_game) || IsIconic(_game)) { Close2(); return; }
+        if (_game == IntPtr.Zero || !IsWindow(_game) || IsIconic(_game)) { HideWindowOffscreen(); return; }
+
+        // BIND to the game window. The overlay is topmost (so it draws over the game's D3D), but a
+        // topmost window would otherwise float above EVERYTHING. So we gate on foreground: if any
+        // other app is in front of the game, hide entirely — we never cover another window. We
+        // reappear the instant the game is the foreground window again. Because the overlay itself is
+        // WS_EX_NOACTIVATE it never becomes foreground, so the game stays active (its audio keeps
+        // playing) and OS shortcuts like Win+Shift+Arrow target the GAME, not us.
+        IntPtr fg = GetForegroundWindow();
+        if (fg != _game && fg != _self) { HideWindowOffscreen(); return; }
+
+        if (Visibility != Visibility.Visible) Visibility = Visibility.Visible;
         GetClientRect(_game, out var rc);
         POINT tl = new() { X = 0, Y = 0 }; ClientToScreen(_game, ref tl);
+        // Follow the game's client rect exactly (position + size) — tracks monitor moves & resizes.
         SetWindowPos(_self, HWND_TOPMOST, tl.X, tl.Y, rc.R - rc.L, rc.B - rc.T, SWP_NOACTIVATE);
     }
 
