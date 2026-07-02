@@ -361,6 +361,36 @@ static void RoundedVGrad(ImDrawList* dl, ImVec2 a, ImVec2 b, ImU32 top, ImU32 bo
     dl->AddRectFilled(ImVec2(a.x, b.y - 2.0f * rad), b, bot, rad, ImDrawFlags_RoundCornersBottom);
     dl->PopClipRect();
 }
+
+// Horizontal gradient (left->right) with rounded top-left + bottom-left corners (right side square).
+// Used for the accent glow so it runs the full card height and follows the rounded corners.
+static void RoundedHGradLeft(ImDrawList* dl, ImVec2 a, ImVec2 b, ImU32 left, ImU32 right, float rad) {
+    const float w = b.x - a.x, h = b.y - a.y;
+    if (rad <= 0.5f || h <= 2.0f * rad || w <= rad) { dl->AddRectFilledMultiColor(a, b, left, right, right, left); return; }
+    const float t = rad / w;
+    const ImU32 mid = IM_COL32(
+        int((left & 0xFF)         + (int((right) & 0xFF)         - int((left) & 0xFF))         * t),
+        int((left >> 8 & 0xFF)    + (int((right >> 8) & 0xFF)    - int((left >> 8) & 0xFF))    * t),
+        int((left >> 16 & 0xFF)   + (int((right >> 16) & 0xFF)   - int((left >> 16) & 0xFF))   * t),
+        int((left >> 24 & 0xFF)   + (int((right >> 24) & 0xFF)   - int((left >> 24) & 0xFF))   * t));
+    dl->AddRectFilledMultiColor(ImVec2(a.x + rad, a.y), b, mid, right, right, mid);                      // body right of corners
+    dl->AddRectFilledMultiColor(ImVec2(a.x, a.y + rad), ImVec2(a.x + rad, b.y - rad), left, mid, mid, left); // left strip middle
+    dl->PushClipRect(ImVec2(a.x, a.y), ImVec2(a.x + rad, a.y + rad), true);
+    dl->AddRectFilled(a, ImVec2(a.x + 2.0f * rad, a.y + 2.0f * rad), left, rad, ImDrawFlags_RoundCornersTopLeft);
+    dl->PopClipRect();
+    dl->PushClipRect(ImVec2(a.x, b.y - rad), ImVec2(a.x + rad, b.y), true);
+    dl->AddRectFilled(ImVec2(a.x, b.y - 2.0f * rad), ImVec2(a.x + 2.0f * rad, b.y), left, rad, ImDrawFlags_RoundCornersBottomLeft);
+    dl->PopClipRect();
+}
+
+// Draw text horizontally condensed by `xs` (0..1) around pos.x: emit the glyphs, then scale the new
+// vertices' X toward the left edge. Gives a narrow/condensed look from any font (no condensed file needed).
+static void AddTextCX(ImDrawList* dl, ImFont* f, float px, ImVec2 pos, ImU32 col, const char* t, float xs) {
+    const int v0 = dl->VtxBuffer.Size;
+    dl->AddText(f, px, pos, col, t);
+    for (int i = v0; i < dl->VtxBuffer.Size; ++i)
+        dl->VtxBuffer[i].pos.x = pos.x + (dl->VtxBuffer[i].pos.x - pos.x) * xs;
+}
 void Overlay::StyleHagUI() {
     ImGui::StyleColorsDark();
     ImGuiStyle& s = ImGui::GetStyle();
@@ -443,7 +473,7 @@ void Overlay::DrawHub() {
     ImGui::SetNextWindowSize(ImVec2(cw, ch));
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));   // we position everything in AS coords
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 14.0f * s);     // AS card radius = 14
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 2.0f);        // slightly thicker gold frame
     const ImGuiWindowFlags flags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
         ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollbar |
         ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoBringToFrontOnFocus;
@@ -457,22 +487,22 @@ void Overlay::DrawHub() {
         ImDrawList* dl = ImGui::GetWindowDrawList();
         const ImVec2 p0 = ImGui::GetWindowPos();
         const float r = 14.0f * s;
+        const float XS = 0.80f;                              // horizontal condense for the sans text
         auto X = [&](float ax) { return p0.x + ax * sx; };   // AS x -> screen
         auto Y = [&](float ay) { return p0.y + ay * sy; };   // AS y -> screen
         auto txt = [&](ImFont* f, float px, float ax, float ay, ImU32 c, const char* t) {
-            dl->AddText(f, px, ImVec2(X(ax), Y(ay)), c, t);
+            AddTextCX(dl, f, px, ImVec2(X(ax), Y(ay)), c, t, XS);   // condensed
         };
-        auto measure = [&](ImFont* f, float px, const char* t) {
-            return f ? f->CalcTextSizeA(px, 3.4e38f, 0.0f, t) : ImGui::CalcTextSize(t);
+        auto measureW = [&](ImFont* f, float px, const char* t) {   // condensed width
+            return (f ? f->CalcTextSizeA(px, 3.4e38f, 0.0f, t).x : ImGui::CalcTextSize(t).x) * XS;
         };
 
         // ---- left accent ----
         const float glowW = 30.0f * sx, railW = 6.0f * sx;
-        // glow: ONE smooth horizontal fade (gold -> transparent), inset by the radius. Replaces the
-        // banded multi-layer glow that looked mangled; single gradient = no visible steps/arcs.
-        dl->AddRectFilledMultiColor(ImVec2(p0.x, p0.y + r), ImVec2(p0.x + glowW, p0.y + ch - r),
-            IM_COL32(0xE0, 0xB3, 0x4A, 66), IM_COL32(0xE0, 0xB3, 0x4A, 0),
-            IM_COL32(0xE0, 0xB3, 0x4A, 0),  IM_COL32(0xE0, 0xB3, 0x4A, 66));
+        // glow: ONE smooth horizontal fade (gold -> transparent), FULL height with rounded-left corners
+        // that follow the card radius (no inset gap / hard edge).
+        RoundedHGradLeft(dl, p0, ImVec2(p0.x + glowW, p0.y + ch),
+                         IM_COL32(0xE0, 0xB3, 0x4A, 66), IM_COL32(0xE0, 0xB3, 0x4A, 0), r);
         // rail: bright vertical gradient, MASKED to the rounded card (clip a card-wide RoundedVGrad to
         // the 6px band so its left corners follow the card radius) — the rail the user approved.
         dl->PushClipRect(p0, ImVec2(p0.x + railW, p0.y + ch), true);
@@ -492,13 +522,13 @@ void Overlay::DrawHub() {
         float cx = X(60);
         for (int i = 0; i < 2; ++i) {
             const bool active = activeTab_ == i;
-            const float cellW = measure(fTab_, fTabPx, kTabs[i]).x + pad * 2.0f;
+            const float cellW = measureW(fTab_, fTabPx, kTabs[i]) + pad * 2.0f;
             ImGui::SetCursorScreenPos(ImVec2(cx, navY));
             ImGui::InvisibleButton(kTabs[i], ImVec2(cellW, cellH));
             const bool hov = ImGui::IsItemHovered();
             if (ImGui::IsItemClicked()) activeTab_ = i;
-            dl->AddText(fTab_, fTabPx, ImVec2(cx + pad, navY + 6.0f * sy),
-                        active ? uAccent : (hov ? uText : uDim), kTabs[i]);
+            AddTextCX(dl, fTab_, fTabPx, ImVec2(cx + pad, navY + 6.0f * sy),
+                      active ? uAccent : (hov ? uText : uDim), kTabs[i], XS);
             if (active) dl->AddLine(ImVec2(cx, hairY), ImVec2(cx + cellW, hairY), uAccent, 2.0f * s);
             cx += cellW + gap;
         }
@@ -508,8 +538,8 @@ void Overlay::DrawHub() {
         if (activeTab_ == 0) {   // content origin AS: x=60 y=86
             txt(fKick_, 13.0f * s, 60, 86, uFaint, "W E L C O M E   T O");
             const float wy = 86 + 14;                                  // wordmark (AS x-2, y+14, size 64)
-            txt(fWord_, 64.0f * s, 58, wy, uText, "Hag");
-            const float hagW = measure(fWord_, 64.0f * s, "Hag").x;
+            dl->AddText(fWord_, 64.0f * s, ImVec2(X(58), Y(wy)), uText, "Hag");   // serif hero, not condensed
+            const float hagW = fWord_ ? fWord_->CalcTextSizeA(64.0f * s, 3.4e38f, 0.0f, "Hag").x : 0.0f;
             dl->AddText(fWord_, 64.0f * s, ImVec2(X(58) + hagW, Y(wy)), uAccent, "UI");
             dl->AddRectFilledMultiColor(ImVec2(X(60), Y(198)), ImVec2(X(60) + 250.0f * sx, Y(198) + 2.0f * sy),
                 IM_COL32(0xE0, 0xB3, 0x4A, 153), IM_COL32(0xE0, 0xB3, 0x4A, 0),
@@ -531,19 +561,20 @@ void Overlay::DrawHub() {
                                  IM_COL32(0xE0, 0xB3, 0x4A, bhov ? 36 : 15), br);
         dl->AddRect(ba, bb, IM_COL32(0xE0, 0xB3, 0x4A, bhov ? 199 : 107), br, 0, 1.0f * s);
         const float clPx = 15.0f * s;
-        const ImVec2 clSz = measure(fTab_, clPx, "CLOSE");
-        dl->AddText(fTab_, clPx, ImVec2(ba.x + (bb.x - ba.x - clSz.x) * 0.5f, ba.y + (bb.y - ba.y - clSz.y) * 0.5f),
-                    uAccent, "CLOSE");
+        const float clW = measureW(fTab_, clPx, "CLOSE");
+        const float clH = fTab_ ? fTab_->CalcTextSizeA(clPx, 3.4e38f, 0.0f, "CLOSE").y : clPx;
+        AddTextCX(dl, fTab_, clPx, ImVec2(ba.x + (bb.x - ba.x - clW) * 0.5f, ba.y + (bb.y - ba.y - clH) * 0.5f),
+                  uAccent, "CLOSE", XS);
         // hint (AS: x=230 y~387, regular size 14) — vertically centered to the button
         const float hintPx = 14.0f * s;
-        const float hintH = measure(fSmall_, hintPx, "or press  ESC").y;
-        dl->AddText(fSmall_, hintPx, ImVec2(X(230), ba.y + (bb.y - ba.y - hintH) * 0.5f), uFaint, "or press  ESC");
+        const float hintH = fSmall_ ? fSmall_->CalcTextSizeA(hintPx, 3.4e38f, 0.0f, "or press  ESC").y : hintPx;
+        AddTextCX(dl, fSmall_, hintPx, ImVec2(X(230), ba.y + (bb.y - ba.y - hintH) * 0.5f), uFaint, "or press  ESC", XS);
 
         // ---- footer (AS: right edge x=cw-30, y=ch-40, bold size 11, right-aligned) — above the BR mark ----
         const char* est = "HAGRYPH  \xC2\xB7  EST. MMXXVI";
         const float fPx = 11.0f * s;
-        const float estW = measure(fFoot_, fPx, est).x;
-        dl->AddText(fFoot_, fPx, ImVec2(X(820 - 30) - estW, Y(462 - 40)), uFaint, est);
+        const float estW = measureW(fFoot_, fPx, est);
+        AddTextCX(dl, fFoot_, fPx, ImVec2(X(820 - 30) - estW, Y(462 - 40)), uFaint, est, XS);
     }
     ImGui::End();
     ImGui::PopStyleVar(3);
