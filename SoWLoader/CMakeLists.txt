@@ -5,6 +5,7 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(minhook CONFIG REQUIRED)
+find_package(imgui CONFIG REQUIRED)   # with dx11-binding + win32-binding backends (see vcpkg.json)
 
 # A near-dependency-free proxy DLL. All 796 steam_api64 exports are forwarded to the renamed
 # original (steam_api64_org.dll) via /EXPORT: directives in src/exports_forward.h; our own code
@@ -26,7 +27,7 @@ target_include_directories(SoWLoader PRIVATE src "${CMAKE_CURRENT_SOURCE_DIR}/..
 target_precompile_headers(SoWLoader PRIVATE src/PCH.h)
 target_compile_definitions(SoWLoader PRIVATE UNICODE _UNICODE)
 target_compile_options(SoWLoader PRIVATE /utf-8)
-target_link_libraries(SoWLoader PRIVATE minhook::minhook d3d11 dxgi d3dcompiler)
+target_link_libraries(SoWLoader PRIVATE minhook::minhook imgui::imgui d3d11 dxgi d3dcompiler)
 
 # The output DLL MUST be named exactly steam_api64.dll (it impersonates the Steam API DLL).
 set_target_properties(SoWLoader PROPERTIES PREFIX "" OUTPUT_NAME "steam_api64")

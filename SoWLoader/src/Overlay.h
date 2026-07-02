@@ -51,6 +51,8 @@ public:
     // Mouse position in back-buffer coordinates (client area of the game window).
     bool  Mouse(float& x, float& y) const;
 
+    bool  MenuOpen() const { return menuOpen_; }
+
     Overlay(const Overlay&) = delete;
     Overlay& operator=(const Overlay&) = delete;
 
@@ -58,7 +60,16 @@ private:
     Overlay() = default;
     using PresentFn = long (__stdcall*)(IDXGISwapChain*, unsigned, unsigned);
     static long __stdcall HookPresent(IDXGISwapChain*, unsigned, unsigned);
-    void DrawFrame(IDXGISwapChain* swap);   // per-frame: RTV + state save/restore + draw
+    void DrawFrame(IDXGISwapChain* swap);   // per-frame: RTV + ImGui new-frame/render
+
+    // ---- ImGui hub (the in-frame HagUI, drawn into the game's own back buffer) ----
+    static LRESULT __stdcall WndProc(HWND, UINT, WPARAM, LPARAM);  // game-window subclass for input
+    void StyleHagUI();        // black + gold ImGui theme
+    void DrawWatermark();     // always-on "SoWLoader — Hagryph" + F8 hint (ImGui foreground list)
+    void DrawHub();           // the modal hub window (tabs, welcome, close)
+    bool imguiInit_ = false;
+    bool menuOpen_  = false;
+    WNDPROC origWndProc_ = nullptr;
 
     bool BuildResources(ID3D11Device* dev);
     struct Glyph { ID3D11ShaderResourceView* srv; int w, h; };

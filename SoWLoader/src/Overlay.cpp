@@ -8,8 +8,15 @@
 #include <d3dcompiler.h>
 #include <MinHook.h>
 
+#include <imgui.h>
+#include <imgui_impl_win32.h>
+#include <imgui_impl_dx11.h>
+
 #include <vector>
 #include <algorithm>
+
+// Provided by imgui_impl_win32 — feeds Win32 messages to ImGui (defined in the backend .cpp).
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND, UINT, WPARAM, LPARAM);
 
 namespace sow {
 
@@ -59,7 +66,7 @@ void Overlay::Install() {
     if (MH_CreateHook(pPresent, reinterpret_cast<void*>(&HookPresent),
                       reinterpret_cast<void**>(&oPresent_)) == MH_OK && MH_EnableHook(pPresent) == MH_OK) {
         installed_ = true;
-        log.Line("[overlay] Present hooked (vtable slot 8) — used only to detect the game window (no drawing)");
+        log.Line("[overlay] Present hooked (vtable slot 8) — ImGui hub renders into the game's back buffer");
     } else {
         log.Line("[overlay] MinHook Present FAILED");
     }
@@ -252,13 +259,34 @@ long __stdcall Overlay::HookPresent(IDXGISwapChain* swap, unsigned sync, unsigne
     return oPresent_(swap, sync, flags);
 }
 
+// Subclassed onto the GAME window: ImGui reads input from the game's own message stream (no separate
+// window -> no focus split, no z-order/monitor problems). While the hub is open we swallow input so it
+// doesn't leak to the game; when closed everything passes straight through.
+LRESULT __stdcall Overlay::WndProc(HWND h, UINT msg, WPARAM w, LPARAM l) {
+    Overlay& o = Get();
+    // F8 toggles the hub (ignore auto-repeat: bit 30 of lParam set == key was already down).
+    if (msg == WM_KEYDOWN && w == VK_F8 && (l & 0x40000000) == 0) o.menuOpen_ = !o.menuOpen_;
+
+    if (o.imguiInit_) {
+        ImGui_ImplWin32_WndProcHandler(h, msg, w, l);
+        if (o.menuOpen_) {
+            switch (msg) {   // modal: keep these away from the game while the hub is up
+                case WM_MOUSEMOVE: case WM_LBUTTONDOWN: case WM_LBUTTONUP:
+                case WM_RBUTTONDOWN: case WM_RBUTTONUP: case WM_MBUTTONDOWN: case WM_MBUTTONUP:
+                case WM_LBUTTONDBLCLK: case WM_RBUTTONDBLCLK: case WM_MOUSEWHEEL: case WM_MOUSEHWHEEL:
+                case WM_KEYDOWN: case WM_KEYUP: case WM_CHAR: case WM_SYSKEYDOWN: case WM_SYSKEYUP:
+                    return 0;
+            }
+        }
+    }
+    return ::CallWindowProcW(o.origWndProc_, h, msg, w, l);
+}
+
 void Overlay::DrawFrame(IDXGISwapChain* swap) {
     if (!ctx_) {
         if (FAILED(swap->GetDevice(__uuidof(ID3D11Device), reinterpret_cast<void**>(&dev_))) || !dev_) return;
         dev_->GetImmediateContext(&ctx_);
     }
-    if (!resTried_) { resTried_ = true; resReady_ = BuildResources(dev_); }
-    if (!resReady_) return;
 
     ID3D11Texture2D* bb = nullptr;
     if (FAILED(swap->GetBuffer(0, __uuidof(ID3D11Texture2D), reinterpret_cast<void**>(&bb))) || !bb) return;
@@ -268,71 +296,151 @@ void Overlay::DrawFrame(IDXGISwapChain* swap) {
     if (FAILED(hr) || !rtv) return;
     curW_ = (float)bd.Width; curH_ = (float)bd.Height;
 
-    if (firstFrame_) {
-        firstFrame_ = false;
+    if (!imguiInit_) {
         DXGI_SWAP_CHAIN_DESC sd{};
         if (SUCCEEDED(swap->GetDesc(&sd))) gameWnd_ = sd.OutputWindow;
-        Loader::Get().OnRenderLive();     // game window up + rendering -> open the console
+        if (!gameWnd_) { rtv->Release(); return; }
+        IMGUI_CHECKVERSION();
+        ImGui::CreateContext();
+        ImGuiIO& io = ImGui::GetIO();
+        io.IniFilename = nullptr;                              // no imgui.ini next to the game
+        io.ConfigFlags &= ~ImGuiConfigFlags_NavEnableGamepad; // don't fight the game's controller
+        StyleHagUI();
+        ImGui_ImplWin32_Init(gameWnd_);
+        ImGui_ImplDX11_Init(dev_, ctx_);
+        origWndProc_ = reinterpret_cast<WNDPROC>(
+            ::SetWindowLongPtrW(gameWnd_, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(&Overlay::WndProc)));
+        imguiInit_ = true;
+        Loader::Get().OnRenderLive();                         // game window up + rendering -> open console
+        Log::Get().Good("[overlay] ImGui online; WndProc subclassed on the game window (F8 opens the hub)");
     }
 
-    // -------- save the game's pipeline state --------
-    constexpr UINT kVP = 16;
-    struct S {
-        UINT scN = kVP; D3D11_RECT sc[kVP]; UINT vpN = kVP; D3D11_VIEWPORT vp[kVP];
-        ID3D11RasterizerState* rs = nullptr; ID3D11BlendState* bs = nullptr; FLOAT bf[4]{}; UINT bmask = 0;
-        ID3D11DepthStencilState* dss = nullptr; UINT sref = 0;
-        ID3D11ShaderResourceView* srv = nullptr; ID3D11SamplerState* samp = nullptr;
-        ID3D11Buffer* cb = nullptr; ID3D11PixelShader* ps = nullptr; ID3D11VertexShader* vs = nullptr;
-        D3D11_PRIMITIVE_TOPOLOGY topo{}; ID3D11Buffer* vb = nullptr; UINT stride = 0, off = 0;
-        ID3D11Buffer* ib = nullptr; DXGI_FORMAT ibf{}; UINT iboff = 0; ID3D11InputLayout* il = nullptr;
-        ID3D11RenderTargetView* rtvs[8]{}; ID3D11DepthStencilView* dsv = nullptr;
-    } s;
-    ctx_->RSGetScissorRects(&s.scN, s.sc); ctx_->RSGetViewports(&s.vpN, s.vp); ctx_->RSGetState(&s.rs);
-    ctx_->OMGetBlendState(&s.bs, s.bf, &s.bmask); ctx_->OMGetDepthStencilState(&s.dss, &s.sref);
-    ctx_->PSGetShaderResources(0, 1, &s.srv); ctx_->PSGetSamplers(0, 1, &s.samp);
-    ctx_->PSGetConstantBuffers(0, 1, &s.cb); ctx_->PSGetShader(&s.ps, nullptr, nullptr);
-    ctx_->VSGetShader(&s.vs, nullptr, nullptr); ctx_->IAGetPrimitiveTopology(&s.topo);
-    ctx_->IAGetVertexBuffers(0, 1, &s.vb, &s.stride, &s.off); ctx_->IAGetIndexBuffer(&s.ib, &s.ibf, &s.iboff);
-    ctx_->IAGetInputLayout(&s.il); ctx_->OMGetRenderTargets(8, s.rtvs, &s.dsv);
+    ImGui::GetIO().MouseDrawCursor = menuOpen_;   // show a cursor only while the hub is up
 
-    // -------- set our state --------
-    D3D11_VIEWPORT vp{}; vp.Width = curW_; vp.Height = curH_; vp.MaxDepth = 1.0f;
-    const UINT stride = sizeof(Vtx), off = 0; const FLOAT bf[4] = { 0, 0, 0, 0 };
-    ctx_->OMSetRenderTargets(1, &rtv, nullptr); ctx_->RSSetViewports(1, &vp); ctx_->RSSetState(raster_);
-    ctx_->OMSetBlendState(blend_, bf, 0xFFFFFFFF); ctx_->OMSetDepthStencilState(depthOff_, 0);
-    ctx_->IASetInputLayout(layout_); ctx_->IASetVertexBuffers(0, 1, &vb_, &stride, &off);
-    ctx_->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
-    ctx_->VSSetShader(vs_, nullptr, 0); ctx_->PSSetShader(ps_, nullptr, 0); ctx_->PSSetSamplers(0, 1, &samp_);
+    ImGui_ImplDX11_NewFrame();
+    ImGui_ImplWin32_NewFrame();
+    ImGui::NewFrame();
 
-    // -------- draw: watermark ONLY (the HagUI hub is now the external WebView2 overlay) --------
-    {
-        const std::string wm = "SoWLoader - Hagryph";
-        float tw, th; MeasureText(wm, 16, tw, th);
-        DrawText(curW_ - tw - 14.0f, 12.0f, wm, 16, { 0.80f, 0.80f, 0.82f, 0.70f });
-        const std::string hint = "F8  Menu";
-        float hw, hh; MeasureText(hint, 13, hw, hh);
-        DrawText(curW_ - hw - 14.0f, 12.0f + th - 2.0f, hint, 13, { 0.88f, 0.70f, 0.29f, 0.65f });
-    }
-    if (!loggedDraw_) { Log::Get().Line("[overlay] watermark drawn (HagUI hub is the WebView2 overlay)"); loggedDraw_ = true; }
+    DrawWatermark();
+    if (menuOpen_) DrawHub();
 
-    // -------- restore --------
-    ctx_->RSSetScissorRects(s.scN, s.sc); ctx_->RSSetViewports(s.vpN, s.vp);
-    ctx_->RSSetState(s.rs); if (s.rs) s.rs->Release();
-    ctx_->OMSetBlendState(s.bs, s.bf, s.bmask); if (s.bs) s.bs->Release();
-    ctx_->OMSetDepthStencilState(s.dss, s.sref); if (s.dss) s.dss->Release();
-    ctx_->PSSetShaderResources(0, 1, &s.srv); if (s.srv) s.srv->Release();
-    ctx_->PSSetSamplers(0, 1, &s.samp); if (s.samp) s.samp->Release();
-    ctx_->PSSetConstantBuffers(0, 1, &s.cb); if (s.cb) s.cb->Release();
-    ctx_->PSSetShader(s.ps, nullptr, 0); if (s.ps) s.ps->Release();
-    ctx_->VSSetShader(s.vs, nullptr, 0); if (s.vs) s.vs->Release();
-    ctx_->IASetPrimitiveTopology(s.topo);
-    ctx_->IASetVertexBuffers(0, 1, &s.vb, &s.stride, &s.off); if (s.vb) s.vb->Release();
-    ctx_->IASetIndexBuffer(s.ib, s.ibf, s.iboff); if (s.ib) s.ib->Release();
-    ctx_->IASetInputLayout(s.il); if (s.il) s.il->Release();
-    ctx_->OMSetRenderTargets(8, s.rtvs, s.dsv);
-    for (auto* r : s.rtvs) if (r) r->Release();
-    if (s.dsv) s.dsv->Release();
+    ImGui::Render();
+    ctx_->OMSetRenderTargets(1, &rtv, nullptr);   // ImGui's DX11 backend saves/restores the rest
+    ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
     rtv->Release();
+}
+
+// ---- black + gold theme (the Manga-List palette shared with the Skyrim HagUI) ----
+static ImVec4 Rgb(int r, int g, int b, float a = 1.0f) {
+    return ImVec4(r / 255.0f, g / 255.0f, b / 255.0f, a);
+}
+void Overlay::StyleHagUI() {
+    ImGui::StyleColorsDark();
+    ImGuiStyle& s = ImGui::GetStyle();
+    s.WindowRounding = 6; s.ChildRounding = 4; s.FrameRounding = 4; s.TabRounding = 3;
+    s.WindowBorderSize = 1; s.WindowPadding = ImVec2(28, 24);
+    s.ItemSpacing = ImVec2(14, 12); s.FramePadding = ImVec2(16, 8);
+
+    const ImVec4 accent    = Rgb(0xE0, 0xB3, 0x4A);
+    const ImVec4 accentDim = Rgb(0xB8, 0x86, 0x2F);
+    ImVec4* c = s.Colors;
+    c[ImGuiCol_WindowBg]        = Rgb(0x1A, 0x17, 0x12, 0.97f);
+    c[ImGuiCol_ChildBg]         = Rgb(0x00, 0x00, 0x00, 0.00f);
+    c[ImGuiCol_Border]          = Rgb(0xE0, 0xB3, 0x4A, 0.42f);
+    c[ImGuiCol_Text]            = Rgb(0xEC, 0xE6, 0xDA);
+    c[ImGuiCol_TextDisabled]    = Rgb(0x9C, 0x94, 0x86);
+    c[ImGuiCol_Button]          = Rgb(0x23, 0x1E, 0x16);
+    c[ImGuiCol_ButtonHovered]   = Rgb(0x3A, 0x2F, 0x18);
+    c[ImGuiCol_ButtonActive]    = accentDim;
+    c[ImGuiCol_FrameBg]         = Rgb(0x23, 0x1E, 0x16, 0.90f);
+    c[ImGuiCol_FrameBgHovered]  = Rgb(0x3A, 0x2F, 0x18, 0.90f);
+    c[ImGuiCol_FrameBgActive]   = Rgb(0x3A, 0x2F, 0x18);
+    c[ImGuiCol_Tab]             = Rgb(0x1A, 0x17, 0x12, 0.00f);
+    c[ImGuiCol_TabHovered]      = Rgb(0xE0, 0xB3, 0x4A, 0.18f);
+    c[ImGuiCol_TabActive]       = Rgb(0x23, 0x1E, 0x16, 0.00f);
+    c[ImGuiCol_TabUnfocused]        = Rgb(0x1A, 0x17, 0x12, 0.00f);
+    c[ImGuiCol_TabUnfocusedActive]  = Rgb(0x23, 0x1E, 0x16, 0.00f);
+    c[ImGuiCol_CheckMark]       = accent;
+    c[ImGuiCol_SliderGrab]      = accentDim;
+    c[ImGuiCol_SliderGrabActive]= accent;
+    c[ImGuiCol_Separator]       = Rgb(0xE0, 0xB3, 0x4A, 0.20f);
+    c[ImGuiCol_TitleBg]         = Rgb(0x1A, 0x17, 0x12);
+    c[ImGuiCol_TitleBgActive]   = Rgb(0x1A, 0x17, 0x12);
+    c[ImGuiCol_PopupBg]         = Rgb(0x1A, 0x17, 0x12, 0.98f);
+}
+
+void Overlay::DrawWatermark() {
+    ImDrawList* dl = ImGui::GetForegroundDrawList();
+    const ImVec2 disp = ImGui::GetIO().DisplaySize;
+    const char* wm = "SoWLoader \xE2\x80\x94 Hagryph";   // em-dash
+    const char* hint = "F8  Menu";
+    const ImVec2 wmSz = ImGui::CalcTextSize(wm);
+    dl->AddText(ImVec2(disp.x - wmSz.x - 14.0f, 10.0f), IM_COL32(205, 205, 210, 180), wm);
+    dl->AddText(ImVec2(disp.x - ImGui::CalcTextSize(hint).x - 14.0f, 10.0f + wmSz.y + 2.0f),
+                IM_COL32(224, 179, 74, 170), hint);
+}
+
+void Overlay::DrawHub() {
+    ImGuiIO& io = ImGui::GetIO();
+    const ImVec2 disp = io.DisplaySize;
+
+    // dim + block the game behind the modal card
+    ImGui::GetBackgroundDrawList()->AddRectFilled(ImVec2(0, 0), disp, IM_COL32(6, 6, 10, 180));
+
+    const float cw = disp.x * 0.64f, ch = disp.y * 0.64f;
+    ImGui::SetNextWindowPos(ImVec2((disp.x - cw) * 0.5f, (disp.y - ch) * 0.5f));
+    ImGui::SetNextWindowSize(ImVec2(cw, ch));
+    const ImGuiWindowFlags flags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+        ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollbar |
+        ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoBringToFrontOnFocus;
+
+    if (ImGui::Begin("HagUI##hub", nullptr, flags)) {
+        // left accent rail
+        const ImVec2 p0 = ImGui::GetWindowPos();
+        ImGui::GetWindowDrawList()->AddRectFilled(
+            p0, ImVec2(p0.x + 5.0f, p0.y + ch), IM_COL32(224, 179, 74, 255));
+
+        if (ImGui::BeginTabBar("##tabs", ImGuiTabBarFlags_None)) {
+            if (ImGui::BeginTabItem("WELCOME")) {
+                ImGui::Dummy(ImVec2(0, 10));
+                ImGui::TextColored(Rgb(0x6B, 0x64, 0x56), "W E L C O M E   T O");
+                ImGui::SetWindowFontScale(3.0f);
+                ImGui::TextColored(Rgb(0xEC, 0xE6, 0xDA), "Hag");
+                ImGui::SameLine(0, 0);
+                ImGui::TextColored(Rgb(0xE0, 0xB3, 0x4A), "UI");
+                ImGui::SetWindowFontScale(1.0f);
+                ImGui::Dummy(ImVec2(0, 6));
+                ImGui::PushStyleColor(ImGuiCol_Separator, Rgb(0xE0, 0xB3, 0x4A, 0.6f));
+                ImGui::Separator();
+                ImGui::PopStyleColor();
+                ImGui::Dummy(ImVec2(0, 10));
+                ImGui::TextColored(Rgb(0x9C, 0x94, 0x86),
+                    "Your private control room for every Hagryph mod \xE2\x80\x94");
+                ImGui::TextColored(Rgb(0x9C, 0x94, 0x86),
+                    "configuration, tools, and more, gathered in one place.");
+                ImGui::EndTabItem();
+            }
+            if (ImGui::BeginTabItem("GENERAL")) {
+                ImGui::Dummy(ImVec2(0, 10));
+                ImGui::TextDisabled("General settings will appear here.");
+                ImGui::EndTabItem();
+            }
+            ImGui::EndTabBar();
+        }
+
+        // CLOSE button + hint, pinned near the bottom-left
+        ImGui::SetCursorPosY(ch - 78.0f);
+        if (ImGui::Button("CLOSE", ImVec2(150, 40))) menuOpen_ = false;
+        ImGui::SameLine();
+        ImGui::TextColored(Rgb(0x6B, 0x64, 0x56), "or press F8");
+
+        // EST footer, bottom-right
+        const char* est = "HAGRYPH  \xC2\xB7  EST. MMXXVI";
+        const ImVec2 estSz = ImGui::CalcTextSize(est);
+        ImGui::SetCursorPos(ImVec2(cw - estSz.x - 30.0f, ch - 34.0f));
+        ImGui::TextColored(Rgb(0x6B, 0x64, 0x56), "%s", est);
+    }
+    ImGui::End();
 }
 
 }  // namespace sow
