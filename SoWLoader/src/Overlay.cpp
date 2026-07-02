@@ -265,11 +265,19 @@ long __stdcall Overlay::HookPresent(IDXGISwapChain* swap, unsigned sync, unsigne
 LRESULT __stdcall Overlay::WndProc(HWND h, UINT msg, WPARAM w, LPARAM l) {
     Overlay& o = Get();
     // F8 toggles the hub (ignore auto-repeat: bit 30 of lParam set == key was already down).
-    if (msg == WM_KEYDOWN && w == VK_F8 && (l & 0x40000000) == 0) o.menuOpen_ = !o.menuOpen_;
+    if (msg == WM_KEYDOWN && w == VK_F8 && (l & 0x40000000) == 0) {
+        o.menuOpen_ = !o.menuOpen_;
+        ::ShowCursor(o.menuOpen_);   // balanced +1/-1 so the OS arrow shows over the game while open
+    }
 
     if (o.imguiInit_) {
         ImGui_ImplWin32_WndProcHandler(h, msg, w, l);
         if (o.menuOpen_) {
+            // Keep a crisp HARDWARE cursor (the ImGui software cursor lags at the menu's frame rate).
+            if (msg == WM_SETCURSOR && LOWORD(l) == HTCLIENT) {
+                ::SetCursor(::LoadCursorW(nullptr, IDC_ARROW));
+                return TRUE;
+            }
             switch (msg) {   // modal: keep these away from the game while the hub is up
                 case WM_MOUSEMOVE: case WM_LBUTTONDOWN: case WM_LBUTTONUP:
                 case WM_RBUTTONDOWN: case WM_RBUTTONUP: case WM_MBUTTONDOWN: case WM_MBUTTONUP:
@@ -316,7 +324,7 @@ void Overlay::DrawFrame(IDXGISwapChain* swap) {
         Log::Get().Good("[overlay] ImGui online; WndProc subclassed on the game window (F8 opens the hub)");
     }
 
-    ImGui::GetIO().MouseDrawCursor = menuOpen_;   // show a cursor only while the hub is up
+    ImGui::GetIO().MouseDrawCursor = false;   // use the smooth OS hardware cursor, not ImGui's software one
 
     ImGui_ImplDX11_NewFrame();
     ImGui_ImplWin32_NewFrame();
@@ -410,7 +418,7 @@ void Overlay::DrawHub() {
     ImGui::SetNextWindowPos(ImVec2((disp.x - cw) * 0.5f, (disp.y - ch) * 0.5f));
     ImGui::SetNextWindowSize(ImVec2(cw, ch));
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(padX, padY));
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);   // sharp: crisp border + rail aligns to the edge
     const ImGuiWindowFlags flags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
         ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollbar |
         ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoBringToFrontOnFocus;
@@ -514,8 +522,8 @@ void Overlay::DrawHub() {
         const float estSz = fSmall_ ? fSmall_->LegacySize : ImGui::GetFontSize();
         const ImVec2 estDim = fSmall_ ? fSmall_->CalcTextSizeA(estSz, 3.4e38f, 0.0f, est) : ImGui::CalcTextSize(est);
         dl->AddText(fSmall_, estSz,
-            ImVec2(p0.x + cw - estDim.x - cw * 0.037f, p0.y + ch - estDim.y - ch * 0.03f),
-            IM_COL32(0x6B, 0x64, 0x56, 255), est);
+            ImVec2(p0.x + cw - estDim.x - cw * 0.037f, p0.y + ch - estDim.y - ch * 0.075f),
+            IM_COL32(0x6B, 0x64, 0x56, 255), est);   // sits ABOVE the bottom-right corner mark (0.048)
     }
     ImGui::End();
     ImGui::PopStyleVar(2);
