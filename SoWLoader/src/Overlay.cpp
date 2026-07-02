@@ -282,6 +282,9 @@ LRESULT __stdcall Overlay::WndProc(HWND h, UINT msg, WPARAM w, LPARAM l) {
                 ::SetCursor(::LoadCursorW(nullptr, IDC_ARROW));
                 return TRUE;
             }
+            // Raw input (mouselook) drives the in-game camera — eat it so the camera is LOCKED while the
+            // hub is open. WM_INPUT still needs DefWindowProc for cleanup; just don't let the game see it.
+            if (msg == WM_INPUT) return ::DefWindowProcW(h, msg, w, l);
             switch (msg) {   // modal: keep these away from the game while the hub is up
                 case WM_MOUSEMOVE: case WM_LBUTTONDOWN: case WM_LBUTTONUP:
                 case WM_RBUTTONDOWN: case WM_RBUTTONUP: case WM_MBUTTONDOWN: case WM_MBUTTONUP:
@@ -332,12 +335,15 @@ void Overlay::DrawFrame(IDXGISwapChain* swap) {
     // Reconcile the OS cursor with the hub state (balanced ShowCursor +1/-1), covering every close
     // path (F8, ESC, CLOSE button) from one place.
     if (menuOpen_ != cursorShown_) { ::ShowCursor(menuOpen_); cursorShown_ = menuOpen_; }
+    // In-game the engine ClipCursor()s the pointer to the window for mouselook; release it every frame
+    // while the hub is open so the cursor is free to roam the UI (the game re-clips once we close).
+    if (menuOpen_) ::ClipCursor(nullptr);
 
     ImGui_ImplDX11_NewFrame();
     ImGui_ImplWin32_NewFrame();
     ImGui::NewFrame();
 
-    DrawWatermark();
+    if (!InSave()) DrawWatermark();   // watermark only at the menu; hidden once in a save
     if (menuOpen_) DrawHub();
 
     ImGui::Render();
