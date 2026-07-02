@@ -4,6 +4,7 @@
         xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
         Title="HagUI Overlay"
         WindowStyle="None" ResizeMode="NoResize" ShowInTaskbar="False"
+        ShowActivated="False"
         Topmost="True" WindowStartupLocation="Manual"
         Left="0" Top="0" Width="200" Height="200"
         Background="#0A0A0C">

@@ -59,8 +59,7 @@ void Overlay::Install() {
     if (MH_CreateHook(pPresent, reinterpret_cast<void*>(&HookPresent),
                       reinterpret_cast<void**>(&oPresent_)) == MH_OK && MH_EnableHook(pPresent) == MH_OK) {
         installed_ = true;
-        log.Line("[overlay] Present hooked (vtable slot 8) — HagUI renderer active");
-        HagUI::Get().Init();
+        log.Line("[overlay] Present hooked (vtable slot 8) — used only to detect the game window (no drawing)");
     } else {
         log.Line("[overlay] MinHook Present FAILED");
     }
@@ -273,11 +272,7 @@ void Overlay::DrawFrame(IDXGISwapChain* swap) {
         firstFrame_ = false;
         DXGI_SWAP_CHAIN_DESC sd{};
         if (SUCCEEDED(swap->GetDesc(&sd))) gameWnd_ = sd.OutputWindow;
-        Loader::Get().OnRenderLive();     // game is initialized + visible: open the console now
-        BeginWarm();                       // prebake all HagUI chrome/glyph textures (no drawing)
-        HagUI::Get().Prebake(*this);
-        EndWarm();
-        Log::Get().Line("[overlay] first frame: console attached, HagUI caches prebaked");
+        Loader::Get().OnRenderLive();     // game window up + rendering -> open the console
     }
 
     // -------- save the game's pipeline state --------
@@ -309,7 +304,7 @@ void Overlay::DrawFrame(IDXGISwapChain* swap) {
     ctx_->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
     ctx_->VSSetShader(vs_, nullptr, 0); ctx_->PSSetShader(ps_, nullptr, 0); ctx_->PSSetSamplers(0, 1, &samp_);
 
-    // -------- draw: watermark + HagUI --------
+    // -------- draw: watermark ONLY (the HagUI hub is now the external WebView2 overlay) --------
     {
         const std::string wm = "SoWLoader - Hagryph";
         float tw, th; MeasureText(wm, 16, tw, th);
@@ -318,8 +313,7 @@ void Overlay::DrawFrame(IDXGISwapChain* swap) {
         float hw, hh; MeasureText(hint, 13, hw, hh);
         DrawText(curW_ - hw - 14.0f, 12.0f + th - 2.0f, hint, 13, { 0.88f, 0.70f, 0.29f, 0.65f });
     }
-    HagUI::Get().Render(*this);
-    if (!loggedDraw_) { Log::Get().Line("[overlay] HagUI frame drawn"); loggedDraw_ = true; }
+    if (!loggedDraw_) { Log::Get().Line("[overlay] watermark drawn (HagUI hub is the WebView2 overlay)"); loggedDraw_ = true; }
 
     // -------- restore --------
     ctx_->RSSetScissorRects(s.scN, s.sc); ctx_->RSSetViewports(s.vpN, s.vp);

@@ -16,7 +16,7 @@
   body{
     font-family:var(--sans);
     background:
-      radial-gradient(120% 90% at 86% 8%, rgba(36,29,15,.55) 0%, rgba(36,29,15,0) 55%),
+      radial-gradient(115% 85% at 86% 6%, rgba(36,29,15,.60) 0%, rgba(36,29,15,0) 55%),
       linear-gradient(180deg,var(--bg1) 0%, var(--bg0) 100%);
     color:var(--text);
     display:flex; align-items:center; justify-content:center;
@@ -25,61 +25,62 @@
   }
   @keyframes fade{ from{opacity:0} to{opacity:1} }
 
+  /* Match the Skyrim card proportions: ~64% x ~64% of the stage. */
   .card{
     position:relative;
-    width:min(64vw,860px); height:min(64vh,470px);
+    width:64vw; height:64vh; max-width:1600px; max-height:920px;
     background:rgba(26,23,18,.97);
     border:1px solid rgba(224,179,74,.42);
-    border-radius:14px;
+    border-radius:1.1vh;
     box-shadow:0 3px 22px rgba(0,0,0,.55), 0 12px 60px rgba(0,0,0,.45);
-    padding:34px 60px;
+    padding:4.2vh 4.6vw 0;
     overflow:hidden;
+    display:flex; flex-direction:column;
     animation:rise .22s cubic-bezier(.2,.7,.2,1);
   }
-  @keyframes rise{ from{transform:translateY(10px) scale(.99); opacity:0} to{transform:none; opacity:1} }
-  /* left accent rail */
-  .card::before{
-    content:""; position:absolute; left:0; top:0; bottom:0; width:6px;
-    background:linear-gradient(180deg,var(--accent),var(--accent-dim));
-  }
-  .card::after{
-    content:""; position:absolute; left:6px; top:0; bottom:0; width:28px;
-    background:linear-gradient(90deg,rgba(224,179,74,.20),rgba(224,179,74,0));
-    pointer-events:none;
-  }
-  /* corner flourishes */
-  .flourish{ position:absolute; width:26px; height:18px; border:0 solid rgba(224,179,74,.30); }
-  .fl-tl{ left:30px; top:22px; border-left-width:2px; border-top-width:2px; }
-  .fl-br{ right:30px; bottom:22px; border-right-width:2px; border-bottom-width:2px; }
+  @keyframes rise{ from{transform:translateY(1.2vh) scale(.99); opacity:0} to{transform:none; opacity:1} }
+  /* left accent rail: bright bar + soft glow */
+  .card::before{ content:""; position:absolute; left:0; top:0; bottom:0; width:.45vw;
+                 background:linear-gradient(180deg,var(--accent),var(--accent-dim)); }
+  .card::after{ content:""; position:absolute; left:.45vw; top:0; bottom:0; width:2.2vw;
+                background:linear-gradient(90deg,rgba(224,179,74,.20),rgba(224,179,74,0)); pointer-events:none; }
 
-  .tabs{ display:flex; gap:34px; align-items:flex-end; border-bottom:1px solid rgba(224,179,74,.14); padding-bottom:8px; }
-  .tab{ font-size:15px; letter-spacing:.14em; color:var(--text-dim); cursor:pointer; padding-bottom:6px; position:relative; }
+  /* corner markers: HORIZONTAL gold lines only (like the Skyrim mod) */
+  .mark{ position:absolute; height:2px; width:2.4vw; background:rgba(224,179,74,.32); }
+  .mark.tl{ left:2.2vw; top:3.0vh; }
+  .mark.br{ right:2.2vw; bottom:3.0vh; }
+
+  .tabs{ display:flex; gap:2.6vw; align-items:flex-end;
+         border-bottom:1px solid rgba(224,179,74,.14); padding-bottom:1.1vh; flex:0 0 auto; }
+  .tab{ font-size:2.1vh; letter-spacing:.14em; color:var(--text-dim); cursor:pointer;
+        padding-bottom:.9vh; position:relative; }
   .tab:hover{ color:var(--text); }
   .tab.active{ color:var(--accent); }
-  .tab.active::after{ content:""; position:absolute; left:0; right:0; bottom:-9px; height:2px; background:var(--accent); }
+  .tab.active::after{ content:""; position:absolute; left:0; right:0; bottom:-1.15vh; height:2px; background:var(--accent); }
 
-  .content{ padding-top:30px; }
-  .kicker{ font-family:var(--serif); font-size:13px; letter-spacing:.5em; color:var(--text-faint); }
-  .wordmark{ font-family:var(--serif); font-weight:700; font-size:64px; line-height:1.05; margin-top:10px; }
+  .content{ flex:1 1 auto; padding-top:4.4vh; }
+  .kicker{ font-family:var(--serif); font-size:1.85vh; letter-spacing:.5em; color:var(--text-faint); }
+  .wordmark{ font-family:var(--serif); font-weight:700; font-size:9vh; line-height:1.02; margin-top:1.4vh; }
   .wordmark .g{ color:var(--text); } .wordmark .u{ color:var(--accent); }
-  .divider{ width:250px; height:2px; margin:18px 0 16px;
+  .divider{ width:19vw; max-width:320px; height:2px; margin:2.4vh 0 2.2vh;
             background:linear-gradient(90deg,rgba(224,179,74,.6),rgba(224,179,74,0)); }
-  .tagline{ font-family:var(--serif); font-size:18px; color:var(--text-dim); max-width:640px; line-height:1.5; }
+  .tagline{ font-family:var(--serif); font-size:2.5vh; color:var(--text-dim); max-width:52vw; line-height:1.5; }
 
-  .footer{ position:absolute; right:30px; bottom:26px; font-family:var(--serif);
-           font-size:11px; letter-spacing:.18em; color:var(--text-faint); }
-  .actions{ position:absolute; left:60px; bottom:40px; display:flex; align-items:center; gap:16px; }
-  .btn{ font-family:var(--serif); font-weight:700; font-size:15px; letter-spacing:.14em;
+  .actions{ flex:0 0 auto; display:flex; align-items:center; gap:1.6vw; padding:2vh 0 4.4vh; }
+  .btn{ font-family:var(--serif); font-weight:700; font-size:2.1vh; letter-spacing:.14em;
         color:var(--accent); background:var(--panel2); border:1px solid rgba(224,179,74,.55);
-        border-radius:7px; padding:11px 34px; cursor:pointer; transition:all .12s ease; }
+        border-radius:.7vh; padding:1.5vh 3vw; cursor:pointer; transition:all .12s ease; }
   .btn:hover{ color:var(--text); background:#3a2f18; border-color:var(--accent); }
-  .hint{ font-family:var(--serif); font-size:13px; color:var(--text-faint); }
+  .hint{ font-family:var(--serif); font-size:1.85vh; color:var(--text-faint); }
+
+  .footer{ position:absolute; right:2.4vw; bottom:2.8vh; font-family:var(--serif);
+           font-size:1.55vh; letter-spacing:.18em; color:var(--text-faint); }
 </style>
 </head>
 <body>
   <div class="card">
-    <span class="flourish fl-tl"></span>
-    <span class="flourish fl-br"></span>
+    <span class="mark tl"></span>
+    <span class="mark br"></span>
     <div class="tabs">
       <div class="tab active">WELCOME</div>
       <div class="tab">GENERAL</div>
@@ -99,16 +100,14 @@
   </div>
 
 <script>
-  function close(){ try{ window.chrome.webview.postMessage('close'); }catch(e){} }
-  document.getElementById('close').addEventListener('click', close);
-  document.addEventListener('keydown', e => { if(e.key === 'Escape') close(); });
-  // tab switching (visual only for now)
+  function closeHub(){ try{ window.chrome.webview.postMessage('close'); }catch(e){} }
+  document.getElementById('close').addEventListener('click', closeHub);
+  document.addEventListener('keydown', e => { if(e.key === 'Escape') closeHub(); });
   document.querySelectorAll('.tab').forEach(t =>
     t.addEventListener('click', () => {
       document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
       t.classList.add('active');
     }));
-  window.addEventListener('load', () => document.body.focus());
 </script>
 </body>
 </html>

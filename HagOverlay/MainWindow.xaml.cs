@@ -36,7 +36,7 @@ public partial class MainWindow : Window
     static readonly IntPtr HWND_TOPMOST = new(-1);
     const int HOTKEY_ID = 0xB001;
     const uint VK_F8 = 0x77, MOD_NOREPEAT = 0x4000;
-    const int WM_HOTKEY = 0x0312;
+    const int WM_HOTKEY = 0x0312, WM_MOUSEACTIVATE = 0x0021, MA_NOACTIVATE = 3;
 
     IntPtr _game = IntPtr.Zero, _self = IntPtr.Zero;
     bool _open = false, _ready = false;
@@ -102,13 +102,13 @@ public partial class MainWindow : Window
         FindGame();
         if (_game == IntPtr.Zero) return;   // no game -> nothing to overlay
         _open = true;
-        WindowState = WindowState.Normal;
         Visibility = Visibility.Visible;
-        Track();
-        ClipCursor(IntPtr.Zero);            // release any cursor clip the game holds
-        SetForegroundWindow(_self);          // full modal: capture all input
-        Activate();
-        Web.Focus();
+        Track();                             // topmost + over the game client rect (no activation)
+        ClipCursor(IntPtr.Zero);             // free the cursor so it can click the overlay
+        // NOTE: we intentionally do NOT SetForegroundWindow/Activate — that deactivates the game and
+        // makes it mute its audio. The overlay is topmost so it draws over the game and receives
+        // mouse clicks (blocking click-through); WM_MOUSEACTIVATE returns MA_NOACTIVATE so clicking
+        // it never steals focus. F8 (global hotkey) + the CLOSE button drive it; the game keeps audio.
         Web.CoreWebView2?.PostWebMessageAsString("opened");
     }
 
@@ -132,6 +132,12 @@ public partial class MainWindow : Window
         {
             if (_open) Close2(); else Open2();
             handled = true;
+        }
+        else if (msg == WM_MOUSEACTIVATE)
+        {
+            // Receive the click but don't activate -> the game keeps focus (and its audio).
+            handled = true;
+            return new IntPtr(MA_NOACTIVATE);
         }
         return IntPtr.Zero;
     }
