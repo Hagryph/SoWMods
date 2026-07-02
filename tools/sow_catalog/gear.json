@@ -1,0 +1,4502 @@
+[
+ {
+  "record": "GearArt_1Sword_Celebrimbor_T1",
+  "weaponType": "1Sword",
+  "theme": "Celebrimbor",
+  "tier": "T1"
+ },
+ {
+  "record": "GearArt_1Sword_Celebrimbor_T2",
+  "weaponType": "1Sword",
+  "theme": "Celebrimbor",
+  "tier": "T2"
+ },
+ {
+  "record": "GearArt_1Sword_Celebrimbor_T3",
+  "weaponType": "1Sword",
+  "theme": "Celebrimbor",
+  "tier": "T3"
+ },
+ {
+  "record": "GearArt_1Sword_Celebrimbor_T4",
+  "weaponType": "1Sword",
+  "theme": "Celebrimbor",
+  "tier": "T4"
+ },
+ {
+  "record": "GearArt_1Sword_Dark_T1",
+  "weaponType": "1Sword",
+  "theme": "Dark",
+  "tier": "T1"
+ },
+ {
+  "record": "GearArt_1Sword_Dark_T2",
+  "weaponType": "1Sword",
+  "theme": "Dark",
+  "tier": "T2"
+ },
+ {
+  "record": "GearArt_1Sword_Dark_T3",
+  "weaponType": "1Sword",
+  "theme": "Dark",
+  "tier": "T3"
+ },
+ {
+  "record": "GearArt_1Sword_Dark_T4",
+  "weaponType": "1Sword",
+  "theme": "Dark",
+  "tier": "T4"
+ },
+ {
+  "record": "GearArt_1Sword_Feral_T1",
+  "weaponType": "1Sword",
+  "theme": "Feral",
+  "tier": "T1"
+ },
+ {
+  "record": "GearArt_1Sword_Feral_T2",
+  "weaponType": "1Sword",
+  "theme": "Feral",
+  "tier": "T2"
+ },
+ {
+  "record": "GearArt_1Sword_Feral_T3",
+  "weaponType": "1Sword",
+  "theme": "Feral",
+  "tier": "T3"
+ },
+ {
+  "record": "GearArt_1Sword_Feral_T4",
+  "weaponType": "1Sword",
+  "theme": "Feral",
+  "tier": "T4"
+ },
+ {
+  "record": "GearArt_1Sword_Machine_T1",
+  "weaponType": "1Sword",
+  "theme": "Machine",
+  "tier": "T1"
+ },
+ {
+  "record": "GearArt_1Sword_Machine_T2",
+  "weaponType": "1Sword",
+  "theme": "Machine",
+  "tier": "T2"
+ },
+ {
+  "record": "GearArt_1Sword_Machine_T3",
+  "weaponType": "1Sword",
+  "theme": "Machine",
+  "tier": "T3"
+ },
+ {
+  "record": "GearArt_1Sword_Machine_T4",
+  "weaponType": "1Sword",
+  "theme": "Machine",
+  "tier": "T4"
+ },
+ {
+  "record": "GearArt_1Sword_Marauder_T1",
+  "weaponType": "1Sword",
+  "theme": "Marauder",
+  "tier": "T1"
+ },
+ {
+  "record": "GearArt_1Sword_Marauder_T2",
+  "weaponType": "1Sword",
+  "theme": "Marauder",
+  "tier": "T2"
+ },
+ {
+  "record": "GearArt_1Sword_Marauder_T3",
+  "weaponType": "1Sword",
+  "theme": "Marauder",
+  "tier": "T3"
+ },
+ {
+  "record": "GearArt_1Sword_Marauder_T4",
+  "weaponType": "1Sword",
+  "theme": "Marauder",
+  "tier": "T4"
+ },
+ {
+  "record": "GearArt_1Sword_Mystic_T1",
+  "weaponType": "1Sword",
+  "theme": "Mystic",
+  "tier": "T1"
+ },
+ {
+  "record": "GearArt_1Sword_Mystic_T2",
+  "weaponType": "1Sword",
+  "theme": "Mystic",
+  "tier": "T2"
+ },
+ {
+  "record": "GearArt_1Sword_Mystic_T3",
+  "weaponType": "1Sword",
+  "theme": "Mystic",
+  "tier": "T3"
+ },
+ {
+  "record": "GearArt_1Sword_Mystic_T4",
+  "weaponType": "1Sword",
+  "theme": "Mystic",
+  "tier": "T4"
+ },
+ {
+  "record": "GearArt_1Sword_Outlaw_T1",
+  "weaponType": "1Sword",
+  "theme": "Outlaw",
+  "tier": "T1"
+ },
+ {
+  "record": "GearArt_1Sword_Outlaw_T2",
+  "weaponType": "1Sword",
+  "theme": "Outlaw",
+  "tier": "T2"
+ },
+ {
+  "record": "GearArt_1Sword_Outlaw_T3",
+  "weaponType": "1Sword",
+  "theme": "Outlaw",
+  "tier": "T3"
+ },
+ {
+  "record": "GearArt_1Sword_Outlaw_T4",
+  "weaponType": "1Sword",
+  "theme": "Outlaw",
+  "tier": "T4"
+ },
+ {
+  "record": "GearArt_1Sword_Ringwraith_T1",
+  "weaponType": "1Sword",
+  "theme": "Ringwraith",
+  "tier": "T1"
+ },
+ {
+  "record": "GearArt_1Sword_Ringwraith_T2",
+  "weaponType": "1Sword",
+  "theme": "Ringwraith",
+  "tier": "T2"
+ },
+ {
+  "record": "GearArt_1Sword_Ringwraith_T3",
+  "weaponType": "1Sword",
+  "theme": "Ringwraith",
+  "tier": "T3"
+ },
+ {
+  "record": "GearArt_1Sword_Ringwraith_T4",
+  "weaponType": "1Sword",
+  "theme": "Ringwraith",
+  "tier": "T4"
+ },
+ {
+  "record": "GearArt_1Sword_Slaughter_T1",
+  "weaponType": "1Sword",
+  "theme": "Slaughter",
+  "tier": "T1"
+ },
+ {
+  "record": "GearArt_1Sword_Slaughter_T2",
+  "weaponType": "1Sword",
+  "theme": "Slaughter",
+  "tier": "T2"
+ },
+ {
+  "record": "GearArt_1Sword_Slaughter_T3",
+  "weaponType": "1Sword",
+  "theme": "Slaughter",
+  "tier": "T3"
+ },
+ {
+  "record": "GearArt_1Sword_Slaughter_T4",
+  "weaponType": "1Sword",
+  "theme": "Slaughter",
+  "tier": "T4"
+ },
+ {
+  "record": "GearArt_1Sword_Terror_T1",
+  "weaponType": "1Sword",
+  "theme": "Terror",
+  "tier": "T1"
+ },
+ {
+  "record": "GearArt_1Sword_Terror_T2",
+  "weaponType": "1Sword",
+  "theme": "Terror",
+  "tier": "T2"
+ },
+ {
+  "record": "GearArt_1Sword_Terror_T3",
+  "weaponType": "1Sword",
+  "theme": "Terror",
+  "tier": "T3"
+ },
+ {
+  "record": "GearArt_1Sword_Terror_T4",
+  "weaponType": "1Sword",
+  "theme": "Terror",
+  "tier": "T4"
+ },
+ {
+  "record": "GearArt_1Sword_Vendetta_T1",
+  "weaponType": "1Sword",
+  "theme": "Vendetta",
+  "tier": "T1"
+ },
+ {
+  "record": "GearArt_1Sword_Vendetta_T2",
+  "weaponType": "1Sword",
+  "theme": "Vendetta",
+  "tier": "T2"
+ },
+ {
+  "record": "GearArt_1Sword_Vendetta_T3",
+  "weaponType": "1Sword",
+  "theme": "Vendetta",
+  "tier": "T3"
+ },
+ {
+  "record": "GearArt_1Sword_Vendetta_T4",
+  "weaponType": "1Sword",
+  "theme": "Vendetta",
+  "tier": "T4"
+ },
+ {
+  "record": "GearArt_1Sword_Warmonger_T1",
+  "weaponType": "1Sword",
+  "theme": "Warmonger",
+  "tier": "T1"
+ },
+ {
+  "record": "GearArt_1Sword_Warmonger_T2",
+  "weaponType": "1Sword",
+  "theme": "Warmonger",
+  "tier": "T2"
+ },
+ {
+  "record": "GearArt_1Sword_Warmonger_T3",
+  "weaponType": "1Sword",
+  "theme": "Warmonger",
+  "tier": "T3"
+ },
+ {
+  "record": "GearArt_1Sword_Warmonger_T4",
+  "weaponType": "1Sword",
+  "theme": "Warmonger",
+  "tier": "T4"
+ },
+ {
+  "record": "GearArt_2Dagger_Celebrimbor_T1",
+  "weaponType": "2Dagger",
+  "theme": "Celebrimbor",
+  "tier": "T1"
+ },
+ {
+  "record": "GearArt_2Dagger_Celebrimbor_T2",
+  "weaponType": "2Dagger",
+  "theme": "Celebrimbor",
+  "tier": "T2"
+ },
+ {
+  "record": "GearArt_2Dagger_Celebrimbor_T3",
+  "weaponType": "2Dagger",
+  "theme": "Celebrimbor",
+  "tier": "T3"
+ },
+ {
+  "record": "GearArt_2Dagger_Celebrimbor_T4",
+  "weaponType": "2Dagger",
+  "theme": "Celebrimbor",
+  "tier": "T4"
+ },
+ {
+  "record": "GearArt_2Dagger_Dark_T1",
+  "weaponType": "2Dagger",
+  "theme": "Dark",
+  "tier": "T1"
+ },
+ {
+  "record": "GearArt_2Dagger_Dark_T2",
+  "weaponType": "2Dagger",
+  "theme": "Dark",
+  "tier": "T2"
+ },
+ {
+  "record": "GearArt_2Dagger_Dark_T3",
+  "weaponType": "2Dagger",
+  "theme": "Dark",
+  "tier": "T3"
+ },
+ {
+  "record": "GearArt_2Dagger_Dark_T4",
+  "weaponType": "2Dagger",
+  "theme": "Dark",
+  "tier": "T4"
+ },
+ {
+  "record": "GearArt_2Dagger_Feral_T1",
+  "weaponType": "2Dagger",
+  "theme": "Feral",
+  "tier": "T1"
+ },
+ {
+  "record": "GearArt_2Dagger_Feral_T2",
+  "weaponType": "2Dagger",
+  "theme": "Feral",
+  "tier": "T2"
+ },
+ {
+  "record": "GearArt_2Dagger_Feral_T3",
+  "weaponType": "2Dagger",
+  "theme": "Feral",
+  "tier": "T3"
+ },
+ {
+  "record": "GearArt_2Dagger_Feral_T4",
+  "weaponType": "2Dagger",
+  "theme": "Feral",
+  "tier": "T4"
+ },
+ {
+  "record": "GearArt_2Dagger_Machine_T1",
+  "weaponType": "2Dagger",
+  "theme": "Machine",
+  "tier": "T1"
+ },
+ {
+  "record": "GearArt_2Dagger_Machine_T2",
+  "weaponType": "2Dagger",
+  "theme": "Machine",
+  "tier": "T2"
+ },
+ {
+  "record": "GearArt_2Dagger_Machine_T3",
+  "weaponType": "2Dagger",
+  "theme": "Machine",
+  "tier": "T3"
+ },
+ {
+  "record": "GearArt_2Dagger_Machine_T4",
+  "weaponType": "2Dagger",
+  "theme": "Machine",
+  "tier": "T4"
+ },
+ {
+  "record": "GearArt_2Dagger_Marauder_T1",
+  "weaponType": "2Dagger",
+  "theme": "Marauder",
+  "tier": "T1"
+ },
+ {
+  "record": "GearArt_2Dagger_Marauder_T2",
+  "weaponType": "2Dagger",
+  "theme": "Marauder",
+  "tier": "T2"
+ },
+ {
+  "record": "GearArt_2Dagger_Marauder_T3",
+  "weaponType": "2Dagger",
+  "theme": "Marauder",
+  "tier": "T3"
+ },
+ {
+  "record": "GearArt_2Dagger_Marauder_T4",
+  "weaponType": "2Dagger",
+  "theme": "Marauder",
+  "tier": "T4"
+ },
+ {
+  "record": "GearArt_2Dagger_Mystic_T1",
+  "weaponType": "2Dagger",
+  "theme": "Mystic",
+  "tier": "T1"
+ },
+ {
+  "record": "GearArt_2Dagger_Mystic_T2",
+  "weaponType": "2Dagger",
+  "theme": "Mystic",
+  "tier": "T2"
+ },
+ {
+  "record": "GearArt_2Dagger_Mystic_T3",
+  "weaponType": "2Dagger",
+  "theme": "Mystic",
+  "tier": "T3"
+ },
+ {
+  "record": "GearArt_2Dagger_Mystic_T4",
+  "weaponType": "2Dagger",
+  "theme": "Mystic",
+  "tier": "T4"
+ },
+ {
+  "record": "GearArt_2Dagger_Outlaw_T1",
+  "weaponType": "2Dagger",
+  "theme": "Outlaw",
+  "tier": "T1"
+ },
+ {
+  "record": "GearArt_2Dagger_Outlaw_T2",
+  "weaponType": "2Dagger",
+  "theme": "Outlaw",
+  "tier": "T2"
+ },
+ {
+  "record": "GearArt_2Dagger_Outlaw_T3",
+  "weaponType": "2Dagger",
+  "theme": "Outlaw",
+  "tier": "T3"
+ },
+ {
+  "record": "GearArt_2Dagger_Outlaw_T4",
+  "weaponType": "2Dagger",
+  "theme": "Outlaw",
+  "tier": "T4"
+ },
+ {
+  "record": "GearArt_2Dagger_Ringwraith_T1",
+  "weaponType": "2Dagger",
+  "theme": "Ringwraith",
+  "tier": "T1"
+ },
+ {
+  "record": "GearArt_2Dagger_Ringwraith_T2",
+  "weaponType": "2Dagger",
+  "theme": "Ringwraith",
+  "tier": "T2"
+ },
+ {
+  "record": "GearArt_2Dagger_Ringwraith_T3",
+  "weaponType": "2Dagger",
+  "theme": "Ringwraith",
+  "tier": "T3"
+ },
+ {
+  "record": "GearArt_2Dagger_Ringwraith_T4",
+  "weaponType": "2Dagger",
+  "theme": "Ringwraith",
+  "tier": "T4"
+ },
+ {
+  "record": "GearArt_2Dagger_Slaughter_T1",
+  "weaponType": "2Dagger",
+  "theme": "Slaughter",
+  "tier": "T1"
+ },
+ {
+  "record": "GearArt_2Dagger_Slaughter_T2",
+  "weaponType": "2Dagger",
+  "theme": "Slaughter",
+  "tier": "T2"
+ },
+ {
+  "record": "GearArt_2Dagger_Slaughter_T3",
+  "weaponType": "2Dagger",
+  "theme": "Slaughter",
+  "tier": "T3"
+ },
+ {
+  "record": "GearArt_2Dagger_Slaughter_T4",
+  "weaponType": "2Dagger",
+  "theme": "Slaughter",
+  "tier": "T4"
+ },
+ {
+  "record": "GearArt_2Dagger_Terror_T1",
+  "weaponType": "2Dagger",
+  "theme": "Terror",
+  "tier": "T1"
+ },
+ {
+  "record": "GearArt_2Dagger_Terror_T2",
+  "weaponType": "2Dagger",
+  "theme": "Terror",
+  "tier": "T2"
+ },
+ {
+  "record": "GearArt_2Dagger_Terror_T3",
+  "weaponType": "2Dagger",
+  "theme": "Terror",
+  "tier": "T3"
+ },
+ {
+  "record": "GearArt_2Dagger_Terror_T4",
+  "weaponType": "2Dagger",
+  "theme": "Terror",
+  "tier": "T4"
+ },
+ {
+  "record": "GearArt_2Dagger_Vendetta_T1",
+  "weaponType": "2Dagger",
+  "theme": "Vendetta",
+  "tier": "T1"
+ },
+ {
+  "record": "GearArt_2Dagger_Vendetta_T2",
+  "weaponType": "2Dagger",
+  "theme": "Vendetta",
+  "tier": "T2"
+ },
+ {
+  "record": "GearArt_2Dagger_Vendetta_T3",
+  "weaponType": "2Dagger",
+  "theme": "Vendetta",
+  "tier": "T3"
+ },
+ {
+  "record": "GearArt_2Dagger_Vendetta_T4",
+  "weaponType": "2Dagger",
+  "theme": "Vendetta",
+  "tier": "T4"
+ },
+ {
+  "record": "GearArt_2Dagger_Warmonger_T1",
+  "weaponType": "2Dagger",
+  "theme": "Warmonger",
+  "tier": "T1"
+ },
+ {
+  "record": "GearArt_2Dagger_Warmonger_T2",
+  "weaponType": "2Dagger",
+  "theme": "Warmonger",
+  "tier": "T2"
+ },
+ {
+  "record": "GearArt_2Dagger_Warmonger_T3",
+  "weaponType": "2Dagger",
+  "theme": "Warmonger",
+  "tier": "T3"
+ },
+ {
+  "record": "GearArt_2Dagger_Warmonger_T4",
+  "weaponType": "2Dagger",
+  "theme": "Warmonger",
+  "tier": "T4"
+ },
+ {
+  "record": "GearArt_3BowHam_Celebrimbor_T1",
+  "weaponType": "3BowHam",
+  "theme": "Celebrimbor",
+  "tier": "T1"
+ },
+ {
+  "record": "GearArt_3BowHam_Celebrimbor_T2",
+  "weaponType": "3BowHam",
+  "theme": "Celebrimbor",
+  "tier": "T2"
+ },
+ {
+  "record": "GearArt_3BowHam_Celebrimbor_T3",
+  "weaponType": "3BowHam",
+  "theme": "Celebrimbor",
+  "tier": "T3"
+ },
+ {
+  "record": "GearArt_3BowHam_Celebrimbor_T4",
+  "weaponType": "3BowHam",
+  "theme": "Celebrimbor",
+  "tier": "T4"
+ },
+ {
+  "record": "GearArt_3BowHam_Machine_T1",
+  "weaponType": "3BowHam",
+  "theme": "Machine",
+  "tier": "T1"
+ },
+ {
+  "record": "GearArt_3BowHam_Machine_T2",
+  "weaponType": "3BowHam",
+  "theme": "Machine",
+  "tier": "T2"
+ },
+ {
+  "record": "GearArt_3BowHam_Machine_T3",
+  "weaponType": "3BowHam",
+  "theme": "Machine",
+  "tier": "T3"
+ },
+ {
+  "record": "GearArt_3BowHam_Machine_T4",
+  "weaponType": "3BowHam",
+  "theme": "Machine",
+  "tier": "T4"
+ },
+ {
+  "record": "GearArt_3BowHam_Marauder_T1",
+  "weaponType": "3BowHam",
+  "theme": "Marauder",
+  "tier": "T1"
+ },
+ {
+  "record": "GearArt_3BowHam_Marauder_T2",
+  "weaponType": "3BowHam",
+  "theme": "Marauder",
+  "tier": "T2"
+ },
+ {
+  "record": "GearArt_3BowHam_Marauder_T3",
+  "weaponType": "3BowHam",
+  "theme": "Marauder",
+  "tier": "T3"
+ },
+ {
+  "record": "GearArt_3BowHam_Marauder_T4",
+  "weaponType": "3BowHam",
+  "theme": "Marauder",
+  "tier": "T4"
+ },
+ {
+  "record": "GearArt_3BowHam_Ringwraith_T1",
+  "weaponType": "3BowHam",
+  "theme": "Ringwraith",
+  "tier": "T1"
+ },
+ {
+  "record": "GearArt_3BowHam_Ringwraith_T2",
+  "weaponType": "3BowHam",
+  "theme": "Ringwraith",
+  "tier": "T2"
+ },
+ {
+  "record": "GearArt_3BowHam_Ringwraith_T3",
+  "weaponType": "3BowHam",
+  "theme": "Ringwraith",
+  "tier": "T3"
+ },
+ {
+  "record": "GearArt_3BowHam_Ringwraith_T4",
+  "weaponType": "3BowHam",
+  "theme": "Ringwraith",
+  "tier": "T4"
+ },
+ {
+  "record": "GearArt_3BowHam_Warmonger_T1",
+  "weaponType": "3BowHam",
+  "theme": "Warmonger",
+  "tier": "T1"
+ },
+ {
+  "record": "GearArt_3BowHam_Warmonger_T2",
+  "weaponType": "3BowHam",
+  "theme": "Warmonger",
+  "tier": "T2"
+ },
+ {
+  "record": "GearArt_3BowHam_Warmonger_T3",
+  "weaponType": "3BowHam",
+  "theme": "Warmonger",
+  "tier": "T3"
+ },
+ {
+  "record": "GearArt_3BowHam_Warmonger_T4",
+  "weaponType": "3BowHam",
+  "theme": "Warmonger",
+  "tier": "T4"
+ },
+ {
+  "record": "GearArt_3BowSnipe_Dark_T1",
+  "weaponType": "3BowSnipe",
+  "theme": "Dark",
+  "tier": "T1"
+ },
+ {
+  "record": "GearArt_3BowSnipe_Dark_T2",
+  "weaponType": "3BowSnipe",
+  "theme": "Dark",
+  "tier": "T2"
+ },
+ {
+  "record": "GearArt_3BowSnipe_Dark_T3",
+  "weaponType": "3BowSnipe",
+  "theme": "Dark",
+  "tier": "T3"
+ },
+ {
+  "record": "GearArt_3BowSnipe_Dark_T4",
+  "weaponType": "3BowSnipe",
+  "theme": "Dark",
+  "tier": "T4"
+ },
+ {
+  "record": "GearArt_3BowSnipe_Slaughter_T1",
+  "weaponType": "3BowSnipe",
+  "theme": "Slaughter",
+  "tier": "T1"
+ },
+ {
+  "record": "GearArt_3BowSnipe_Slaughter_T2",
+  "weaponType": "3BowSnipe",
+  "theme": "Slaughter",
+  "tier": "T2"
+ },
+ {
+  "record": "GearArt_3BowSnipe_Slaughter_T3",
+  "weaponType": "3BowSnipe",
+  "theme": "Slaughter",
+  "tier": "T3"
+ },
+ {
+  "record": "GearArt_3BowSnipe_Slaughter_T4",
+  "weaponType": "3BowSnipe",
+  "theme": "Slaughter",
+  "tier": "T4"
+ },
+ {
+  "record": "GearArt_3BowSnipe_Terror_T1",
+  "weaponType": "3BowSnipe",
+  "theme": "Terror",
+  "tier": "T1"
+ },
+ {
+  "record": "GearArt_3BowSnipe_Terror_T2",
+  "weaponType": "3BowSnipe",
+  "theme": "Terror",
+  "tier": "T2"
+ },
+ {
+  "record": "GearArt_3BowSnipe_Terror_T3",
+  "weaponType": "3BowSnipe",
+  "theme": "Terror",
+  "tier": "T3"
+ },
+ {
+  "record": "GearArt_3BowSnipe_Terror_T4",
+  "weaponType": "3BowSnipe",
+  "theme": "Terror",
+  "tier": "T4"
+ },
+ {
+  "record": "GearArt_3BowSnipe_Vendetta_T1",
+  "weaponType": "3BowSnipe",
+  "theme": "Vendetta",
+  "tier": "T1"
+ },
+ {
+  "record": "GearArt_3BowSnipe_Vendetta_T2",
+  "weaponType": "3BowSnipe",
+  "theme": "Vendetta",
+  "tier": "T2"
+ },
+ {
+  "record": "GearArt_3BowSnipe_Vendetta_T3",
+  "weaponType": "3BowSnipe",
+  "theme": "Vendetta",
+  "tier": "T3"
+ },
+ {
+  "record": "GearArt_3BowSnipe_Vendetta_T4",
+  "weaponType": "3BowSnipe",
+  "theme": "Vendetta",
+  "tier": "T4"
+ },
+ {
+  "record": "GearArt_3Bow_Celebrimbor_T1",
+  "weaponType": "3Bow",
+  "theme": "Celebrimbor",
+  "tier": "T1"
+ },
+ {
+  "record": "GearArt_3Bow_Celebrimbor_T2",
+  "weaponType": "3Bow",
+  "theme": "Celebrimbor",
+  "tier": "T2"
+ },
+ {
+  "record": "GearArt_3Bow_Celebrimbor_T3",
+  "weaponType": "3Bow",
+  "theme": "Celebrimbor",
+  "tier": "T3"
+ },
+ {
+  "record": "GearArt_3Bow_Celebrimbor_T4",
+  "weaponType": "3Bow",
+  "theme": "Celebrimbor",
+  "tier": "T4"
+ },
+ {
+  "record": "GearArt_3Bow_Feral_T1",
+  "weaponType": "3Bow",
+  "theme": "Feral",
+  "tier": "T1"
+ },
+ {
+  "record": "GearArt_3Bow_Feral_T2",
+  "weaponType": "3Bow",
+  "theme": "Feral",
+  "tier": "T2"
+ },
+ {
+  "record": "GearArt_3Bow_Feral_T3",
+  "weaponType": "3Bow",
+  "theme": "Feral",
+  "tier": "T3"
+ },
+ {
+  "record": "GearArt_3Bow_Feral_T4",
+  "weaponType": "3Bow",
+  "theme": "Feral",
+  "tier": "T4"
+ },
+ {
+  "record": "GearArt_3Bow_Mystic_T1",
+  "weaponType": "3Bow",
+  "theme": "Mystic",
+  "tier": "T1"
+ },
+ {
+  "record": "GearArt_3Bow_Mystic_T2",
+  "weaponType": "3Bow",
+  "theme": "Mystic",
+  "tier": "T2"
+ },
+ {
+  "record": "GearArt_3Bow_Mystic_T3",
+  "weaponType": "3Bow",
+  "theme": "Mystic",
+  "tier": "T3"
+ },
+ {
+  "record": "GearArt_3Bow_Mystic_T4",
+  "weaponType": "3Bow",
+  "theme": "Mystic",
+  "tier": "T4"
+ },
+ {
+  "record": "GearArt_3Bow_Outlaw_T1",
+  "weaponType": "3Bow",
+  "theme": "Outlaw",
+  "tier": "T1"
+ },
+ {
+  "record": "GearArt_3Bow_Outlaw_T2",
+  "weaponType": "3Bow",
+  "theme": "Outlaw",
+  "tier": "T2"
+ },
+ {
+  "record": "GearArt_3Bow_Outlaw_T3",
+  "weaponType": "3Bow",
+  "theme": "Outlaw",
+  "tier": "T3"
+ },
+ {
+  "record": "GearArt_3Bow_Outlaw_T4",
+  "weaponType": "3Bow",
+  "theme": "Outlaw",
+  "tier": "T4"
+ },
+ {
+  "record": "GearArt_3Bow_Vendetta_T1",
+  "weaponType": "3Bow",
+  "theme": "Vendetta",
+  "tier": "T1"
+ },
+ {
+  "record": "GearArt_3Bow_Vendetta_T2",
+  "weaponType": "3Bow",
+  "theme": "Vendetta",
+  "tier": "T2"
+ },
+ {
+  "record": "GearArt_3Bow_Vendetta_T3",
+  "weaponType": "3Bow",
+  "theme": "Vendetta",
+  "tier": "T3"
+ },
+ {
+  "record": "GearArt_4Armor_Celebrimbor_T1",
+  "weaponType": "4Armor",
+  "theme": "Celebrimbor",
+  "tier": "T1"
+ },
+ {
+  "record": "GearArt_4Armor_Celebrimbor_T2",
+  "weaponType": "4Armor",
+  "theme": "Celebrimbor",
+  "tier": "T2"
+ },
+ {
+  "record": "GearArt_4Armor_Celebrimbor_T3",
+  "weaponType": "4Armor",
+  "theme": "Celebrimbor",
+  "tier": "T3"
+ },
+ {
+  "record": "GearArt_4Armor_Celebrimbor_T4",
+  "weaponType": "4Armor",
+  "theme": "Celebrimbor",
+  "tier": "T4"
+ },
+ {
+  "record": "GearArt_4Armor_Dark_T1",
+  "weaponType": "4Armor",
+  "theme": "Dark",
+  "tier": "T1"
+ },
+ {
+  "record": "GearArt_4Armor_Dark_T2",
+  "weaponType": "4Armor",
+  "theme": "Dark",
+  "tier": "T2"
+ },
+ {
+  "record": "GearArt_4Armor_Dark_T3",
+  "weaponType": "4Armor",
+  "theme": "Dark",
+  "tier": "T3"
+ },
+ {
+  "record": "GearArt_4Armor_Dark_T4",
+  "weaponType": "4Armor",
+  "theme": "Dark",
+  "tier": "T4"
+ },
+ {
+  "record": "GearArt_4Armor_Feral_T1",
+  "weaponType": "4Armor",
+  "theme": "Feral",
+  "tier": "T1"
+ },
+ {
+  "record": "GearArt_4Armor_Feral_T2",
+  "weaponType": "4Armor",
+  "theme": "Feral",
+  "tier": "T2"
+ },
+ {
+  "record": "GearArt_4Armor_Feral_T3",
+  "weaponType": "4Armor",
+  "theme": "Feral",
+  "tier": "T3"
+ },
+ {
+  "record": "GearArt_4Armor_Feral_T4",
+  "weaponType": "4Armor",
+  "theme": "Feral",
+  "tier": "T4"
+ },
+ {
+  "record": "GearArt_4Armor_Machine_T1",
+  "weaponType": "4Armor",
+  "theme": "Machine",
+  "tier": "T1"
+ },
+ {
+  "record": "GearArt_4Armor_Machine_T2",
+  "weaponType": "4Armor",
+  "theme": "Machine",
+  "tier": "T2"
+ },
+ {
+  "record": "GearArt_4Armor_Machine_T3",
+  "weaponType": "4Armor",
+  "theme": "Machine",
+  "tier": "T3"
+ },
+ {
+  "record": "GearArt_4Armor_Machine_T4",
+  "weaponType": "4Armor",
+  "theme": "Machine",
+  "tier": "T4"
+ },
+ {
+  "record": "GearArt_4Armor_Marauder_T1",
+  "weaponType": "4Armor",
+  "theme": "Marauder",
+  "tier": "T1"
+ },
+ {
+  "record": "GearArt_4Armor_Marauder_T2",
+  "weaponType": "4Armor",
+  "theme": "Marauder",
+  "tier": "T2"
+ },
+ {
+  "record": "GearArt_4Armor_Marauder_T3",
+  "weaponType": "4Armor",
+  "theme": "Marauder",
+  "tier": "T3"
+ },
+ {
+  "record": "GearArt_4Armor_Marauder_T4",
+  "weaponType": "4Armor",
+  "theme": "Marauder",
+  "tier": "T4"
+ },
+ {
+  "record": "GearArt_4Armor_Mystic_T1",
+  "weaponType": "4Armor",
+  "theme": "Mystic",
+  "tier": "T1"
+ },
+ {
+  "record": "GearArt_4Armor_Mystic_T2",
+  "weaponType": "4Armor",
+  "theme": "Mystic",
+  "tier": "T2"
+ },
+ {
+  "record": "GearArt_4Armor_Mystic_T3",
+  "weaponType": "4Armor",
+  "theme": "Mystic",
+  "tier": "T3"
+ },
+ {
+  "record": "GearArt_4Armor_Mystic_T4",
+  "weaponType": "4Armor",
+  "theme": "Mystic",
+  "tier": "T4"
+ },
+ {
+  "record": "GearArt_4Armor_Outlaw_T1",
+  "weaponType": "4Armor",
+  "theme": "Outlaw",
+  "tier": "T1"
+ },
+ {
+  "record": "GearArt_4Armor_Outlaw_T2",
+  "weaponType": "4Armor",
+  "theme": "Outlaw",
+  "tier": "T2"
+ },
+ {
+  "record": "GearArt_4Armor_Outlaw_T3",
+  "weaponType": "4Armor",
+  "theme": "Outlaw",
+  "tier": "T3"
+ },
+ {
+  "record": "GearArt_4Armor_Outlaw_T4",
+  "weaponType": "4Armor",
+  "theme": "Outlaw",
+  "tier": "T4"
+ },
+ {
+  "record": "GearArt_4Armor_Ringwraith_T1",
+  "weaponType": "4Armor",
+  "theme": "Ringwraith",
+  "tier": "T1"
+ },
+ {
+  "record": "GearArt_4Armor_Ringwraith_T2",
+  "weaponType": "4Armor",
+  "theme": "Ringwraith",
+  "tier": "T2"
+ },
+ {
+  "record": "GearArt_4Armor_Ringwraith_T3",
+  "weaponType": "4Armor",
+  "theme": "Ringwraith",
+  "tier": "T3"
+ },
+ {
+  "record": "GearArt_4Armor_Ringwraith_T4",
+  "weaponType": "4Armor",
+  "theme": "Ringwraith",
+  "tier": "T4"
+ },
+ {
+  "record": "GearArt_4Armor_Slaughter_T1",
+  "weaponType": "4Armor",
+  "theme": "Slaughter",
+  "tier": "T1"
+ },
+ {
+  "record": "GearArt_4Armor_Slaughter_T2",
+  "weaponType": "4Armor",
+  "theme": "Slaughter",
+  "tier": "T2"
+ },
+ {
+  "record": "GearArt_4Armor_Slaughter_T3",
+  "weaponType": "4Armor",
+  "theme": "Slaughter",
+  "tier": "T3"
+ },
+ {
+  "record": "GearArt_4Armor_Slaughter_T4",
+  "weaponType": "4Armor",
+  "theme": "Slaughter",
+  "tier": "T4"
+ },
+ {
+  "record": "GearArt_4Armor_Terror_T1",
+  "weaponType": "4Armor",
+  "theme": "Terror",
+  "tier": "T1"
+ },
+ {
+  "record": "GearArt_4Armor_Terror_T2",
+  "weaponType": "4Armor",
+  "theme": "Terror",
+  "tier": "T2"
+ },
+ {
+  "record": "GearArt_4Armor_Terror_T3",
+  "weaponType": "4Armor",
+  "theme": "Terror",
+  "tier": "T3"
+ },
+ {
+  "record": "GearArt_4Armor_Terror_T4",
+  "weaponType": "4Armor",
+  "theme": "Terror",
+  "tier": "T4"
+ },
+ {
+  "record": "GearArt_4Armor_Vendetta_T1",
+  "weaponType": "4Armor",
+  "theme": "Vendetta",
+  "tier": "T1"
+ },
+ {
+  "record": "GearArt_4Armor_Vendetta_T2",
+  "weaponType": "4Armor",
+  "theme": "Vendetta",
+  "tier": "T2"
+ },
+ {
+  "record": "GearArt_4Armor_Vendetta_T3",
+  "weaponType": "4Armor",
+  "theme": "Vendetta",
+  "tier": "T3"
+ },
+ {
+  "record": "GearArt_4Armor_Vendetta_T4",
+  "weaponType": "4Armor",
+  "theme": "Vendetta",
+  "tier": "T4"
+ },
+ {
+  "record": "GearArt_4Armor_Warmonger_T1",
+  "weaponType": "4Armor",
+  "theme": "Warmonger",
+  "tier": "T1"
+ },
+ {
+  "record": "GearArt_4Armor_Warmonger_T2",
+  "weaponType": "4Armor",
+  "theme": "Warmonger",
+  "tier": "T2"
+ },
+ {
+  "record": "GearArt_4Armor_Warmonger_T3",
+  "weaponType": "4Armor",
+  "theme": "Warmonger",
+  "tier": "T3"
+ },
+ {
+  "record": "GearArt_4Armor_Warmonger_T4",
+  "weaponType": "4Armor",
+  "theme": "Warmonger",
+  "tier": "T4"
+ },
+ {
+  "record": "GearArt_5Cape_Celebrimbor_T1",
+  "weaponType": "5Cape",
+  "theme": "Celebrimbor",
+  "tier": "T1"
+ },
+ {
+  "record": "GearArt_5Cape_Celebrimbor_T2",
+  "weaponType": "5Cape",
+  "theme": "Celebrimbor",
+  "tier": "T2"
+ },
+ {
+  "record": "GearArt_5Cape_Celebrimbor_T3",
+  "weaponType": "5Cape",
+  "theme": "Celebrimbor",
+  "tier": "T3"
+ },
+ {
+  "record": "GearArt_5Cape_Celebrimbor_T4",
+  "weaponType": "5Cape",
+  "theme": "Celebrimbor",
+  "tier": "T4"
+ },
+ {
+  "record": "GearArt_5Cape_Dark_T1",
+  "weaponType": "5Cape",
+  "theme": "Dark",
+  "tier": "T1"
+ },
+ {
+  "record": "GearArt_5Cape_Dark_T2",
+  "weaponType": "5Cape",
+  "theme": "Dark",
+  "tier": "T2"
+ },
+ {
+  "record": "GearArt_5Cape_Dark_T3",
+  "weaponType": "5Cape",
+  "theme": "Dark",
+  "tier": "T3"
+ },
+ {
+  "record": "GearArt_5Cape_Dark_T4",
+  "weaponType": "5Cape",
+  "theme": "Dark",
+  "tier": "T4"
+ },
+ {
+  "record": "GearArt_5Cape_Feral_T1",
+  "weaponType": "5Cape",
+  "theme": "Feral",
+  "tier": "T1"
+ },
+ {
+  "record": "GearArt_5Cape_Feral_T2",
+  "weaponType": "5Cape",
+  "theme": "Feral",
+  "tier": "T2"
+ },
+ {
+  "record": "GearArt_5Cape_Feral_T3",
+  "weaponType": "5Cape",
+  "theme": "Feral",
+  "tier": "T3"
+ },
+ {
+  "record": "GearArt_5Cape_Feral_T4",
+  "weaponType": "5Cape",
+  "theme": "Feral",
+  "tier": "T4"
+ },
+ {
+  "record": "GearArt_5Cape_Machine_T1",
+  "weaponType": "5Cape",
+  "theme": "Machine",
+  "tier": "T1"
+ },
+ {
+  "record": "GearArt_5Cape_Machine_T2",
+  "weaponType": "5Cape",
+  "theme": "Machine",
+  "tier": "T2"
+ },
+ {
+  "record": "GearArt_5Cape_Machine_T3",
+  "weaponType": "5Cape",
+  "theme": "Machine",
+  "tier": "T3"
+ },
+ {
+  "record": "GearArt_5Cape_Machine_T4",
+  "weaponType": "5Cape",
+  "theme": "Machine",
+  "tier": "T4"
+ },
+ {
+  "record": "GearArt_5Cape_Marauder_T1",
+  "weaponType": "5Cape",
+  "theme": "Marauder",
+  "tier": "T1"
+ },
+ {
+  "record": "GearArt_5Cape_Marauder_T2",
+  "weaponType": "5Cape",
+  "theme": "Marauder",
+  "tier": "T2"
+ },
+ {
+  "record": "GearArt_5Cape_Marauder_T3",
+  "weaponType": "5Cape",
+  "theme": "Marauder",
+  "tier": "T3"
+ },
+ {
+  "record": "GearArt_5Cape_Marauder_T4",
+  "weaponType": "5Cape",
+  "theme": "Marauder",
+  "tier": "T4"
+ },
+ {
+  "record": "GearArt_5Cape_Mystic_T1",
+  "weaponType": "5Cape",
+  "theme": "Mystic",
+  "tier": "T1"
+ },
+ {
+  "record": "GearArt_5Cape_Mystic_T2",
+  "weaponType": "5Cape",
+  "theme": "Mystic",
+  "tier": "T2"
+ },
+ {
+  "record": "GearArt_5Cape_Mystic_T3",
+  "weaponType": "5Cape",
+  "theme": "Mystic",
+  "tier": "T3"
+ },
+ {
+  "record": "GearArt_5Cape_Mystic_T4",
+  "weaponType": "5Cape",
+  "theme": "Mystic",
+  "tier": "T4"
+ },
+ {
+  "record": "GearArt_5Cape_Outlaw_T1",
+  "weaponType": "5Cape",
+  "theme": "Outlaw",
+  "tier": "T1"
+ },
+ {
+  "record": "GearArt_5Cape_Outlaw_T2",
+  "weaponType": "5Cape",
+  "theme": "Outlaw",
+  "tier": "T2"
+ },
+ {
+  "record": "GearArt_5Cape_Outlaw_T3",
+  "weaponType": "5Cape",
+  "theme": "Outlaw",
+  "tier": "T3"
+ },
+ {
+  "record": "GearArt_5Cape_Outlaw_T4",
+  "weaponType": "5Cape",
+  "theme": "Outlaw",
+  "tier": "T4"
+ },
+ {
+  "record": "GearArt_5Cape_Ringwraith_T1",
+  "weaponType": "5Cape",
+  "theme": "Ringwraith",
+  "tier": "T1"
+ },
+ {
+  "record": "GearArt_5Cape_Ringwraith_T2",
+  "weaponType": "5Cape",
+  "theme": "Ringwraith",
+  "tier": "T2"
+ },
+ {
+  "record": "GearArt_5Cape_Ringwraith_T3",
+  "weaponType": "5Cape",
+  "theme": "Ringwraith",
+  "tier": "T3"
+ },
+ {
+  "record": "GearArt_5Cape_Ringwraith_T4",
+  "weaponType": "5Cape",
+  "theme": "Ringwraith",
+  "tier": "T4"
+ },
+ {
+  "record": "GearArt_5Cape_Slaughter_T1",
+  "weaponType": "5Cape",
+  "theme": "Slaughter",
+  "tier": "T1"
+ },
+ {
+  "record": "GearArt_5Cape_Slaughter_T2",
+  "weaponType": "5Cape",
+  "theme": "Slaughter",
+  "tier": "T2"
+ },
+ {
+  "record": "GearArt_5Cape_Slaughter_T3",
+  "weaponType": "5Cape",
+  "theme": "Slaughter",
+  "tier": "T3"
+ },
+ {
+  "record": "GearArt_5Cape_Slaughter_T4",
+  "weaponType": "5Cape",
+  "theme": "Slaughter",
+  "tier": "T4"
+ },
+ {
+  "record": "GearArt_5Cape_Terror_T1",
+  "weaponType": "5Cape",
+  "theme": "Terror",
+  "tier": "T1"
+ },
+ {
+  "record": "GearArt_5Cape_Terror_T2",
+  "weaponType": "5Cape",
+  "theme": "Terror",
+  "tier": "T2"
+ },
+ {
+  "record": "GearArt_5Cape_Terror_T3",
+  "weaponType": "5Cape",
+  "theme": "Terror",
+  "tier": "T3"
+ },
+ {
+  "record": "GearArt_5Cape_Terror_T4",
+  "weaponType": "5Cape",
+  "theme": "Terror",
+  "tier": "T4"
+ },
+ {
+  "record": "GearArt_5Cape_Vendetta_T1",
+  "weaponType": "5Cape",
+  "theme": "Vendetta",
+  "tier": "T1"
+ },
+ {
+  "record": "GearArt_5Cape_Vendetta_T2",
+  "weaponType": "5Cape",
+  "theme": "Vendetta",
+  "tier": "T2"
+ },
+ {
+  "record": "GearArt_5Cape_Vendetta_T3",
+  "weaponType": "5Cape",
+  "theme": "Vendetta",
+  "tier": "T3"
+ },
+ {
+  "record": "GearArt_5Cape_Vendetta_T4",
+  "weaponType": "5Cape",
+  "theme": "Vendetta",
+  "tier": "T4"
+ },
+ {
+  "record": "GearArt_5Cape_Warmonger_T1",
+  "weaponType": "5Cape",
+  "theme": "Warmonger",
+  "tier": "T1"
+ },
+ {
+  "record": "GearArt_5Cape_Warmonger_T2",
+  "weaponType": "5Cape",
+  "theme": "Warmonger",
+  "tier": "T2"
+ },
+ {
+  "record": "GearArt_5Cape_Warmonger_T3",
+  "weaponType": "5Cape",
+  "theme": "Warmonger",
+  "tier": "T3"
+ },
+ {
+  "record": "GearArt_5Cape_Warmonger_T4",
+  "weaponType": "5Cape",
+  "theme": "Warmonger",
+  "tier": "T4"
+ },
+ {
+  "record": "GearArt_GondorianArmor_Tint10_3Rare",
+  "weaponType": "GondorianArmor",
+  "theme": "Tint10",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_GondorianArmor_Tint10_4Epic",
+  "weaponType": "GondorianArmor",
+  "theme": "Tint10",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_GondorianArmor_Tint1_3Rare",
+  "weaponType": "GondorianArmor",
+  "theme": "Tint1",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_GondorianArmor_Tint1_4Epic",
+  "weaponType": "GondorianArmor",
+  "theme": "Tint1",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_GondorianArmor_Tint2_3Rare",
+  "weaponType": "GondorianArmor",
+  "theme": "Tint2",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_GondorianArmor_Tint2_4Epic",
+  "weaponType": "GondorianArmor",
+  "theme": "Tint2",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_GondorianArmor_Tint3_3Rare",
+  "weaponType": "GondorianArmor",
+  "theme": "Tint3",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_GondorianArmor_Tint3_4Epic",
+  "weaponType": "GondorianArmor",
+  "theme": "Tint3",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_GondorianArmor_Tint4_3Rare",
+  "weaponType": "GondorianArmor",
+  "theme": "Tint4",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_GondorianArmor_Tint4_4Epic",
+  "weaponType": "GondorianArmor",
+  "theme": "Tint4",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_GondorianArmor_Tint5_3Rare",
+  "weaponType": "GondorianArmor",
+  "theme": "Tint5",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_GondorianArmor_Tint5_4Epic",
+  "weaponType": "GondorianArmor",
+  "theme": "Tint5",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_GondorianArmor_Tint6_3Rare",
+  "weaponType": "GondorianArmor",
+  "theme": "Tint6",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_GondorianArmor_Tint6_4Epic",
+  "weaponType": "GondorianArmor",
+  "theme": "Tint6",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_GondorianArmor_Tint7_3Rare",
+  "weaponType": "GondorianArmor",
+  "theme": "Tint7",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_GondorianArmor_Tint7_4Epic",
+  "weaponType": "GondorianArmor",
+  "theme": "Tint7",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_GondorianArmor_Tint8_3Rare",
+  "weaponType": "GondorianArmor",
+  "theme": "Tint8",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_GondorianArmor_Tint8_4Epic",
+  "weaponType": "GondorianArmor",
+  "theme": "Tint8",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_GondorianArmor_Tint9_3Rare",
+  "weaponType": "GondorianArmor",
+  "theme": "Tint9",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_GondorianArmor_Tint9_4Epic",
+  "weaponType": "GondorianArmor",
+  "theme": "Tint9",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_GondorianBowSnipeTint10_3Rare",
+  "weaponType": "GondorianBowSnipeTint10",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianBowSnipeTint10_4Epic",
+  "weaponType": "GondorianBowSnipeTint10",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianBowSnipeTint1_3Rare",
+  "weaponType": "GondorianBowSnipeTint1",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianBowSnipeTint1_4Epic",
+  "weaponType": "GondorianBowSnipeTint1",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianBowSnipeTint2_3Rare",
+  "weaponType": "GondorianBowSnipeTint2",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianBowSnipeTint2_4Epic",
+  "weaponType": "GondorianBowSnipeTint2",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianBowSnipeTint3_3Rare",
+  "weaponType": "GondorianBowSnipeTint3",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianBowSnipeTint3_4Epic",
+  "weaponType": "GondorianBowSnipeTint3",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianBowSnipeTint4_3Rare",
+  "weaponType": "GondorianBowSnipeTint4",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianBowSnipeTint4_4Epic",
+  "weaponType": "GondorianBowSnipeTint4",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianBowSnipeTint5_3Rare",
+  "weaponType": "GondorianBowSnipeTint5",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianBowSnipeTint5_4Epic",
+  "weaponType": "GondorianBowSnipeTint5",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianBowSnipeTint6_3Rare",
+  "weaponType": "GondorianBowSnipeTint6",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianBowSnipeTint6_4Epic",
+  "weaponType": "GondorianBowSnipeTint6",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianBowSnipeTint7_3Rare",
+  "weaponType": "GondorianBowSnipeTint7",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianBowSnipeTint7_4Epic",
+  "weaponType": "GondorianBowSnipeTint7",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianBowSnipeTint8_3Rare",
+  "weaponType": "GondorianBowSnipeTint8",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianBowSnipeTint8_4Epic",
+  "weaponType": "GondorianBowSnipeTint8",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianBowSnipeTint9_3Rare",
+  "weaponType": "GondorianBowSnipeTint9",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianBowSnipeTint9_4Epic",
+  "weaponType": "GondorianBowSnipeTint9",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianBowTint10_3Rare",
+  "weaponType": "GondorianBowTint10",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianBowTint10_4Epic",
+  "weaponType": "GondorianBowTint10",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianBowTint1_3Rare",
+  "weaponType": "GondorianBowTint1",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianBowTint1_4Epic",
+  "weaponType": "GondorianBowTint1",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianBowTint2_3Rare",
+  "weaponType": "GondorianBowTint2",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianBowTint2_4Epic",
+  "weaponType": "GondorianBowTint2",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianBowTint3_3Rare",
+  "weaponType": "GondorianBowTint3",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianBowTint3_4Epic",
+  "weaponType": "GondorianBowTint3",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianBowTint4_3Rare",
+  "weaponType": "GondorianBowTint4",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianBowTint4_4Epic",
+  "weaponType": "GondorianBowTint4",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianBowTint5_3Rare",
+  "weaponType": "GondorianBowTint5",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianBowTint5_4Epic",
+  "weaponType": "GondorianBowTint5",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianBowTint6_3Rare",
+  "weaponType": "GondorianBowTint6",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianBowTint6_4Epic",
+  "weaponType": "GondorianBowTint6",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianBowTint7_3Rare",
+  "weaponType": "GondorianBowTint7",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianBowTint7_4Epic",
+  "weaponType": "GondorianBowTint7",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianBowTint8_3Rare",
+  "weaponType": "GondorianBowTint8",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianBowTint8_4Epic",
+  "weaponType": "GondorianBowTint8",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianBowTint9_3Rare",
+  "weaponType": "GondorianBowTint9",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianBowTint9_4Epic",
+  "weaponType": "GondorianBowTint9",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianCloak_Tint10_3Rare",
+  "weaponType": "GondorianCloak",
+  "theme": "Tint10",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_GondorianCloak_Tint10_4Epic",
+  "weaponType": "GondorianCloak",
+  "theme": "Tint10",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_GondorianCloak_Tint1_3Rare",
+  "weaponType": "GondorianCloak",
+  "theme": "Tint1",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_GondorianCloak_Tint1_4Epic",
+  "weaponType": "GondorianCloak",
+  "theme": "Tint1",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_GondorianCloak_Tint2_3Rare",
+  "weaponType": "GondorianCloak",
+  "theme": "Tint2",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_GondorianCloak_Tint2_4Epic",
+  "weaponType": "GondorianCloak",
+  "theme": "Tint2",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_GondorianCloak_Tint3_3Rare",
+  "weaponType": "GondorianCloak",
+  "theme": "Tint3",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_GondorianCloak_Tint3_4Epic",
+  "weaponType": "GondorianCloak",
+  "theme": "Tint3",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_GondorianCloak_Tint4_3Rare",
+  "weaponType": "GondorianCloak",
+  "theme": "Tint4",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_GondorianCloak_Tint4_4Epic",
+  "weaponType": "GondorianCloak",
+  "theme": "Tint4",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_GondorianCloak_Tint5_3Rare",
+  "weaponType": "GondorianCloak",
+  "theme": "Tint5",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_GondorianCloak_Tint5_4Epic",
+  "weaponType": "GondorianCloak",
+  "theme": "Tint5",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_GondorianCloak_Tint6_3Rare",
+  "weaponType": "GondorianCloak",
+  "theme": "Tint6",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_GondorianCloak_Tint6_4Epic",
+  "weaponType": "GondorianCloak",
+  "theme": "Tint6",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_GondorianCloak_Tint7_3Rare",
+  "weaponType": "GondorianCloak",
+  "theme": "Tint7",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_GondorianCloak_Tint7_4Epic",
+  "weaponType": "GondorianCloak",
+  "theme": "Tint7",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_GondorianCloak_Tint8_3Rare",
+  "weaponType": "GondorianCloak",
+  "theme": "Tint8",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_GondorianCloak_Tint8_4Epic",
+  "weaponType": "GondorianCloak",
+  "theme": "Tint8",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_GondorianCloak_Tint9_3Rare",
+  "weaponType": "GondorianCloak",
+  "theme": "Tint9",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_GondorianCloak_Tint9_4Epic",
+  "weaponType": "GondorianCloak",
+  "theme": "Tint9",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_GondorianDaggerTint10_3Rare",
+  "weaponType": "GondorianDaggerTint10",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianDaggerTint10_4Epic",
+  "weaponType": "GondorianDaggerTint10",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianDaggerTint1_3Rare",
+  "weaponType": "GondorianDaggerTint1",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianDaggerTint1_4Epic",
+  "weaponType": "GondorianDaggerTint1",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianDaggerTint2_3Rare",
+  "weaponType": "GondorianDaggerTint2",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianDaggerTint2_4Epic",
+  "weaponType": "GondorianDaggerTint2",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianDaggerTint3_3Rare",
+  "weaponType": "GondorianDaggerTint3",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianDaggerTint3_4Epic",
+  "weaponType": "GondorianDaggerTint3",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianDaggerTint4_3Rare",
+  "weaponType": "GondorianDaggerTint4",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianDaggerTint4_4Epic",
+  "weaponType": "GondorianDaggerTint4",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianDaggerTint5_3Rare",
+  "weaponType": "GondorianDaggerTint5",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianDaggerTint5_4Epic",
+  "weaponType": "GondorianDaggerTint5",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianDaggerTint6_3Rare",
+  "weaponType": "GondorianDaggerTint6",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianDaggerTint6_4Epic",
+  "weaponType": "GondorianDaggerTint6",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianDaggerTint7_3Rare",
+  "weaponType": "GondorianDaggerTint7",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianDaggerTint7_4Epic",
+  "weaponType": "GondorianDaggerTint7",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianDaggerTint8_3Rare",
+  "weaponType": "GondorianDaggerTint8",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianDaggerTint8_4Epic",
+  "weaponType": "GondorianDaggerTint8",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianDaggerTint9_3Rare",
+  "weaponType": "GondorianDaggerTint9",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianDaggerTint9_4Epic",
+  "weaponType": "GondorianDaggerTint9",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianSwordTint10_3Rare",
+  "weaponType": "GondorianSwordTint10",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianSwordTint10_4Epic",
+  "weaponType": "GondorianSwordTint10",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianSwordTint1_3Rare",
+  "weaponType": "GondorianSwordTint1",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianSwordTint1_4Epic",
+  "weaponType": "GondorianSwordTint1",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianSwordTint2_3Rare",
+  "weaponType": "GondorianSwordTint2",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianSwordTint2_4Epic",
+  "weaponType": "GondorianSwordTint2",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianSwordTint3_3Rare",
+  "weaponType": "GondorianSwordTint3",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianSwordTint3_4Epic",
+  "weaponType": "GondorianSwordTint3",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianSwordTint4_3Rare",
+  "weaponType": "GondorianSwordTint4",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianSwordTint4_4Epic",
+  "weaponType": "GondorianSwordTint4",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianSwordTint5_3Rare",
+  "weaponType": "GondorianSwordTint5",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianSwordTint5_4Epic",
+  "weaponType": "GondorianSwordTint5",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianSwordTint6_3Rare",
+  "weaponType": "GondorianSwordTint6",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianSwordTint6_4Epic",
+  "weaponType": "GondorianSwordTint6",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianSwordTint7_3Rare",
+  "weaponType": "GondorianSwordTint7",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianSwordTint7_4Epic",
+  "weaponType": "GondorianSwordTint7",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianSwordTint8_3Rare",
+  "weaponType": "GondorianSwordTint8",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianSwordTint8_4Epic",
+  "weaponType": "GondorianSwordTint8",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianSwordTint9_3Rare",
+  "weaponType": "GondorianSwordTint9",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_GondorianSwordTint9_4Epic",
+  "weaponType": "GondorianSwordTint9",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanArmor_Tint10_3Rare",
+  "weaponType": "NumenoreanArmor",
+  "theme": "Tint10",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_NumenoreanArmor_Tint10_4Epic",
+  "weaponType": "NumenoreanArmor",
+  "theme": "Tint10",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_NumenoreanArmor_Tint1_3Rare",
+  "weaponType": "NumenoreanArmor",
+  "theme": "Tint1",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_NumenoreanArmor_Tint1_4Epic",
+  "weaponType": "NumenoreanArmor",
+  "theme": "Tint1",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_NumenoreanArmor_Tint2_3Rare",
+  "weaponType": "NumenoreanArmor",
+  "theme": "Tint2",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_NumenoreanArmor_Tint2_4Epic",
+  "weaponType": "NumenoreanArmor",
+  "theme": "Tint2",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_NumenoreanArmor_Tint3_3Rare",
+  "weaponType": "NumenoreanArmor",
+  "theme": "Tint3",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_NumenoreanArmor_Tint3_4Epic",
+  "weaponType": "NumenoreanArmor",
+  "theme": "Tint3",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_NumenoreanArmor_Tint4_3Rare",
+  "weaponType": "NumenoreanArmor",
+  "theme": "Tint4",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_NumenoreanArmor_Tint4_4Epic",
+  "weaponType": "NumenoreanArmor",
+  "theme": "Tint4",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_NumenoreanArmor_Tint5_3Rare",
+  "weaponType": "NumenoreanArmor",
+  "theme": "Tint5",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_NumenoreanArmor_Tint5_4Epic",
+  "weaponType": "NumenoreanArmor",
+  "theme": "Tint5",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_NumenoreanArmor_Tint6_3Rare",
+  "weaponType": "NumenoreanArmor",
+  "theme": "Tint6",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_NumenoreanArmor_Tint6_4Epic",
+  "weaponType": "NumenoreanArmor",
+  "theme": "Tint6",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_NumenoreanArmor_Tint7_3Rare",
+  "weaponType": "NumenoreanArmor",
+  "theme": "Tint7",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_NumenoreanArmor_Tint7_4Epic",
+  "weaponType": "NumenoreanArmor",
+  "theme": "Tint7",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_NumenoreanArmor_Tint8_3Rare",
+  "weaponType": "NumenoreanArmor",
+  "theme": "Tint8",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_NumenoreanArmor_Tint8_4Epic",
+  "weaponType": "NumenoreanArmor",
+  "theme": "Tint8",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_NumenoreanArmor_Tint9_3Rare",
+  "weaponType": "NumenoreanArmor",
+  "theme": "Tint9",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_NumenoreanArmor_Tint9_4Epic",
+  "weaponType": "NumenoreanArmor",
+  "theme": "Tint9",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_NumenoreanBowSnipeTint10_3Rare",
+  "weaponType": "NumenoreanBowSnipeTint10",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanBowSnipeTint10_4Epic",
+  "weaponType": "NumenoreanBowSnipeTint10",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanBowSnipeTint1_3Rare",
+  "weaponType": "NumenoreanBowSnipeTint1",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanBowSnipeTint1_4Epic",
+  "weaponType": "NumenoreanBowSnipeTint1",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanBowSnipeTint2_3Rare",
+  "weaponType": "NumenoreanBowSnipeTint2",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanBowSnipeTint2_4Epic",
+  "weaponType": "NumenoreanBowSnipeTint2",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanBowSnipeTint3_3Rare",
+  "weaponType": "NumenoreanBowSnipeTint3",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanBowSnipeTint3_4Epic",
+  "weaponType": "NumenoreanBowSnipeTint3",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanBowSnipeTint4_3Rare",
+  "weaponType": "NumenoreanBowSnipeTint4",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanBowSnipeTint4_4Epic",
+  "weaponType": "NumenoreanBowSnipeTint4",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanBowSnipeTint5_3Rare",
+  "weaponType": "NumenoreanBowSnipeTint5",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanBowSnipeTint5_4Epic",
+  "weaponType": "NumenoreanBowSnipeTint5",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanBowSnipeTint6_3Rare",
+  "weaponType": "NumenoreanBowSnipeTint6",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanBowSnipeTint6_4Epic",
+  "weaponType": "NumenoreanBowSnipeTint6",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanBowSnipeTint7_3Rare",
+  "weaponType": "NumenoreanBowSnipeTint7",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanBowSnipeTint7_4Epic",
+  "weaponType": "NumenoreanBowSnipeTint7",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanBowSnipeTint8_3Rare",
+  "weaponType": "NumenoreanBowSnipeTint8",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanBowSnipeTint8_4Epic",
+  "weaponType": "NumenoreanBowSnipeTint8",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanBowSnipeTint9_3Rare",
+  "weaponType": "NumenoreanBowSnipeTint9",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanBowSnipeTint9_4Epic",
+  "weaponType": "NumenoreanBowSnipeTint9",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanBowTint10_3Rare",
+  "weaponType": "NumenoreanBowTint10",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanBowTint10_4Epic",
+  "weaponType": "NumenoreanBowTint10",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanBowTint1_3Rare",
+  "weaponType": "NumenoreanBowTint1",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanBowTint1_4Epic",
+  "weaponType": "NumenoreanBowTint1",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanBowTint2_3Rare",
+  "weaponType": "NumenoreanBowTint2",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanBowTint2_4Epic",
+  "weaponType": "NumenoreanBowTint2",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanBowTint3_3Rare",
+  "weaponType": "NumenoreanBowTint3",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanBowTint3_4Epic",
+  "weaponType": "NumenoreanBowTint3",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanBowTint4_3Rare",
+  "weaponType": "NumenoreanBowTint4",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanBowTint4_4Epic",
+  "weaponType": "NumenoreanBowTint4",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanBowTint5_3Rare",
+  "weaponType": "NumenoreanBowTint5",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanBowTint5_4Epic",
+  "weaponType": "NumenoreanBowTint5",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanBowTint6_3Rare",
+  "weaponType": "NumenoreanBowTint6",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanBowTint6_4Epic",
+  "weaponType": "NumenoreanBowTint6",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanBowTint7_3Rare",
+  "weaponType": "NumenoreanBowTint7",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanBowTint7_4Epic",
+  "weaponType": "NumenoreanBowTint7",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanBowTint8_3Rare",
+  "weaponType": "NumenoreanBowTint8",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanBowTint8_4Epic",
+  "weaponType": "NumenoreanBowTint8",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanBowTint9_3Rare",
+  "weaponType": "NumenoreanBowTint9",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanBowTint9_4Epic",
+  "weaponType": "NumenoreanBowTint9",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanCloak_Tint10_3Rare",
+  "weaponType": "NumenoreanCloak",
+  "theme": "Tint10",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_NumenoreanCloak_Tint10_4Epic",
+  "weaponType": "NumenoreanCloak",
+  "theme": "Tint10",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_NumenoreanCloak_Tint1_3Rare",
+  "weaponType": "NumenoreanCloak",
+  "theme": "Tint1",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_NumenoreanCloak_Tint1_4Epic",
+  "weaponType": "NumenoreanCloak",
+  "theme": "Tint1",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_NumenoreanCloak_Tint2_3Rare",
+  "weaponType": "NumenoreanCloak",
+  "theme": "Tint2",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_NumenoreanCloak_Tint2_4Epic",
+  "weaponType": "NumenoreanCloak",
+  "theme": "Tint2",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_NumenoreanCloak_Tint3_3Rare",
+  "weaponType": "NumenoreanCloak",
+  "theme": "Tint3",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_NumenoreanCloak_Tint3_4Epic",
+  "weaponType": "NumenoreanCloak",
+  "theme": "Tint3",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_NumenoreanCloak_Tint4_3Rare",
+  "weaponType": "NumenoreanCloak",
+  "theme": "Tint4",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_NumenoreanCloak_Tint4_4Epic",
+  "weaponType": "NumenoreanCloak",
+  "theme": "Tint4",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_NumenoreanCloak_Tint5_3Rare",
+  "weaponType": "NumenoreanCloak",
+  "theme": "Tint5",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_NumenoreanCloak_Tint5_4Epic",
+  "weaponType": "NumenoreanCloak",
+  "theme": "Tint5",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_NumenoreanCloak_Tint6_3Rare",
+  "weaponType": "NumenoreanCloak",
+  "theme": "Tint6",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_NumenoreanCloak_Tint6_4Epic",
+  "weaponType": "NumenoreanCloak",
+  "theme": "Tint6",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_NumenoreanCloak_Tint7_3Rare",
+  "weaponType": "NumenoreanCloak",
+  "theme": "Tint7",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_NumenoreanCloak_Tint7_4Epic",
+  "weaponType": "NumenoreanCloak",
+  "theme": "Tint7",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_NumenoreanCloak_Tint8_3Rare",
+  "weaponType": "NumenoreanCloak",
+  "theme": "Tint8",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_NumenoreanCloak_Tint8_4Epic",
+  "weaponType": "NumenoreanCloak",
+  "theme": "Tint8",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_NumenoreanCloak_Tint9_3Rare",
+  "weaponType": "NumenoreanCloak",
+  "theme": "Tint9",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_NumenoreanCloak_Tint9_4Epic",
+  "weaponType": "NumenoreanCloak",
+  "theme": "Tint9",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_NumenoreanDaggerTint10_3Rare",
+  "weaponType": "NumenoreanDaggerTint10",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanDaggerTint10_4Epic",
+  "weaponType": "NumenoreanDaggerTint10",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanDaggerTint1_3Rare",
+  "weaponType": "NumenoreanDaggerTint1",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanDaggerTint1_4Epic",
+  "weaponType": "NumenoreanDaggerTint1",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanDaggerTint2_3Rare",
+  "weaponType": "NumenoreanDaggerTint2",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanDaggerTint2_4Epic",
+  "weaponType": "NumenoreanDaggerTint2",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanDaggerTint3_3Rare",
+  "weaponType": "NumenoreanDaggerTint3",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanDaggerTint3_4Epic",
+  "weaponType": "NumenoreanDaggerTint3",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanDaggerTint4_3Rare",
+  "weaponType": "NumenoreanDaggerTint4",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanDaggerTint4_4Epic",
+  "weaponType": "NumenoreanDaggerTint4",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanDaggerTint5_3Rare",
+  "weaponType": "NumenoreanDaggerTint5",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanDaggerTint5_4Epic",
+  "weaponType": "NumenoreanDaggerTint5",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanDaggerTint6_3Rare",
+  "weaponType": "NumenoreanDaggerTint6",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanDaggerTint6_4Epic",
+  "weaponType": "NumenoreanDaggerTint6",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanDaggerTint7_3Rare",
+  "weaponType": "NumenoreanDaggerTint7",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanDaggerTint7_4Epic",
+  "weaponType": "NumenoreanDaggerTint7",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanDaggerTint8_3Rare",
+  "weaponType": "NumenoreanDaggerTint8",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanDaggerTint8_4Epic",
+  "weaponType": "NumenoreanDaggerTint8",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanDaggerTint9_3Rare",
+  "weaponType": "NumenoreanDaggerTint9",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanDaggerTint9_4Epic",
+  "weaponType": "NumenoreanDaggerTint9",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanSwordTint10_3Rare",
+  "weaponType": "NumenoreanSwordTint10",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanSwordTint10_4Epic",
+  "weaponType": "NumenoreanSwordTint10",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanSwordTint1_3Rare",
+  "weaponType": "NumenoreanSwordTint1",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanSwordTint1_4Epic",
+  "weaponType": "NumenoreanSwordTint1",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanSwordTint2_3Rare",
+  "weaponType": "NumenoreanSwordTint2",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanSwordTint2_4Epic",
+  "weaponType": "NumenoreanSwordTint2",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanSwordTint3_3Rare",
+  "weaponType": "NumenoreanSwordTint3",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanSwordTint3_4Epic",
+  "weaponType": "NumenoreanSwordTint3",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanSwordTint4_3Rare",
+  "weaponType": "NumenoreanSwordTint4",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanSwordTint4_4Epic",
+  "weaponType": "NumenoreanSwordTint4",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanSwordTint5_3Rare",
+  "weaponType": "NumenoreanSwordTint5",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanSwordTint5_4Epic",
+  "weaponType": "NumenoreanSwordTint5",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanSwordTint6_3Rare",
+  "weaponType": "NumenoreanSwordTint6",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanSwordTint6_4Epic",
+  "weaponType": "NumenoreanSwordTint6",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanSwordTint7_3Rare",
+  "weaponType": "NumenoreanSwordTint7",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanSwordTint7_4Epic",
+  "weaponType": "NumenoreanSwordTint7",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanSwordTint8_3Rare",
+  "weaponType": "NumenoreanSwordTint8",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanSwordTint8_4Epic",
+  "weaponType": "NumenoreanSwordTint8",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanSwordTint9_3Rare",
+  "weaponType": "NumenoreanSwordTint9",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_NumenoreanSwordTint9_4Epic",
+  "weaponType": "NumenoreanSwordTint9",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerArmor_Tint10_3Rare",
+  "weaponType": "RangerArmor",
+  "theme": "Tint10",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_RangerArmor_Tint10_4Epic",
+  "weaponType": "RangerArmor",
+  "theme": "Tint10",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_RangerArmor_Tint1_3Rare",
+  "weaponType": "RangerArmor",
+  "theme": "Tint1",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_RangerArmor_Tint1_4Epic",
+  "weaponType": "RangerArmor",
+  "theme": "Tint1",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_RangerArmor_Tint2_3Rare",
+  "weaponType": "RangerArmor",
+  "theme": "Tint2",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_RangerArmor_Tint2_4Epic",
+  "weaponType": "RangerArmor",
+  "theme": "Tint2",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_RangerArmor_Tint3_3Rare",
+  "weaponType": "RangerArmor",
+  "theme": "Tint3",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_RangerArmor_Tint3_4Epic",
+  "weaponType": "RangerArmor",
+  "theme": "Tint3",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_RangerArmor_Tint4_3Rare",
+  "weaponType": "RangerArmor",
+  "theme": "Tint4",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_RangerArmor_Tint4_4Epic",
+  "weaponType": "RangerArmor",
+  "theme": "Tint4",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_RangerArmor_Tint5_3Rare",
+  "weaponType": "RangerArmor",
+  "theme": "Tint5",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_RangerArmor_Tint5_4Epic",
+  "weaponType": "RangerArmor",
+  "theme": "Tint5",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_RangerArmor_Tint6_3Rare",
+  "weaponType": "RangerArmor",
+  "theme": "Tint6",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_RangerArmor_Tint6_4Epic",
+  "weaponType": "RangerArmor",
+  "theme": "Tint6",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_RangerArmor_Tint7_3Rare",
+  "weaponType": "RangerArmor",
+  "theme": "Tint7",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_RangerArmor_Tint7_4Epic",
+  "weaponType": "RangerArmor",
+  "theme": "Tint7",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_RangerArmor_Tint8_3Rare",
+  "weaponType": "RangerArmor",
+  "theme": "Tint8",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_RangerArmor_Tint8_4Epic",
+  "weaponType": "RangerArmor",
+  "theme": "Tint8",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_RangerArmor_Tint9_3Rare",
+  "weaponType": "RangerArmor",
+  "theme": "Tint9",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_RangerArmor_Tint9_4Epic",
+  "weaponType": "RangerArmor",
+  "theme": "Tint9",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_RangerBowSnipeTint10_3Rare",
+  "weaponType": "RangerBowSnipeTint10",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerBowSnipeTint10_4Epic",
+  "weaponType": "RangerBowSnipeTint10",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerBowSnipeTint1_3Rare",
+  "weaponType": "RangerBowSnipeTint1",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerBowSnipeTint1_4Epic",
+  "weaponType": "RangerBowSnipeTint1",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerBowSnipeTint2_3Rare",
+  "weaponType": "RangerBowSnipeTint2",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerBowSnipeTint2_4Epic",
+  "weaponType": "RangerBowSnipeTint2",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerBowSnipeTint3_3Rare",
+  "weaponType": "RangerBowSnipeTint3",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerBowSnipeTint3_4Epic",
+  "weaponType": "RangerBowSnipeTint3",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerBowSnipeTint4_3Rare",
+  "weaponType": "RangerBowSnipeTint4",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerBowSnipeTint4_4Epic",
+  "weaponType": "RangerBowSnipeTint4",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerBowSnipeTint5_3Rare",
+  "weaponType": "RangerBowSnipeTint5",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerBowSnipeTint5_4Epic",
+  "weaponType": "RangerBowSnipeTint5",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerBowSnipeTint6_3Rare",
+  "weaponType": "RangerBowSnipeTint6",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerBowSnipeTint6_4Epic",
+  "weaponType": "RangerBowSnipeTint6",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerBowSnipeTint7_3Rare",
+  "weaponType": "RangerBowSnipeTint7",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerBowSnipeTint7_4Epic",
+  "weaponType": "RangerBowSnipeTint7",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerBowSnipeTint8_3Rare",
+  "weaponType": "RangerBowSnipeTint8",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerBowSnipeTint8_4Epic",
+  "weaponType": "RangerBowSnipeTint8",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerBowSnipeTint9_3Rare",
+  "weaponType": "RangerBowSnipeTint9",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerBowSnipeTint9_4Epic",
+  "weaponType": "RangerBowSnipeTint9",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerBowTint10_3Rare",
+  "weaponType": "RangerBowTint10",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerBowTint10_4Epic",
+  "weaponType": "RangerBowTint10",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerBowTint1_3Rare",
+  "weaponType": "RangerBowTint1",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerBowTint1_4Epic",
+  "weaponType": "RangerBowTint1",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerBowTint2_3Rare",
+  "weaponType": "RangerBowTint2",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerBowTint2_4Epic",
+  "weaponType": "RangerBowTint2",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerBowTint3_3Rare",
+  "weaponType": "RangerBowTint3",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerBowTint3_4Epic",
+  "weaponType": "RangerBowTint3",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerBowTint4_3Rare",
+  "weaponType": "RangerBowTint4",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerBowTint4_4Epic",
+  "weaponType": "RangerBowTint4",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerBowTint5_3Rare",
+  "weaponType": "RangerBowTint5",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerBowTint5_4Epic",
+  "weaponType": "RangerBowTint5",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerBowTint6_3Rare",
+  "weaponType": "RangerBowTint6",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerBowTint6_4Epic",
+  "weaponType": "RangerBowTint6",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerBowTint7_3Rare",
+  "weaponType": "RangerBowTint7",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerBowTint7_4Epic",
+  "weaponType": "RangerBowTint7",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerBowTint8_3Rare",
+  "weaponType": "RangerBowTint8",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerBowTint8_4Epic",
+  "weaponType": "RangerBowTint8",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerBowTint9_3Rare",
+  "weaponType": "RangerBowTint9",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerBowTint9_4Epic",
+  "weaponType": "RangerBowTint9",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerCloak_Tint10_3Rare",
+  "weaponType": "RangerCloak",
+  "theme": "Tint10",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_RangerCloak_Tint10_4Epic",
+  "weaponType": "RangerCloak",
+  "theme": "Tint10",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_RangerCloak_Tint1_3Rare",
+  "weaponType": "RangerCloak",
+  "theme": "Tint1",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_RangerCloak_Tint1_4Epic",
+  "weaponType": "RangerCloak",
+  "theme": "Tint1",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_RangerCloak_Tint2_3Rare",
+  "weaponType": "RangerCloak",
+  "theme": "Tint2",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_RangerCloak_Tint2_4Epic",
+  "weaponType": "RangerCloak",
+  "theme": "Tint2",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_RangerCloak_Tint3_3Rare",
+  "weaponType": "RangerCloak",
+  "theme": "Tint3",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_RangerCloak_Tint3_4Epic",
+  "weaponType": "RangerCloak",
+  "theme": "Tint3",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_RangerCloak_Tint4_3Rare",
+  "weaponType": "RangerCloak",
+  "theme": "Tint4",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_RangerCloak_Tint4_4Epic",
+  "weaponType": "RangerCloak",
+  "theme": "Tint4",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_RangerCloak_Tint5_3Rare",
+  "weaponType": "RangerCloak",
+  "theme": "Tint5",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_RangerCloak_Tint5_4Epic",
+  "weaponType": "RangerCloak",
+  "theme": "Tint5",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_RangerCloak_Tint6_3Rare",
+  "weaponType": "RangerCloak",
+  "theme": "Tint6",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_RangerCloak_Tint6_4Epic",
+  "weaponType": "RangerCloak",
+  "theme": "Tint6",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_RangerCloak_Tint7_3Rare",
+  "weaponType": "RangerCloak",
+  "theme": "Tint7",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_RangerCloak_Tint7_4Epic",
+  "weaponType": "RangerCloak",
+  "theme": "Tint7",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_RangerCloak_Tint8_3Rare",
+  "weaponType": "RangerCloak",
+  "theme": "Tint8",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_RangerCloak_Tint8_4Epic",
+  "weaponType": "RangerCloak",
+  "theme": "Tint8",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_RangerCloak_Tint9_3Rare",
+  "weaponType": "RangerCloak",
+  "theme": "Tint9",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_RangerCloak_Tint9_4Epic",
+  "weaponType": "RangerCloak",
+  "theme": "Tint9",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_RangerDaggerTint10_3Rare",
+  "weaponType": "RangerDaggerTint10",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerDaggerTint10_4Epic",
+  "weaponType": "RangerDaggerTint10",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerDaggerTint1_3Rare",
+  "weaponType": "RangerDaggerTint1",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerDaggerTint1_4Epic",
+  "weaponType": "RangerDaggerTint1",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerDaggerTint2_3Rare",
+  "weaponType": "RangerDaggerTint2",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerDaggerTint2_4Epic",
+  "weaponType": "RangerDaggerTint2",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerDaggerTint3_3Rare",
+  "weaponType": "RangerDaggerTint3",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerDaggerTint3_4Epic",
+  "weaponType": "RangerDaggerTint3",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerDaggerTint4_3Rare",
+  "weaponType": "RangerDaggerTint4",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerDaggerTint4_4Epic",
+  "weaponType": "RangerDaggerTint4",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerDaggerTint5_3Rare",
+  "weaponType": "RangerDaggerTint5",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerDaggerTint5_4Epic",
+  "weaponType": "RangerDaggerTint5",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerDaggerTint6_3Rare",
+  "weaponType": "RangerDaggerTint6",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerDaggerTint6_4Epic",
+  "weaponType": "RangerDaggerTint6",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerDaggerTint7_3Rare",
+  "weaponType": "RangerDaggerTint7",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerDaggerTint7_4Epic",
+  "weaponType": "RangerDaggerTint7",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerDaggerTint8_3Rare",
+  "weaponType": "RangerDaggerTint8",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerDaggerTint8_4Epic",
+  "weaponType": "RangerDaggerTint8",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerDaggerTint9_3Rare",
+  "weaponType": "RangerDaggerTint9",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerDaggerTint9_4Epic",
+  "weaponType": "RangerDaggerTint9",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerSwordTint10_3Rare",
+  "weaponType": "RangerSwordTint10",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerSwordTint10_4Epic",
+  "weaponType": "RangerSwordTint10",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerSwordTint1_3Rare",
+  "weaponType": "RangerSwordTint1",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerSwordTint1_4Epic",
+  "weaponType": "RangerSwordTint1",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerSwordTint2_3Rare",
+  "weaponType": "RangerSwordTint2",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerSwordTint2_4Epic",
+  "weaponType": "RangerSwordTint2",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerSwordTint3_3Rare",
+  "weaponType": "RangerSwordTint3",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerSwordTint3_4Epic",
+  "weaponType": "RangerSwordTint3",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerSwordTint4_3Rare",
+  "weaponType": "RangerSwordTint4",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerSwordTint4_4Epic",
+  "weaponType": "RangerSwordTint4",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerSwordTint5_3Rare",
+  "weaponType": "RangerSwordTint5",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerSwordTint5_4Epic",
+  "weaponType": "RangerSwordTint5",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerSwordTint6_3Rare",
+  "weaponType": "RangerSwordTint6",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerSwordTint6_4Epic",
+  "weaponType": "RangerSwordTint6",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerSwordTint7_3Rare",
+  "weaponType": "RangerSwordTint7",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerSwordTint7_4Epic",
+  "weaponType": "RangerSwordTint7",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerSwordTint8_3Rare",
+  "weaponType": "RangerSwordTint8",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerSwordTint8_4Epic",
+  "weaponType": "RangerSwordTint8",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerSwordTint9_3Rare",
+  "weaponType": "RangerSwordTint9",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RangerSwordTint9_4Epic",
+  "weaponType": "RangerSwordTint9",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanArmor_Tint10_3Rare",
+  "weaponType": "RohanArmor",
+  "theme": "Tint10",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_RohanArmor_Tint10_4Epic",
+  "weaponType": "RohanArmor",
+  "theme": "Tint10",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_RohanArmor_Tint1_3Rare",
+  "weaponType": "RohanArmor",
+  "theme": "Tint1",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_RohanArmor_Tint1_4Epic",
+  "weaponType": "RohanArmor",
+  "theme": "Tint1",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_RohanArmor_Tint2_3Rare",
+  "weaponType": "RohanArmor",
+  "theme": "Tint2",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_RohanArmor_Tint2_4Epic",
+  "weaponType": "RohanArmor",
+  "theme": "Tint2",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_RohanArmor_Tint3_3Rare",
+  "weaponType": "RohanArmor",
+  "theme": "Tint3",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_RohanArmor_Tint3_4Epic",
+  "weaponType": "RohanArmor",
+  "theme": "Tint3",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_RohanArmor_Tint4_3Rare",
+  "weaponType": "RohanArmor",
+  "theme": "Tint4",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_RohanArmor_Tint4_4Epic",
+  "weaponType": "RohanArmor",
+  "theme": "Tint4",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_RohanArmor_Tint5_3Rare",
+  "weaponType": "RohanArmor",
+  "theme": "Tint5",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_RohanArmor_Tint5_4Epic",
+  "weaponType": "RohanArmor",
+  "theme": "Tint5",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_RohanArmor_Tint6_3Rare",
+  "weaponType": "RohanArmor",
+  "theme": "Tint6",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_RohanArmor_Tint6_4Epic",
+  "weaponType": "RohanArmor",
+  "theme": "Tint6",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_RohanArmor_Tint7_3Rare",
+  "weaponType": "RohanArmor",
+  "theme": "Tint7",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_RohanArmor_Tint7_4Epic",
+  "weaponType": "RohanArmor",
+  "theme": "Tint7",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_RohanArmor_Tint8_3Rare",
+  "weaponType": "RohanArmor",
+  "theme": "Tint8",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_RohanArmor_Tint8_4Epic",
+  "weaponType": "RohanArmor",
+  "theme": "Tint8",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_RohanArmor_Tint9_3Rare",
+  "weaponType": "RohanArmor",
+  "theme": "Tint9",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_RohanArmor_Tint9_4Epic",
+  "weaponType": "RohanArmor",
+  "theme": "Tint9",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_RohanBowSnipeTint10_3Rare",
+  "weaponType": "RohanBowSnipeTint10",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanBowSnipeTint10_4Epic",
+  "weaponType": "RohanBowSnipeTint10",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanBowSnipeTint1_3Rare",
+  "weaponType": "RohanBowSnipeTint1",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanBowSnipeTint1_4Epic",
+  "weaponType": "RohanBowSnipeTint1",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanBowSnipeTint2_3Rare",
+  "weaponType": "RohanBowSnipeTint2",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanBowSnipeTint2_4Epic",
+  "weaponType": "RohanBowSnipeTint2",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanBowSnipeTint3_3Rare",
+  "weaponType": "RohanBowSnipeTint3",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanBowSnipeTint3_4Epic",
+  "weaponType": "RohanBowSnipeTint3",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanBowSnipeTint4_3Rare",
+  "weaponType": "RohanBowSnipeTint4",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanBowSnipeTint4_4Epic",
+  "weaponType": "RohanBowSnipeTint4",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanBowSnipeTint5_3Rare",
+  "weaponType": "RohanBowSnipeTint5",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanBowSnipeTint5_4Epic",
+  "weaponType": "RohanBowSnipeTint5",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanBowSnipeTint6_3Rare",
+  "weaponType": "RohanBowSnipeTint6",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanBowSnipeTint6_4Epic",
+  "weaponType": "RohanBowSnipeTint6",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanBowSnipeTint7_3Rare",
+  "weaponType": "RohanBowSnipeTint7",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanBowSnipeTint7_4Epic",
+  "weaponType": "RohanBowSnipeTint7",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanBowSnipeTint8_3Rare",
+  "weaponType": "RohanBowSnipeTint8",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanBowSnipeTint8_4Epic",
+  "weaponType": "RohanBowSnipeTint8",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanBowSnipeTint9_3Rare",
+  "weaponType": "RohanBowSnipeTint9",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanBowSnipeTint9_4Epic",
+  "weaponType": "RohanBowSnipeTint9",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanBowTint10_3Rare",
+  "weaponType": "RohanBowTint10",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanBowTint10_4Epic",
+  "weaponType": "RohanBowTint10",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanBowTint1_3Rare",
+  "weaponType": "RohanBowTint1",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanBowTint1_4Epic",
+  "weaponType": "RohanBowTint1",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanBowTint2_3Rare",
+  "weaponType": "RohanBowTint2",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanBowTint2_4Epic",
+  "weaponType": "RohanBowTint2",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanBowTint3_3Rare",
+  "weaponType": "RohanBowTint3",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanBowTint3_4Epic",
+  "weaponType": "RohanBowTint3",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanBowTint4_3Rare",
+  "weaponType": "RohanBowTint4",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanBowTint4_4Epic",
+  "weaponType": "RohanBowTint4",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanBowTint5_3Rare",
+  "weaponType": "RohanBowTint5",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanBowTint5_4Epic",
+  "weaponType": "RohanBowTint5",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanBowTint6_3Rare",
+  "weaponType": "RohanBowTint6",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanBowTint6_4Epic",
+  "weaponType": "RohanBowTint6",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanBowTint7_3Rare",
+  "weaponType": "RohanBowTint7",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanBowTint7_4Epic",
+  "weaponType": "RohanBowTint7",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanBowTint8_3Rare",
+  "weaponType": "RohanBowTint8",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanBowTint8_4Epic",
+  "weaponType": "RohanBowTint8",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanBowTint9_3Rare",
+  "weaponType": "RohanBowTint9",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanBowTint9_4Epic",
+  "weaponType": "RohanBowTint9",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanCloak_Tint10_3Rare",
+  "weaponType": "RohanCloak",
+  "theme": "Tint10",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_RohanCloak_Tint10_4Epic",
+  "weaponType": "RohanCloak",
+  "theme": "Tint10",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_RohanCloak_Tint1_3Rare",
+  "weaponType": "RohanCloak",
+  "theme": "Tint1",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_RohanCloak_Tint1_4Epic",
+  "weaponType": "RohanCloak",
+  "theme": "Tint1",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_RohanCloak_Tint2_3Rare",
+  "weaponType": "RohanCloak",
+  "theme": "Tint2",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_RohanCloak_Tint2_4Epic",
+  "weaponType": "RohanCloak",
+  "theme": "Tint2",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_RohanCloak_Tint3_3Rare",
+  "weaponType": "RohanCloak",
+  "theme": "Tint3",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_RohanCloak_Tint3_4Epic",
+  "weaponType": "RohanCloak",
+  "theme": "Tint3",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_RohanCloak_Tint4_3Rare",
+  "weaponType": "RohanCloak",
+  "theme": "Tint4",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_RohanCloak_Tint4_4Epic",
+  "weaponType": "RohanCloak",
+  "theme": "Tint4",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_RohanCloak_Tint5_3Rare",
+  "weaponType": "RohanCloak",
+  "theme": "Tint5",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_RohanCloak_Tint5_4Epic",
+  "weaponType": "RohanCloak",
+  "theme": "Tint5",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_RohanCloak_Tint6_3Rare",
+  "weaponType": "RohanCloak",
+  "theme": "Tint6",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_RohanCloak_Tint6_4Epic",
+  "weaponType": "RohanCloak",
+  "theme": "Tint6",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_RohanCloak_Tint7_3Rare",
+  "weaponType": "RohanCloak",
+  "theme": "Tint7",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_RohanCloak_Tint7_4Epic",
+  "weaponType": "RohanCloak",
+  "theme": "Tint7",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_RohanCloak_Tint8_3Rare",
+  "weaponType": "RohanCloak",
+  "theme": "Tint8",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_RohanCloak_Tint8_4Epic",
+  "weaponType": "RohanCloak",
+  "theme": "Tint8",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_RohanCloak_Tint9_3Rare",
+  "weaponType": "RohanCloak",
+  "theme": "Tint9",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_RohanCloak_Tint9_4Epic",
+  "weaponType": "RohanCloak",
+  "theme": "Tint9",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_RohanDaggerTint10_3Rare",
+  "weaponType": "RohanDaggerTint10",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanDaggerTint10_4Epic",
+  "weaponType": "RohanDaggerTint10",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanDaggerTint1_3Rare",
+  "weaponType": "RohanDaggerTint1",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanDaggerTint1_4Epic",
+  "weaponType": "RohanDaggerTint1",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanDaggerTint2_3Rare",
+  "weaponType": "RohanDaggerTint2",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanDaggerTint2_4Epic",
+  "weaponType": "RohanDaggerTint2",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanDaggerTint3_3Rare",
+  "weaponType": "RohanDaggerTint3",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanDaggerTint3_4Epic",
+  "weaponType": "RohanDaggerTint3",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanDaggerTint4_3Rare",
+  "weaponType": "RohanDaggerTint4",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanDaggerTint4_4Epic",
+  "weaponType": "RohanDaggerTint4",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanDaggerTint5_3Rare",
+  "weaponType": "RohanDaggerTint5",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanDaggerTint5_4Epic",
+  "weaponType": "RohanDaggerTint5",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanDaggerTint6_3Rare",
+  "weaponType": "RohanDaggerTint6",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanDaggerTint6_4Epic",
+  "weaponType": "RohanDaggerTint6",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanDaggerTint7_3Rare",
+  "weaponType": "RohanDaggerTint7",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanDaggerTint7_4Epic",
+  "weaponType": "RohanDaggerTint7",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanDaggerTint8_3Rare",
+  "weaponType": "RohanDaggerTint8",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanDaggerTint8_4Epic",
+  "weaponType": "RohanDaggerTint8",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanDaggerTint9_3Rare",
+  "weaponType": "RohanDaggerTint9",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanDaggerTint9_4Epic",
+  "weaponType": "RohanDaggerTint9",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanHam_Tint1_3Rare",
+  "weaponType": "RohanHam",
+  "theme": "Tint1",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_RohanHam_Tint1_4Epic",
+  "weaponType": "RohanHam",
+  "theme": "Tint1",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_RohanHam_Tint2_3Rare",
+  "weaponType": "RohanHam",
+  "theme": "Tint2",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_RohanHam_Tint2_4Epic",
+  "weaponType": "RohanHam",
+  "theme": "Tint2",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_RohanHam_Tint3_3Rare",
+  "weaponType": "RohanHam",
+  "theme": "Tint3",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_RohanHam_Tint3_4Epic",
+  "weaponType": "RohanHam",
+  "theme": "Tint3",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_RohanHam_Tint4_3Rare",
+  "weaponType": "RohanHam",
+  "theme": "Tint4",
+  "tier": "3Rare"
+ },
+ {
+  "record": "GearArt_RohanHam_Tint4_4Epic",
+  "weaponType": "RohanHam",
+  "theme": "Tint4",
+  "tier": "4Epic"
+ },
+ {
+  "record": "GearArt_RohanSwordTint10_3Rare",
+  "weaponType": "RohanSwordTint10",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanSwordTint10_4Epic",
+  "weaponType": "RohanSwordTint10",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanSwordTint1_3Rare",
+  "weaponType": "RohanSwordTint1",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanSwordTint1_4Epic",
+  "weaponType": "RohanSwordTint1",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanSwordTint2_3Rare",
+  "weaponType": "RohanSwordTint2",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanSwordTint2_4Epic",
+  "weaponType": "RohanSwordTint2",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanSwordTint3_3Rare",
+  "weaponType": "RohanSwordTint3",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanSwordTint3_4Epic",
+  "weaponType": "RohanSwordTint3",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanSwordTint4_3Rare",
+  "weaponType": "RohanSwordTint4",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanSwordTint4_4Epic",
+  "weaponType": "RohanSwordTint4",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanSwordTint5_3Rare",
+  "weaponType": "RohanSwordTint5",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanSwordTint5_4Epic",
+  "weaponType": "RohanSwordTint5",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanSwordTint6_3Rare",
+  "weaponType": "RohanSwordTint6",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanSwordTint6_4Epic",
+  "weaponType": "RohanSwordTint6",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanSwordTint7_3Rare",
+  "weaponType": "RohanSwordTint7",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanSwordTint7_4Epic",
+  "weaponType": "RohanSwordTint7",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanSwordTint8_3Rare",
+  "weaponType": "RohanSwordTint8",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanSwordTint8_4Epic",
+  "weaponType": "RohanSwordTint8",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanSwordTint9_3Rare",
+  "weaponType": "RohanSwordTint9",
+  "theme": "3Rare",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_RohanSwordTint9_4Epic",
+  "weaponType": "RohanSwordTint9",
+  "theme": "4Epic",
+  "tier": ""
+ },
+ {
+  "record": "GearArt_Rohan_DLC_Dominion_4Epic",
+  "weaponType": "Rohan",
+  "theme": "DLC",
+  "tier": "Dominion"
+ },
+ {
+  "record": "GearArt_Talion_Ringcraft_Tint1_3Rare",
+  "weaponType": "Talion",
+  "theme": "Ringcraft",
+  "tier": "Tint1"
+ },
+ {
+  "record": "GearArt_Talion_Ringcraft_Tint1_4Epic",
+  "weaponType": "Talion",
+  "theme": "Ringcraft",
+  "tier": "Tint1"
+ },
+ {
+  "record": "GearArt_Talion_Ringcraft_Tint2_3Rare",
+  "weaponType": "Talion",
+  "theme": "Ringcraft",
+  "tier": "Tint2"
+ },
+ {
+  "record": "GearArt_Talion_Ringcraft_Tint2_4Epic",
+  "weaponType": "Talion",
+  "theme": "Ringcraft",
+  "tier": "Tint2"
+ },
+ {
+  "record": "GearArt_Talion_Ringcraft_Tint3_3Rare",
+  "weaponType": "Talion",
+  "theme": "Ringcraft",
+  "tier": "Tint3"
+ },
+ {
+  "record": "GearArt_Talion_Ringcraft_Tint3_4Epic",
+  "weaponType": "Talion",
+  "theme": "Ringcraft",
+  "tier": "Tint3"
+ },
+ {
+  "record": "GearArt_Talion_Ringcraft_Tint4_3Rare",
+  "weaponType": "Talion",
+  "theme": "Ringcraft",
+  "tier": "Tint4"
+ },
+ {
+  "record": "GearArt_Talion_Ringcraft_Tint4_4Epic",
+  "weaponType": "Talion",
+  "theme": "Ringcraft",
+  "tier": "Tint4"
+ },
+ {
+  "record": "GearArt_Talion_Ringcraft_Tint5_3Rare",
+  "weaponType": "Talion",
+  "theme": "Ringcraft",
+  "tier": "Tint5"
+ },
+ {
+  "record": "GearArt_Talion_Ringcraft_Tint5_4Epic",
+  "weaponType": "Talion",
+  "theme": "Ringcraft",
+  "tier": "Tint5"
+ },
+ {
+  "record": "GearArt_Talion_Ringcraft_Tint6_3Rare",
+  "weaponType": "Talion",
+  "theme": "Ringcraft",
+  "tier": "Tint6"
+ },
+ {
+  "record": "GearArt_Talion_Ringcraft_Tint6_4Epic",
+  "weaponType": "Talion",
+  "theme": "Ringcraft",
+  "tier": "Tint6"
+ },
+ {
+  "record": "GearArt_Talion_Ringcraft_Tint7_3Rare",
+  "weaponType": "Talion",
+  "theme": "Ringcraft",
+  "tier": "Tint7"
+ },
+ {
+  "record": "GearArt_Talion_Ringcraft_Tint7_4Epic",
+  "weaponType": "Talion",
+  "theme": "Ringcraft",
+  "tier": "Tint7"
+ }
+]
