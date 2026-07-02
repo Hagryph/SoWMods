@@ -362,27 +362,6 @@ static void RoundedVGrad(ImDrawList* dl, ImVec2 a, ImVec2 b, ImU32 top, ImU32 bo
     dl->PopClipRect();
 }
 
-// Horizontal gradient (left->right) with rounded top-left + bottom-left corners (right side square).
-// Used for the accent glow so it runs the full card height and follows the rounded corners.
-static void RoundedHGradLeft(ImDrawList* dl, ImVec2 a, ImVec2 b, ImU32 left, ImU32 right, float rad) {
-    const float w = b.x - a.x, h = b.y - a.y;
-    if (rad <= 0.5f || h <= 2.0f * rad || w <= rad) { dl->AddRectFilledMultiColor(a, b, left, right, right, left); return; }
-    const float t = rad / w;
-    const ImU32 mid = IM_COL32(
-        int((left & 0xFF)         + (int((right) & 0xFF)         - int((left) & 0xFF))         * t),
-        int((left >> 8 & 0xFF)    + (int((right >> 8) & 0xFF)    - int((left >> 8) & 0xFF))    * t),
-        int((left >> 16 & 0xFF)   + (int((right >> 16) & 0xFF)   - int((left >> 16) & 0xFF))   * t),
-        int((left >> 24 & 0xFF)   + (int((right >> 24) & 0xFF)   - int((left >> 24) & 0xFF))   * t));
-    dl->AddRectFilledMultiColor(ImVec2(a.x + rad, a.y), b, mid, right, right, mid);                      // body right of corners
-    dl->AddRectFilledMultiColor(ImVec2(a.x, a.y + rad), ImVec2(a.x + rad, b.y - rad), left, mid, mid, left); // left strip middle
-    dl->PushClipRect(ImVec2(a.x, a.y), ImVec2(a.x + rad, a.y + rad), true);
-    dl->AddRectFilled(a, ImVec2(a.x + 2.0f * rad, a.y + 2.0f * rad), left, rad, ImDrawFlags_RoundCornersTopLeft);
-    dl->PopClipRect();
-    dl->PushClipRect(ImVec2(a.x, b.y - rad), ImVec2(a.x + rad, b.y), true);
-    dl->AddRectFilled(ImVec2(a.x, b.y - 2.0f * rad), ImVec2(a.x + 2.0f * rad, b.y), left, rad, ImDrawFlags_RoundCornersBottomLeft);
-    dl->PopClipRect();
-}
-
 // Draw text horizontally condensed by `xs` (0..1) around pos.x: emit the glyphs, then scale the new
 // vertices' X toward the left edge. Gives a narrow/condensed look from any font (no condensed file needed).
 static void AddTextCX(ImDrawList* dl, ImFont* f, float px, ImVec2 pos, ImU32 col, const char* t, float xs) {
@@ -499,10 +478,13 @@ void Overlay::DrawHub() {
 
         // ---- left accent ----
         const float glowW = 30.0f * sx, railW = 6.0f * sx;
-        // glow: ONE smooth horizontal fade (gold -> transparent), FULL height with rounded-left corners
-        // that follow the card radius (no inset gap / hard edge).
-        RoundedHGradLeft(dl, p0, ImVec2(p0.x + glowW, p0.y + ch),
-                         IM_COL32(0xE0, 0xB3, 0x4A, 66), IM_COL32(0xE0, 0xB3, 0x4A, 0), r);
+        // glow: horizontal gold->transparent fade that runs (almost) the full height but softly FADES
+        // OUT vertically over the corner radius at top & bottom — so there is no hard edge (ticker) and
+        // no rounded-corner arc; it simply vanishes before the corners. 3 stacked bilinear gradients.
+        const ImU32 g66 = IM_COL32(0xE0, 0xB3, 0x4A, 66), g0 = IM_COL32(0xE0, 0xB3, 0x4A, 0);
+        dl->AddRectFilledMultiColor(ImVec2(p0.x, p0.y),          ImVec2(p0.x + glowW, p0.y + r),       g0,  g0, g0, g66);  // top fade-in
+        dl->AddRectFilledMultiColor(ImVec2(p0.x, p0.y + r),      ImVec2(p0.x + glowW, p0.y + ch - r),  g66, g0, g0, g66);  // middle
+        dl->AddRectFilledMultiColor(ImVec2(p0.x, p0.y + ch - r), ImVec2(p0.x + glowW, p0.y + ch),      g66, g0, g0, g0);   // bottom fade-out
         // rail: bright vertical gradient, MASKED to the rounded card (clip a card-wide RoundedVGrad to
         // the 6px band so its left corners follow the card radius) — the rail the user approved.
         dl->PushClipRect(p0, ImVec2(p0.x + railW, p0.y + ch), true);
