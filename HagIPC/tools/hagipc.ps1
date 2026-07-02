@@ -20,10 +20,19 @@ $stream = $client.GetStream()
 $reader = [IO.StreamReader]::new($stream)
 $writer = [IO.StreamWriter]::new($stream); $writer.AutoFlush = $true
 
+# Single-line reliable. hooklog is multi-line: parse "entries=N" and read exactly N more lines +
+# the trailing blank (the current deployed server \n-separates; the 0x1f server fix lands next build).
 function Send-Line($line) {
     $writer.WriteLine($line)
     $resp = $reader.ReadLine()
-    if ($null -ne $resp) { $resp -replace "`u{001f}", "`n" } else { '(connection closed)' }
+    if ($null -eq $resp) { return '(connection closed)' }
+    if ($resp -match '^ok entries=(\d+)') {
+        $n = [int]$Matches[1]; $extra = @()
+        for ($i = 0; $i -lt $n; $i++) { $l = $reader.ReadLine(); if ($null -eq $l) { break }; $extra += $l }
+        [void]$reader.ReadLine()   # trailing blank line from Drain's final \n + sendLine \n
+        return ((@($resp) + $extra) -join "`n")
+    }
+    $resp -replace "`u{001f}", "`n"
 }
 
 Write-Host (($reader.ReadLine()) -replace "`u{001f}", "`n")   # server greeting
