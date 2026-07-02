@@ -14,6 +14,7 @@
 
 #include <vector>
 #include <algorithm>
+#include <cmath>
 
 // Provided by imgui_impl_win32 — feeds Win32 messages to ImGui (defined in the backend .cpp).
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND, UINT, WPARAM, LPARAM);
@@ -362,6 +363,29 @@ static void RoundedVGrad(ImDrawList* dl, ImVec2 a, ImVec2 b, ImU32 top, ImU32 bo
     dl->PopClipRect();
 }
 
+static ImU32 LerpCol(ImU32 a, ImU32 b, float t) {
+    auto c = [&](int sh) { int A = (a >> sh) & 0xFF, B = (b >> sh) & 0xFF; return (int)(A + (B - A) * t); };
+    return IM_COL32(c(0), c(8), c(16), c(24));
+}
+
+// Horizontal gradient (left->right color), FULL height a..b, with the LEFT edge rounded (radius rad)
+// at top & bottom so it follows the card's rounded corners exactly. The corners are rasterized as
+// horizontal strips whose left edge tracks the arc — full length, no gap, no visible quarter-circle.
+static void GlowLeft(ImDrawList* dl, ImVec2 a, ImVec2 b, ImU32 left, ImU32 right, float rad) {
+    const float W = b.x - a.x;
+    auto colAt = [&](float x) { return LerpCol(left, right, W > 0 ? (x - a.x) / W : 0.0f); };
+    dl->AddRectFilledMultiColor(ImVec2(a.x, a.y + rad), ImVec2(b.x, b.y - rad), left, right, right, left);  // straight middle
+    const int N = 14;
+    for (int i = 0; i < N; ++i) {
+        const float t0 = rad * (float)i / N, t1 = rad * (float)(i + 1) / N;   // 0..rad down from the top edge
+        const float dy = rad - t0;                                           // arc-center(y=a.y+rad) -> strip top
+        const float xl = a.x + rad - std::sqrt(std::max(0.0f, rad * rad - dy * dy));
+        const ImU32 cl = colAt(xl);
+        dl->AddRectFilledMultiColor(ImVec2(xl, a.y + t0), ImVec2(b.x, a.y + t1), cl, right, right, cl);      // top corner
+        dl->AddRectFilledMultiColor(ImVec2(xl, b.y - t1), ImVec2(b.x, b.y - t0), cl, right, right, cl);      // bottom corner
+    }
+}
+
 // Draw text horizontally condensed by `xs` (0..1) around pos.x: emit the glyphs, then scale the new
 // vertices' X toward the left edge. Gives a narrow/condensed look from any font (no condensed file needed).
 static void AddTextCX(ImDrawList* dl, ImFont* f, float px, ImVec2 pos, ImU32 col, const char* t, float xs) {
@@ -478,13 +502,10 @@ void Overlay::DrawHub() {
 
         // ---- left accent ----
         const float glowW = 30.0f * sx, railW = 6.0f * sx;
-        // glow: horizontal gold->transparent fade that runs (almost) the full height but softly FADES
-        // OUT vertically over the corner radius at top & bottom — so there is no hard edge (ticker) and
-        // no rounded-corner arc; it simply vanishes before the corners. 3 stacked bilinear gradients.
-        const ImU32 g66 = IM_COL32(0xE0, 0xB3, 0x4A, 66), g0 = IM_COL32(0xE0, 0xB3, 0x4A, 0);
-        dl->AddRectFilledMultiColor(ImVec2(p0.x, p0.y),          ImVec2(p0.x + glowW, p0.y + r),       g0,  g0, g0, g66);  // top fade-in
-        dl->AddRectFilledMultiColor(ImVec2(p0.x, p0.y + r),      ImVec2(p0.x + glowW, p0.y + ch - r),  g66, g0, g0, g66);  // middle
-        dl->AddRectFilledMultiColor(ImVec2(p0.x, p0.y + ch - r), ImVec2(p0.x + glowW, p0.y + ch),      g66, g0, g0, g0);   // bottom fade-out
+        // glow: horizontal gold->transparent fade, FULL height, with rounded-left corners that follow
+        // the card arc (rasterized strips) — full length, no gap/ticker, no quarter-circle.
+        GlowLeft(dl, p0, ImVec2(p0.x + glowW, p0.y + ch),
+                 IM_COL32(0xE0, 0xB3, 0x4A, 66), IM_COL32(0xE0, 0xB3, 0x4A, 0), r);
         // rail: bright vertical gradient, MASKED to the rounded card (clip a card-wide RoundedVGrad to
         // the 6px band so its left corners follow the card radius) — the rail the user approved.
         dl->PushClipRect(p0, ImVec2(p0.x + railW, p0.y + ch), true);
