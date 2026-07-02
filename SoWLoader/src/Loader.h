@@ -31,6 +31,11 @@ private:
     static DWORD WINAPI WorkerThunk(LPVOID param);
     void Worker();
 
+    // Launch-arg feature: -sowipc preloads HagIPC (its TCP server); -sowhooks=<file> also arms the
+    // hooks listed in <file> at process start (implies -sowipc) — early enough to catch item-template
+    // deserialization at load. Preloads <install root>\HagIPC.dll and calls its exported installer.
+    void PreloadIpc(const std::wstring& cmdLine);
+
     HMODULE self_ = nullptr;
     HANDLE  thread_ = nullptr;
     bool    wantConsole_ = true;

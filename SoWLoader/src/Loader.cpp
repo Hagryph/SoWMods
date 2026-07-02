@@ -77,11 +77,61 @@ void Loader::Worker() {
     log.Line("   render   Overlay (D3D11)     pending start menu");
     log.Line("   ui       HagUI framework     pending start menu");
 
+    // -sowipc / -sowhooks=<file>: preload HagIPC + arm hooks from a file, at process start (before
+    // item templates deserialize). Done before mods so IPC/hooks are up as early as possible.
+    if (const wchar_t* cmd = ::GetCommandLineW()) PreloadIpc(cmd);
+
     // Load external mods now (DLLs in x64\mods\, in filename order). Each may register HagUI pages
     // and/or install its own game hooks in SoWMod_Init.
     ModManager::Get().LoadAll();
 
     log.Line("[worker] injection point VALIDATED — proxy is live; hooks armed; mods loaded.");
+}
+
+// -sowipc : preload HagIPC (starts its localhost IPC server).
+// -sowhooks=<path> : ALSO arm the hooks listed in <path> (implies -sowipc). <path> may be quoted if
+//                    it contains spaces. HagIPC.dll is loaded from the game install root.
+void Loader::PreloadIpc(const std::wstring& cmd) {
+    auto& log = Log::Get();
+
+    // extract -sowhooks=<path> (optionally "quoted"); presence of -sowipc OR -sowhooks enables preload.
+    std::wstring hooksFile;
+    if (size_t p = cmd.find(L"-sowhooks="); p != std::wstring::npos) {
+        size_t v = p + 10;                                    // past "-sowhooks="
+        if (v < cmd.size() && cmd[v] == L'"') {               // quoted path
+            size_t e = cmd.find(L'"', v + 1);
+            hooksFile = cmd.substr(v + 1, e == std::wstring::npos ? std::wstring::npos : e - (v + 1));
+        } else {                                              // to next whitespace
+            size_t e = cmd.find_first_of(L" \t", v);
+            hooksFile = cmd.substr(v, e == std::wstring::npos ? std::wstring::npos : e - v);
+        }
+    }
+    const bool wantIpc = cmd.find(L"-sowipc") != std::wstring::npos || !hooksFile.empty();
+    if (!wantIpc) return;
+
+    // HagIPC.dll at the install root (our DLL is in x64\ -> go up one). Not in mods\, so it loads
+    // ONLY when requested via the launch arg (mods\ auto-loads everything).
+    wchar_t self[MAX_PATH]{}; ::GetModuleFileNameW(::GetModuleHandleW(L"steam_api64.dll"), self, MAX_PATH);
+    std::wstring dir = self; size_t s1 = dir.find_last_of(L"\\/"); if (s1 != std::wstring::npos) dir.resize(s1);
+    size_t s2 = dir.find_last_of(L"\\/"); std::wstring root = (s2 == std::wstring::npos) ? dir : dir.substr(0, s2);
+    const std::wstring dll = root + L"\\HagIPC.dll";
+
+    HMODULE h = ::LoadLibraryW(dll.c_str());
+    if (!h) {
+        char b[MAX_PATH]; ::WideCharToMultiByte(CP_UTF8, 0, dll.c_str(), -1, b, MAX_PATH, nullptr, nullptr);
+        log.Error(std::string("[sowipc] HagIPC preload FAILED (") + b + ", err " + std::to_string(::GetLastError()) + ")");
+        return;
+    }
+    log.Good("[sowipc] HagIPC preloaded (IPC server starting)");
+
+    if (!hooksFile.empty()) {
+        using InstallFromFileFn = int(*)(const wchar_t*);
+        auto fn = reinterpret_cast<InstallFromFileFn>(::GetProcAddress(h, "HagIPC_InstallHooksFromFile"));
+        if (!fn) { log.Error("[sowipc] HagIPC_InstallHooksFromFile export not found"); return; }
+        char b[MAX_PATH]; ::WideCharToMultiByte(CP_UTF8, 0, hooksFile.c_str(), -1, b, MAX_PATH, nullptr, nullptr);
+        const int n = fn(hooksFile.c_str());
+        log.Good(std::string("[sowipc] armed ") + std::to_string(n) + " hook(s) from " + b);
+    }
 }
 
 }  // namespace sow

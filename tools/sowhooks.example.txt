@@ -1,0 +1,14 @@
+# SoWLoader hooks-definition file (for the -sowhooks=<path> launch arg).
+# One FILE RVA per line (off image base 0x140000000, exactly as seen in Ghidra).
+# '#' starts a comment; blank lines are ignored; anything after the RVA on a line is ignored,
+# so you can label each hook. HagIPC logs each call's 4 register args + caller (return address)
+# to a ring buffer; drain it live with:  tools\hagipc.ps1 "hooklog"
+#
+# Each hooked function must take <= 4 integer/pointer args (register args only are captured).
+#
+# --- item-template deserialization probe -------------------------------------------------
+# read-object-property primitive: arg1 (a1/RDX) = the property-name string ptr; ret = the CALLER
+# (the per-object deserializer). Group captures by `ret` to find the item-template deserializer.
+0x141879468    read-obj-prop  (FUN_141879468)
+# read-int-property primitive (item level etc.):
+0x141879554    read-int-prop  (FUN_141879554)

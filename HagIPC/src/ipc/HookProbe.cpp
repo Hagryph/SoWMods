@@ -7,6 +7,7 @@
 #include <utility>
 #include <sstream>
 #include <cstdio>
+#include <intrin.h>   // _ReturnAddress
 
 namespace hag::ipc {
 
@@ -15,8 +16,10 @@ namespace {
 constexpr int kSlots = 16;      // max simultaneous hooks
 constexpr int kRing  = 8192;    // captured-call ring buffer size
 
-// One captured call: which slot fired + its 4 register args, in fire order (seq).
-struct Entry { std::uint32_t seq; int slot; std::uint64_t a0, a1, a2, a3; };
+// One captured call: which slot fired + its 4 register args + the CALLER (return address, which
+// pinpoints the calling function — e.g. the item-template deserializer among all callers of a shared
+// read-primitive), in fire order (seq).
+struct Entry { std::uint32_t seq; int slot; std::uint64_t ret; std::uint64_t a0, a1, a2, a3; };
 
 std::mutex    g_mx;
 Entry         g_ring[kRing];
@@ -28,9 +31,9 @@ using Fn4 = std::uint64_t (*)(std::uint64_t, std::uint64_t, std::uint64_t, std::
 void*         g_target[kSlots] = {};   // runtime target VA (nullptr = free slot)
 Fn4           g_tramp [kSlots] = {};   // MinHook trampoline (call-original) per slot
 
-void Record(int slot, std::uint64_t a0, std::uint64_t a1, std::uint64_t a2, std::uint64_t a3) {
+void Record(int slot, std::uint64_t ret, std::uint64_t a0, std::uint64_t a1, std::uint64_t a2, std::uint64_t a3) {
     std::lock_guard<std::mutex> lk(g_mx);
-    g_ring[g_head] = { ++g_seq, slot, a0, a1, a2, a3 };
+    g_ring[g_head] = { ++g_seq, slot, ret, a0, a1, a2, a3 };
     g_head = (g_head + 1) % kRing;
     if (g_count < kRing) ++g_count;
 }
@@ -41,7 +44,10 @@ void Record(int slot, std::uint64_t a0, std::uint64_t a1, std::uint64_t a2, std:
 // the return value in RAX.
 template <int Slot>
 std::uint64_t DetourImpl(std::uint64_t a0, std::uint64_t a1, std::uint64_t a2, std::uint64_t a3) {
-    Record(Slot, a0, a1, a2, a3);
+    // _ReturnAddress() = where this detour returns to = the game caller's return address (the
+    // `call target` pushed it before MinHook's jmp), i.e. an address inside the CALLING function.
+    const std::uint64_t ret = reinterpret_cast<std::uint64_t>(_ReturnAddress());
+    Record(Slot, ret, a0, a1, a2, a3);
     return g_tramp[Slot](a0, a1, a2, a3);
 }
 
@@ -119,7 +125,7 @@ std::string HookProbe::Drain(std::size_t maxEntries) {
     o << "ok entries=" << n << (n < g_count ? " (more buffered)" : "") << "\n";
     for (std::size_t k = 0; k < n; ++k) {
         const Entry& e = g_ring[(start + k) % kRing];
-        o << e.seq << " slot" << e.slot
+        o << e.seq << " slot" << e.slot << " ret=" << Hex(e.ret)
           << " a0=" << Hex(e.a0) << " a1=" << Hex(e.a1)
           << " a2=" << Hex(e.a2) << " a3=" << Hex(e.a3) << "\n";
     }

@@ -16,6 +16,7 @@ add_library(HagIPC SHARED
     src/ipc/MemAccess.cpp
     src/ipc/CallExec.cpp
     src/ipc/HookProbe.cpp
+    src/HagIPCExport.cpp
 )
 
 # ../shared owns the raw offset table (GameOffsets.h); src has our headers.
