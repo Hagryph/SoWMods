@@ -69,14 +69,17 @@ private:
     void LoadFonts();         // real TTFs at resolution-scaled sizes (no bitmap-font pixelation)
     void DrawWatermark();     // always-on "SoWLoader — Hagryph" + F8 hint (ImGui foreground list)
     void DrawHub();           // the modal hub window (tabs, welcome, close)
-    bool imguiInit_ = false;
-    bool menuOpen_  = false;
-    int  activeTab_ = 0;
+    bool imguiInit_   = false;
+    bool menuOpen_    = false;
+    bool cursorShown_ = false;   // tracks ShowCursor() balance for the hub
+    int  activeTab_   = 0;
     WNDPROC origWndProc_ = nullptr;
-    ImFont* fBody_  = nullptr;   // Segoe UI     (default / body)
-    ImFont* fKick_  = nullptr;   // Segoe UI     (small "WELCOME TO" kicker)
-    ImFont* fTab_   = nullptr;   // Segoe UI Bold (tab labels)
-    ImFont* fSmall_ = nullptr;   // Segoe UI     (footer / hints)
+    // Fonts are the dynamic ImGui 1.92 type — one family each, rendered at any size via AddText.
+    ImFont* fBody_  = nullptr;   // Segoe UI      (tagline / body / default)
+    ImFont* fKick_  = nullptr;   // Segoe UI Bold (kicker)
+    ImFont* fTab_   = nullptr;   // Segoe UI Bold (tabs + CLOSE)
+    ImFont* fSmall_ = nullptr;   // Segoe UI      (hint / watermark)
+    ImFont* fFoot_  = nullptr;   // Segoe UI Bold (footer)
     ImFont* fWord_  = nullptr;   // Georgia Bold  (HagUI wordmark)
 
     bool BuildResources(ID3D11Device* dev);

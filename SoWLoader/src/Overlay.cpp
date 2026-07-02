@@ -265,10 +265,9 @@ long __stdcall Overlay::HookPresent(IDXGISwapChain* swap, unsigned sync, unsigne
 LRESULT __stdcall Overlay::WndProc(HWND h, UINT msg, WPARAM w, LPARAM l) {
     Overlay& o = Get();
     // F8 toggles the hub (ignore auto-repeat: bit 30 of lParam set == key was already down).
-    if (msg == WM_KEYDOWN && w == VK_F8 && (l & 0x40000000) == 0) {
-        o.menuOpen_ = !o.menuOpen_;
-        ::ShowCursor(o.menuOpen_);   // balanced +1/-1 so the OS arrow shows over the game while open
-    }
+    if (msg == WM_KEYDOWN && w == VK_F8 && (l & 0x40000000) == 0) o.menuOpen_ = !o.menuOpen_;
+    // ESC closes the hub while it's open (cursor visibility is reconciled in DrawFrame).
+    if (msg == WM_KEYDOWN && w == VK_ESCAPE && o.menuOpen_) o.menuOpen_ = false;
 
     if (o.imguiInit_) {
         ImGui_ImplWin32_WndProcHandler(h, msg, w, l);
@@ -325,6 +324,9 @@ void Overlay::DrawFrame(IDXGISwapChain* swap) {
     }
 
     ImGui::GetIO().MouseDrawCursor = false;   // use the smooth OS hardware cursor, not ImGui's software one
+    // Reconcile the OS cursor with the hub state (balanced ShowCursor +1/-1), covering every close
+    // path (F8, ESC, CLOSE button) from one place.
+    if (menuOpen_ != cursorShown_) { ::ShowCursor(menuOpen_); cursorShown_ = menuOpen_; }
 
     ImGui_ImplDX11_NewFrame();
     ImGui_ImplWin32_NewFrame();
@@ -345,6 +347,20 @@ static ImVec4 Rgb(int r, int g, int b, float a = 1.0f) {
 }
 // ImGui 1.92 removed single-arg PushFont; push each TTF at the size it was loaded with (LegacySize).
 static void PushF(ImFont* f) { ImGui::PushFont(f, f ? f->LegacySize : 0.0f); }
+
+// Rounded rect with a vertical color gradient (AddRectFilledMultiColor can't round). Straight
+// gradient middle + rounded caps top/bottom; caps are clipped to their zone so the radius isn't
+// clamped by a short rect. Colors are continuous, so it reads as one smooth gradient.
+static void RoundedVGrad(ImDrawList* dl, ImVec2 a, ImVec2 b, ImU32 top, ImU32 bot, float rad) {
+    if (rad <= 0.5f || b.y - a.y <= 2.0f * rad) { dl->AddRectFilledMultiColor(a, b, top, top, bot, bot); return; }
+    dl->AddRectFilledMultiColor(ImVec2(a.x, a.y + rad), ImVec2(b.x, b.y - rad), top, top, bot, bot);
+    dl->PushClipRect(ImVec2(a.x, a.y), ImVec2(b.x, a.y + rad), true);
+    dl->AddRectFilled(a, ImVec2(b.x, a.y + 2.0f * rad), top, rad, ImDrawFlags_RoundCornersTop);
+    dl->PopClipRect();
+    dl->PushClipRect(ImVec2(a.x, b.y - rad), ImVec2(b.x, b.y), true);
+    dl->AddRectFilled(ImVec2(a.x, b.y - 2.0f * rad), b, bot, rad, ImDrawFlags_RoundCornersBottom);
+    dl->PopClipRect();
+}
 void Overlay::StyleHagUI() {
     ImGui::StyleColorsDark();
     ImGuiStyle& s = ImGui::GetStyle();
@@ -382,17 +398,20 @@ void Overlay::StyleHagUI() {
 
 void Overlay::LoadFonts() {
     ImGuiIO& io = ImGui::GetIO();
-    const float H = curH_ > 100.0f ? curH_ : 1080.0f;   // scale type to the back buffer
     // Latin-1 + dashes (incl. em-dash U+2014) + smart quotes so punctuation renders (not '?').
     static const ImWchar kRanges[] = { 0x0020, 0x00FF, 0x2010, 0x2015, 0x2018, 0x2019, 0x201C, 0x201D, 0 };
-    auto add = [&](const char* path, float px) -> ImFont* {
-        return io.Fonts->AddFontFromFileTTF(path, px, nullptr, kRanges);  // nullptr if missing (PushFont(null) safe)
+    // Base size scaled to the card (AS stage = 462-tall card). Fonts are DYNAMIC in ImGui 1.92, so a
+    // single load per family renders crisply at any size we pass to AddText (AS_size * s).
+    const float base = (curH_ > 100.0f ? curH_ : 1080.0f) * 0.64f / 462.0f * 18.0f;
+    auto add = [&](const char* path) -> ImFont* {
+        return io.Fonts->AddFontFromFileTTF(path, base, nullptr, kRanges);  // nullptr if missing (safe)
     };
-    fBody_  = add("C:\\Windows\\Fonts\\segoeui.ttf",  H * 0.0225f);   // first == default font
-    fKick_  = add("C:\\Windows\\Fonts\\segoeui.ttf",  H * 0.0160f);
-    fTab_   = add("C:\\Windows\\Fonts\\segoeuib.ttf", H * 0.0200f);
-    fSmall_ = add("C:\\Windows\\Fonts\\segoeui.ttf",  H * 0.0150f);
-    fWord_  = add("C:\\Windows\\Fonts\\georgiab.ttf", H * 0.0720f);
+    fBody_  = add("C:\\Windows\\Fonts\\segoeui.ttf");    // first == default font
+    fKick_  = add("C:\\Windows\\Fonts\\segoeuib.ttf");
+    fTab_   = add("C:\\Windows\\Fonts\\segoeuib.ttf");
+    fSmall_ = add("C:\\Windows\\Fonts\\segoeui.ttf");
+    fFoot_  = add("C:\\Windows\\Fonts\\segoeuib.ttf");
+    fWord_  = add("C:\\Windows\\Fonts\\georgiab.ttf");
     io.Fonts->Build();
 }
 
@@ -415,124 +434,119 @@ void Overlay::DrawHub() {
     // dim + block the game behind the modal card
     ImGui::GetBackgroundDrawList()->AddRectFilled(ImVec2(0, 0), disp, IM_COL32(6, 6, 10, 190));
 
+    // The Skyrim card is 820x462; our card keeps that ~1.78 aspect, so one scale maps every AS
+    // coordinate to screen (sx for x, sy for y, s for radii/sizes/fonts).
     const float cw = disp.x * 0.64f, ch = disp.y * 0.64f;
-    const float padX = cw * 0.075f, padY = ch * 0.055f;   // Skyrim: content starts ~60px/28px in
-    const float r = ch * 0.032f;                          // strong card corner radius (matches Skyrim)
+    const float sx = cw / 820.0f, sy = ch / 462.0f, s = sy;
     ImGui::SetNextWindowPos(ImVec2((disp.x - cw) * 0.5f, (disp.y - ch) * 0.5f));
     ImGui::SetNextWindowSize(ImVec2(cw, ch));
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(padX, padY));
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, r);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));   // we position everything in AS coords
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 14.0f * s);     // AS card radius = 14
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.0f);
     const ImGuiWindowFlags flags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
         ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollbar |
         ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoBringToFrontOnFocus;
 
-    const ImVec4 cAccent = Rgb(0xE0, 0xB3, 0x4A);
-    const ImVec4 cText   = Rgb(0xEC, 0xE6, 0xDA);
-    const ImVec4 cDim    = Rgb(0x9C, 0x94, 0x86);
-    const ImVec4 cFaint  = Rgb(0x6B, 0x64, 0x56);
+    const ImU32 uAccent = IM_COL32(0xE0, 0xB3, 0x4A, 255);
+    const ImU32 uDim    = IM_COL32(0x9C, 0x94, 0x86, 255);
+    const ImU32 uText   = IM_COL32(0xEC, 0xE6, 0xDA, 255);
+    const ImU32 uFaint  = IM_COL32(0x6B, 0x64, 0x56, 255);
 
     if (ImGui::Begin("HagUI##hub", nullptr, flags)) {
         ImDrawList* dl = ImGui::GetWindowDrawList();
         const ImVec2 p0 = ImGui::GetWindowPos();
-        // ---- left accent: rail + glow, INSET vertically to the corner-mark level so they lie fully
-        //      within the rounded frame (never touch the corners) and span the same range as the marks ----
-        const float inset = ch * 0.048f;              // == corner-mark inset (top and bottom)
-        const float railTop = p0.y + inset, railBot = p0.y + ch - inset;
-        const float railX = p0.x + 3.0f;              // just inside the border
-        const float railW = cw * 0.0045f;             // thin bright rail
-        const float glowW = cw * 0.026f;              // narrower soft glow
-        dl->AddRectFilledMultiColor(ImVec2(railX, railTop), ImVec2(railX + railW, railBot),
-            IM_COL32(0xE0, 0xB3, 0x4A, 255), IM_COL32(0xE0, 0xB3, 0x4A, 255),
-            IM_COL32(0xB8, 0x86, 0x2F, 255), IM_COL32(0xB8, 0x86, 0x2F, 255));
-        dl->AddRectFilledMultiColor(ImVec2(railX + railW, railTop), ImVec2(railX + railW + glowW, railBot),
-            IM_COL32(0xE0, 0xB3, 0x4A, 60), IM_COL32(0xE0, 0xB3, 0x4A, 0),
-            IM_COL32(0xE0, 0xB3, 0x4A, 0),  IM_COL32(0xE0, 0xB3, 0x4A, 60));
+        const float r = 14.0f * s;
+        auto X = [&](float ax) { return p0.x + ax * sx; };   // AS x -> screen
+        auto Y = [&](float ay) { return p0.y + ay * sy; };   // AS y -> screen
+        auto txt = [&](ImFont* f, float px, float ax, float ay, ImU32 c, const char* t) {
+            dl->AddText(f, px, ImVec2(X(ax), Y(ay)), c, t);
+        };
+        auto measure = [&](ImFont* f, float px, const char* t) {
+            return f ? f->CalcTextSizeA(px, 3.4e38f, 0.0f, t) : ImGui::CalcTextSize(t);
+        };
 
-        // ---- corner flourishes: horizontal gold lines, top-left + bottom-right ----
-        const ImU32 uFl = IM_COL32(0xE0, 0xB3, 0x4A, 80);
-        const float flInset = cw * 0.037f, flLen = cw * 0.032f, flTop = inset;
-        dl->AddLine(ImVec2(p0.x + flInset, p0.y + flTop),
-                    ImVec2(p0.x + flInset + flLen, p0.y + flTop), uFl, 2.0f);
-        dl->AddLine(ImVec2(p0.x + cw - flInset - flLen, p0.y + ch - flTop),
-                    ImVec2(p0.x + cw - flInset, p0.y + ch - flTop), uFl, 2.0f);
+        // ---- left accent: glow (x0..30, alpha 26->0) + rail (x0..6, vgrad accent->accent-dim),
+        //      both MASKED to the rounded card (draw card-wide rounded-left, clip to the band width) ----
+        auto glowLayer = [&](float wpx, int a) {
+            dl->PushClipRect(p0, ImVec2(p0.x + wpx, p0.y + ch), true);
+            dl->AddRectFilled(p0, ImVec2(p0.x + cw, p0.y + ch), IM_COL32(0xE0, 0xB3, 0x4A, a), r, ImDrawFlags_RoundCornersLeft);
+            dl->PopClipRect();
+        };
+        glowLayer(30.0f * sx, 10);
+        glowLayer(20.0f * sx, 16);
+        glowLayer(12.0f * sx, 24);
+        dl->PushClipRect(p0, ImVec2(p0.x + 6.0f * sx, p0.y + ch), true);
+        RoundedVGrad(dl, p0, ImVec2(p0.x + cw, p0.y + ch),
+                     IM_COL32(0xE0, 0xB3, 0x4A, 255), IM_COL32(0xB8, 0x86, 0x2F, 255), r);
+        dl->PopClipRect();
 
-        // ---- tab strip (custom: active = gold + underline, inactive = dim, hover brightens) ----
+        // ---- corner flourishes (AS: gold alpha 30, TL x30..56 y22, BR x cw-56..cw-30 y ch-22) ----
+        const ImU32 uFl = IM_COL32(0xE0, 0xB3, 0x4A, 77);
+        dl->AddLine(ImVec2(X(30), Y(22)), ImVec2(X(56), Y(22)), uFl, 1.0f * s);
+        dl->AddLine(ImVec2(X(820 - 56), Y(462 - 22)), ImVec2(X(820 - 30), Y(462 - 22)), uFl, 1.0f * s);
+
+        // ---- tabs (AS: nx=60 ny=28, pad16 gap12, bold size15, hairline + active underline at ny+34) ----
         static const char* kTabs[] = { "WELCOME", "GENERAL" };
-        constexpr int kNTabs = 2;
-        PushF(fTab_);
-        ImGui::PushStyleColor(ImGuiCol_Button,        IM_COL32(0, 0, 0, 0));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(0, 0, 0, 0));
-        ImGui::PushStyleColor(ImGuiCol_ButtonActive,  IM_COL32(0, 0, 0, 0));
-        float rowBottom = 0.0f;
-        for (int i = 0; i < kNTabs; ++i) {
-            if (i) ImGui::SameLine(0, cw * 0.012f);
+        const float fTabPx = 15.0f * s, pad = 16.0f * sx, gap = 12.0f * sx, cellH = 35.0f * sy;
+        const float navY = Y(28), hairY = Y(28 + 34);
+        float cx = X(60);
+        for (int i = 0; i < 2; ++i) {
             const bool active = activeTab_ == i;
-            ImGui::PushStyleColor(ImGuiCol_Text, active ? cAccent : cDim);
-            if (ImGui::Button(kTabs[i])) activeTab_ = i;
-            ImGui::PopStyleColor();
-            const ImVec2 a = ImGui::GetItemRectMin(), b = ImGui::GetItemRectMax();
-            rowBottom = b.y;
-            if (active) dl->AddLine(ImVec2(a.x, b.y), ImVec2(b.x, b.y), IM_COL32(0xE0, 0xB3, 0x4A, 255), 2.0f);
+            const float cellW = measure(fTab_, fTabPx, kTabs[i]).x + pad * 2.0f;
+            ImGui::SetCursorScreenPos(ImVec2(cx, navY));
+            ImGui::InvisibleButton(kTabs[i], ImVec2(cellW, cellH));
+            const bool hov = ImGui::IsItemHovered();
+            if (ImGui::IsItemClicked()) activeTab_ = i;
+            dl->AddText(fTab_, fTabPx, ImVec2(cx + pad, navY + 6.0f * sy),
+                        active ? uAccent : (hov ? uText : uDim), kTabs[i]);
+            if (active) dl->AddLine(ImVec2(cx, hairY), ImVec2(cx + cellW, hairY), uAccent, 2.0f * s);
+            cx += cellW + gap;
         }
-        ImGui::PopStyleColor(3);
-        ImGui::PopFont();
-        // faint hairline under the whole row, spanning the content width
-        dl->AddLine(ImVec2(p0.x + padX, rowBottom), ImVec2(p0.x + cw - padX, rowBottom),
-                    IM_COL32(0xE0, 0xB3, 0x4A, 40), 1.0f);
-
-        ImGui::Dummy(ImVec2(0, ch * 0.05f));
+        dl->AddLine(ImVec2(X(60), hairY), ImVec2(X(772), hairY), IM_COL32(0xE0, 0xB3, 0x4A, 41), 1.0f * s);
 
         // ---- active page ----
-        if (activeTab_ == 0) {
-            PushF(fKick_);
-            ImGui::TextColored(cFaint, "W E L C O M E   T O");
-            ImGui::PopFont();
-            ImGui::Dummy(ImVec2(0, ch * 0.008f));
-            PushF(fWord_);
-            ImGui::TextColored(cText, "Hag"); ImGui::SameLine(0, 0);
-            ImGui::TextColored(cAccent, "UI");
-            ImGui::PopFont();
-            // gold->transparent divider
-            ImGui::Dummy(ImVec2(0, ch * 0.02f));
-            const ImVec2 dv = ImGui::GetCursorScreenPos();
-            dl->AddRectFilledMultiColor(dv, ImVec2(dv.x + cw * 0.30f, dv.y + 2.0f),
-                IM_COL32(0xE0, 0xB3, 0x4A, 200), IM_COL32(0xE0, 0xB3, 0x4A, 0),
-                IM_COL32(0xE0, 0xB3, 0x4A, 0),   IM_COL32(0xE0, 0xB3, 0x4A, 200));
-            ImGui::Dummy(ImVec2(0, ch * 0.035f));
-            ImGui::TextColored(cDim, "Your private control room for every Hagryph mod \xE2\x80\x94");
-            ImGui::TextColored(cDim, "configuration, tools, and more, gathered in one place.");
+        if (activeTab_ == 0) {   // content origin AS: x=60 y=86
+            txt(fKick_, 13.0f * s, 60, 86, uFaint, "W E L C O M E   T O");
+            const float wy = 86 + 14;                                  // wordmark (AS x-2, y+14, size 64)
+            txt(fWord_, 64.0f * s, 58, wy, uText, "Hag");
+            const float hagW = measure(fWord_, 64.0f * s, "Hag").x;
+            dl->AddText(fWord_, 64.0f * s, ImVec2(X(58) + hagW, Y(wy)), uAccent, "UI");
+            dl->AddRectFilledMultiColor(ImVec2(X(60), Y(198)), ImVec2(X(60) + 250.0f * sx, Y(198) + 2.0f * sy),
+                IM_COL32(0xE0, 0xB3, 0x4A, 153), IM_COL32(0xE0, 0xB3, 0x4A, 0),
+                IM_COL32(0xE0, 0xB3, 0x4A, 0),   IM_COL32(0xE0, 0xB3, 0x4A, 153));   // divider (x60 y198 w250)
+            txt(fBody_, 18.0f * s, 60, 218, uDim, "Your private control room for every Hagryph mod \xE2\x80\x94");
+            txt(fBody_, 18.0f * s, 60, 218 + 26, uDim, "configuration, tools, and more, gathered in one place.");
         } else {
-            ImGui::TextColored(cDim, "General settings will appear here.");
+            txt(fBody_, 18.0f * s, 60, 100, uDim, "General settings will appear here.");
         }
 
-        // ---- CLOSE button + hint, pinned bottom-left ----
-        const float btnW = cw * 0.13f, btnH = ch * 0.072f;
-        ImGui::SetCursorPos(ImVec2(padX, ch - padY - btnH));
-        PushF(fBody_);
-        ImGui::PushStyleColor(ImGuiCol_Text, cAccent);
-        ImGui::PushStyleColor(ImGuiCol_Button, Rgb(0x23, 0x1E, 0x16));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, Rgb(0x3A, 0x2F, 0x18));
-        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
-        if (ImGui::Button("CLOSE", ImVec2(btnW, btnH))) menuOpen_ = false;
-        ImGui::PopStyleVar();
-        ImGui::PopStyleColor(3);
-        ImGui::PopFont();
-        ImGui::SameLine(0, cw * 0.014f);
-        PushF(fSmall_);
-        ImGui::AlignTextToFramePadding();
-        ImGui::TextColored(cFaint, "or press F8");
-        ImGui::PopFont();
+        // ---- CLOSE button (AS: x60 y376 w152 h40 r7; vgrad alpha 18->6, border 42; hover 34/14/78) ----
+        const ImVec2 ba(X(60), Y(376)), bb(X(60) + 152.0f * sx, Y(376) + 40.0f * sy);
+        const float br = 7.0f * s;
+        ImGui::SetCursorScreenPos(ba);
+        ImGui::InvisibleButton("##close", ImVec2(bb.x - ba.x, bb.y - ba.y));
+        const bool bhov = ImGui::IsItemHovered();
+        if (ImGui::IsItemClicked()) menuOpen_ = false;
+        RoundedVGrad(dl, ba, bb, IM_COL32(0xE0, 0xB3, 0x4A, bhov ? 87 : 46),
+                                 IM_COL32(0xE0, 0xB3, 0x4A, bhov ? 36 : 15), br);
+        dl->AddRect(ba, bb, IM_COL32(0xE0, 0xB3, 0x4A, bhov ? 199 : 107), br, 0, 1.0f * s);
+        const float clPx = 15.0f * s;
+        const ImVec2 clSz = measure(fTab_, clPx, "CLOSE");
+        dl->AddText(fTab_, clPx, ImVec2(ba.x + (bb.x - ba.x - clSz.x) * 0.5f, ba.y + (bb.y - ba.y - clSz.y) * 0.5f),
+                    uAccent, "CLOSE");
+        // hint (AS: x=230 y~387, regular size 14) — vertically centered to the button
+        const float hintPx = 14.0f * s;
+        const float hintH = measure(fSmall_, hintPx, "or press  ESC").y;
+        dl->AddText(fSmall_, hintPx, ImVec2(X(230), ba.y + (bb.y - ba.y - hintH) * 0.5f), uFaint, "or press  ESC");
 
-        // ---- EST footer, bottom-right (draw-list, absolute) ----
+        // ---- footer (AS: right edge x=cw-30, y=ch-40, bold size 11, right-aligned) — above the BR mark ----
         const char* est = "HAGRYPH  \xC2\xB7  EST. MMXXVI";
-        const float estSz = fSmall_ ? fSmall_->LegacySize : ImGui::GetFontSize();
-        const ImVec2 estDim = fSmall_ ? fSmall_->CalcTextSizeA(estSz, 3.4e38f, 0.0f, est) : ImGui::CalcTextSize(est);
-        dl->AddText(fSmall_, estSz,
-            ImVec2(p0.x + cw - estDim.x - cw * 0.037f, p0.y + ch - estDim.y - ch * 0.075f),
-            IM_COL32(0x6B, 0x64, 0x56, 255), est);   // sits ABOVE the bottom-right corner mark (0.048)
+        const float fPx = 11.0f * s;
+        const float estW = measure(fFoot_, fPx, est).x;
+        dl->AddText(fFoot_, fPx, ImVec2(X(820 - 30) - estW, Y(462 - 40)), uFaint, est);
     }
     ImGui::End();
-    ImGui::PopStyleVar(2);
+    ImGui::PopStyleVar(3);
 }
 
 }  // namespace sow
