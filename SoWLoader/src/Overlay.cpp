@@ -333,14 +333,6 @@ void Overlay::DrawFrame(IDXGISwapChain* swap) {
     // path (F8, ESC, CLOSE button) from one place.
     if (menuOpen_ != cursorShown_) { ::ShowCursor(menuOpen_); cursorShown_ = menuOpen_; }
 
-    // Game-state heartbeat: the front-end item-refresh ticks while a menu is up and freezes once a
-    // save is loaded and gameplay takes over. A stalled beat (many frames unchanged) => in a save.
-    {
-        const unsigned long long t = GameHooks::MenuHeartbeat();
-        if (t != lastMenuTick_) { lastMenuTick_ = t; menuStale_ = 0; }
-        else if (menuStale_ < 100000) ++menuStale_;
-    }
-
     ImGui_ImplDX11_NewFrame();
     ImGui_ImplWin32_NewFrame();
     ImGui::NewFrame();
@@ -512,11 +504,8 @@ void Overlay::DrawWatermark() {
     dl->AddText(fSmall_, sz, ImVec2(disp.x - hSz.x - 16.0f, 12.0f + sz + 2.0f), IM_COL32(224, 179, 74, 170), hint);
 }
 
-// A save is loaded (gameplay running) once the front-end has appeared at least once AND its heartbeat
-// has been frozen for a stretch of frames (the menu stopped updating because gameplay took over).
-bool Overlay::InSave() const {
-    return GameHooks::MenuEverShown() && menuStale_ > 30;
-}
+// Save-loaded state is event-latched in GameHooks (front-end root layer ctor/dtor), not polled here.
+bool Overlay::InSave() const { return GameHooks::InSave(); }
 
 void Overlay::DrawHub() {
     ImGuiIO& io = ImGui::GetIO();

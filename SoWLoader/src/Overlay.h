@@ -65,11 +65,9 @@ private:
 
     // ---- ImGui hub (the in-frame HagUI, drawn into the game's own back buffer) ----
     static LRESULT __stdcall WndProc(HWND, UINT, WPARAM, LPARAM);  // game-window subclass for input
-    // True once a SAVE is loaded and gameplay is running (the front-end heartbeat has frozen). Gates
-    // save-local mod tabs in the hub. See GameHooks::MenuHeartbeat / MenuEverShown.
+    // True once a SAVE is loaded and gameplay is running. Gates save-local mod tabs in the hub.
+    // Event-latched in GameHooks (front-end root layer ctor/dtor), so it's stable — no per-frame poll.
     bool InSave() const;
-    unsigned long long lastMenuTick_ = 0;
-    int  menuStale_ = 100000;   // frames since the menu heartbeat last advanced (large => in-game)
 
     void StyleHagUI();        // black + gold ImGui theme
     void LoadFonts();         // real TTFs at resolution-scaled sizes (no bitmap-font pixelation)

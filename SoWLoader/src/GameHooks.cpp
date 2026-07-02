@@ -27,7 +27,15 @@ GameHooks& GameHooks::Get() { static GameHooks instance; return instance; }
 static volatile LONG s_overlayClaimed = 0;
 static bool          s_ctorLogged     = false;
 static bool          g_menuLive       = false;   // set when the front-end root layer is constructed
-static volatile LONG64 g_menuTick     = 0;        // ++ each front-end item-refresh; freezes in-game
+
+// Event-latched game state (no per-frame polling — the game stops presenting when backgrounded, so a
+// per-frame heuristic is unreliable). The front-end ROOT layer's lifecycle is the signal: its ctor
+// fires on entering a menu, its dtor fires when the menu is torn down for gameplay (a save loading).
+enum class GState : LONG { Boot = 0, Menu = 1, InGame = 2 };
+static volatile LONG   g_state          = (LONG)GState::Boot;
+using RootLayerDtorFn  = void* (__fastcall*)(void*, unsigned);
+static RootLayerDtorFn  oRootLayerDtor  = nullptr;   // original dtor (vtable slot 0), called through
+static bool             s_dtorHooked    = false;
 static volatile LONG s_svCap          = 0;       // SetVariable log budget (armed at menu build)
 static volatile LONG s_locCap         = 0;       // loc-key log budget (armed at menu build)
 static volatile LONG s_facCap         = 0;       // factory-classNode log budget (armed at menu build)
@@ -44,14 +52,40 @@ static void EnsureOverlay(const char* who) {
 using RootLayerCtorFn = void* (__fastcall*)(void*, void*, void*);
 static RootLayerCtorFn oRootLayerCtor = nullptr;
 
+// The front-end root layer's deleting destructor (vtable slot 0). It runs when the menu is torn down
+// — i.e. we are leaving the menu into gameplay (a save has loaded). Latch InGame here.
+static void* __fastcall HookRootLayerDtor(void* self, unsigned flags) {
+    if (::InterlockedExchange(&g_state, (LONG)GState::InGame) != (LONG)GState::InGame)
+        Log::Get().Line("[frontend] root layer destroyed — entered gameplay (save loaded)");
+    return oRootLayerDtor(self, flags);
+}
+
+// One-time: hook the root layer's vtable dtor by swapping slot 0 (no MinHook / no thread suspension).
+static void HookRootLayerDtorOnce(void* self) {
+    if (s_dtorHooked || !self || ::IsBadReadPtr(self, sizeof(void*))) return;
+    void** vt = *reinterpret_cast<void***>(self);
+    if (!vt || ::IsBadReadPtr(vt, sizeof(void*))) return;
+    DWORD old = 0;
+    if (!::VirtualProtect(&vt[0], sizeof(void*), PAGE_READWRITE, &old)) return;
+    oRootLayerDtor = reinterpret_cast<RootLayerDtorFn>(vt[0]);
+    vt[0] = reinterpret_cast<void*>(&HookRootLayerDtor);
+    ::VirtualProtect(&vt[0], sizeof(void*), old, &old);
+    s_dtorHooked = true;
+    Log::Get().Line("[frontend] root-layer dtor hooked (menu-exit -> in-game signal)");
+}
+
 static void* __fastcall HookRootLayerCtor(void* self, void* a2, void* a3) {
     if (!s_ctorLogged) {
         s_ctorLogged = true;
         Log::Get().Line("[frontend] CUIFrontEndRootLayer ctor hit — START MENU UI created");
     }
     g_menuLive = true; s_locCap = 300;   // arm the loc-key logger for the menu-build window
+    void* r = oRootLayerCtor(self, a2, a3);   // forward FIRST so the vtable is installed on `self`
+    HookRootLayerDtorOnce(self);              // learn when this menu gets torn down (-> gameplay)
+    if (::InterlockedExchange(&g_state, (LONG)GState::Menu) != (LONG)GState::Menu)
+        Log::Get().Line("[frontend] front-end menu active (save-local mod tabs hidden)");
     EnsureOverlay("frontend-rootlayer-ctor");
-    return oRootLayerCtor(self, a2, a3);   // forward to original (trampoline; never destructive)
+    return r;
 }
 
 // Scaleform SetVariable(movie, pathObj, value, p4, flag). pathObj's first field points to the path
@@ -504,12 +538,11 @@ static void* __fastcall HookItemRefresh(void* self) {
             }
         }
     }
-    ::InterlockedIncrement64(&g_menuTick);   // menu-alive heartbeat (frozen once gameplay takes over)
     return oItemRefresh(self);
 }
 
-unsigned long long GameHooks::MenuHeartbeat() { return (unsigned long long)g_menuTick; }
-bool               GameHooks::MenuEverShown() { return g_menuLive; }
+// A save is loaded once the front-end root layer has been destroyed (menu torn down for gameplay).
+bool GameHooks::InSave() { return (GState)g_state == GState::InGame; }
 
 void GameHooks::Install() {
     auto& log = Log::Get();
