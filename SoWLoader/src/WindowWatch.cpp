@@ -21,18 +21,26 @@ static bool IsGameMainWindow(HWND h) {
     return ::wcscmp(cls, L"Shadow of War") == 0;
 }
 
-// user32!ShowWindow detour: show the window, and the FIRST time the game's main window is made
-// visible (nCmdShow != SW_HIDE) — i.e. its taskbar button is being created — open the console, then
-// call original. The game calls SetForegroundWindow on itself right after, so it stays the main
-// window and the console drops to a secondary taskbar entry.
+// user32!ShowWindow detour. The FIRST time the game's main window is made visible (nCmdShow !=
+// SW_HIDE) — its taskbar button is being created — we:
+//   1. call the ORIGINAL first, so the game window is actually shown + gets its taskbar button
+//      (opening the console before this left the console as the only visible window => "main window");
+//   2. open the console;
+//   3. force the console BEHIND the game window in z-order and hand foreground back to the game,
+//      so the game stays the main/foreground window and the console is a secondary taskbar entry.
 static BOOL WINAPI HkShowWindow(HWND h, int cmd) {
-    if (!g_consoleFired && cmd != SW_HIDE && IsGameMainWindow(h)) {
+    const bool trigger = !g_consoleFired && cmd != SW_HIDE && IsGameMainWindow(h);
+    BOOL r = oShowWindow(h, cmd);            // (1) show the game window FIRST
+    if (trigger) {
         g_consoleFired = true;
         char l[112]; ::wsprintfA(l, "[winwatch] game window %p shown (taskbar-registered) -> opening console", (void*)h);
         Log::Get().Line(l);
-        Loader::Get().OnRenderLive();   // opens the console at the taskbar-registration moment
+        Loader::Get().OnRenderLive();        // (2) open the console
+        if (HWND cw = ::GetConsoleWindow())  // (3) console just below the game window, don't activate
+            ::SetWindowPos(cw, h, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+        ::SetForegroundWindow(h);            // game stays the foreground/main window
     }
-    return oShowWindow(h, cmd);
+    return r;
 }
 
 void WindowWatch::Install() {
