@@ -23,10 +23,30 @@ $ErrorActionPreference = 'Stop'
 Add-Type -Namespace Win -Name Key -MemberDefinition @'
 [DllImport("user32.dll")] public static extern bool PostMessageW(IntPtr h, uint msg, IntPtr w, IntPtr l);
 [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h);
+[DllImport("user32.dll")] public static extern bool BringWindowToTop(IntPtr h);
+[DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+[DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr h, IntPtr pid);
+[DllImport("kernel32.dll")] public static extern uint GetCurrentThreadId();
+[DllImport("user32.dll")] public static extern bool AttachThreadInput(uint from, uint to, bool attach);
 [DllImport("user32.dll")] public static extern short VkKeyScanW(char c);
 [DllImport("user32.dll")] public static extern uint MapVirtualKeyW(uint code, uint mapType);
 [DllImport("user32.dll")] public static extern void keybd_event(byte vk, byte scan, uint flags, UIntPtr extra);
 '@
+
+# Reliably foreground a window despite Windows' foreground lock: attach our input thread to both the
+# current-foreground and target threads, then SetForegroundWindow works.
+function Force-Foreground([IntPtr]$h) {
+    $fg  = [Win.Key]::GetForegroundWindow()
+    $cur = [Win.Key]::GetCurrentThreadId()
+    $tTid  = [Win.Key]::GetWindowThreadProcessId($h,  [IntPtr]::Zero)
+    $fgTid = [Win.Key]::GetWindowThreadProcessId($fg, [IntPtr]::Zero)
+    [Win.Key]::AttachThreadInput($cur, $fgTid, $true) | Out-Null
+    [Win.Key]::AttachThreadInput($cur, $tTid,  $true) | Out-Null
+    [Win.Key]::BringWindowToTop($h) | Out-Null
+    [Win.Key]::SetForegroundWindow($h) | Out-Null
+    [Win.Key]::AttachThreadInput($cur, $tTid,  $false) | Out-Null
+    [Win.Key]::AttachThreadInput($cur, $fgTid, $false) | Out-Null
+}
 
 # name -> virtual-key code
 $VK = @{ SPACE=0x20; ENTER=0x0D; RETURN=0x0D; ESC=0x1B; ESCAPE=0x1B; TAB=0x09; BACK=0x08;
@@ -50,7 +70,7 @@ $p = Get-Process -Name $ProcessName -ErrorAction Stop |
 if (-not $p) { throw "process '$ProcessName' has no window" }
 $h = $p.MainWindowHandle
 
-if ($Foreground) { [Win.Key]::SetForegroundWindow($h) | Out-Null; Start-Sleep -Milliseconds 200 }
+if ($Foreground) { Force-Foreground $h; Start-Sleep -Milliseconds 250 }
 
 function Tap-Vk([int]$vk) {
     if ($Foreground) {
