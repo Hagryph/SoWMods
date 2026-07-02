@@ -136,21 +136,13 @@ void EnsurePill(Overlay& r, const char* key, float vw, float vh,
 }
 }  // namespace
 
-// ============================================================================
-//  Demo page (proves the API + interactivity)
-// ============================================================================
-static bool g_demoToggle = false;
-static void DemoButton() { Log::Channel("HagUI").Line("demo button clicked"); }
-
 void HagUI::Init() {
     if (inited_) return;
     inited_ = true;
-    int p = RegisterPage("General");
-    AddLabel(p, "SoW HagUI framework - cross-plugin page API.");
-    AddToggle(p, "Example toggle", &g_demoToggle);
-    AddButton(p, "Log a message", &DemoButton);
+    // NO pages are registered here: tabs exist only for pages registered by mods through the
+    // cross-plugin API (HagUI_GetAPI). The hub always has the WELCOME landing tab.
     // HagUI logs through its own channel: logs\HagUI.log + [HagUI]-prefixed console lines.
-    Log::Channel("HagUI").Line("initialized (demo page 'General'); press F8 to open the hub");
+    Log::Channel("HagUI").Line("initialized (no built-in pages; mods register tabs); press F8 to open the hub");
 }
 
 int HagUI::RegisterPage(const char* title) {

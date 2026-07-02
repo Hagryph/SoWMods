@@ -15,6 +15,8 @@
 #include <vector>
 #include <algorithm>
 #include <cmath>
+#include <cctype>
+#include <string>
 
 // Provided by imgui_impl_win32 — feeds Win32 messages to ImGui (defined in the backend .cpp).
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND, UINT, WPARAM, LPARAM);
@@ -544,20 +546,26 @@ void Overlay::DrawHub() {
         dl->AddLine(ImVec2(X(30), Y(22)), ImVec2(X(56), Y(22)), uFl, 1.0f * s);
         dl->AddLine(ImVec2(X(820 - 56), Y(462 - 22)), ImVec2(X(820 - 30), Y(462 - 22)), uFl, 1.0f * s);
 
-        // ---- tabs (AS: nx=60 ny=28, pad16 gap12, bold size15, hairline + active underline at ny+34) ----
-        static const char* kTabs[] = { "WELCOME", "GENERAL" };
+        // ---- tabs (AS: nx=60 ny=28, pad16 gap12, bold size15, hairline + active underline at ny+34)
+        //      WELCOME + one tab per MOD-REGISTERED page (HagUI cross-plugin API) — none hardcoded ----
+        const auto& pages = HagUI::Get().Pages();
+        if (activeTab_ > (int)pages.size()) activeTab_ = 0;   // registry can change between frames
         const float fTabPx = 15.0f * s, pad = 16.0f * sx, gap = 12.0f * sx, cellH = 35.0f * sy;
         const float navY = Y(28), hairY = Y(28 + 34);
         float cx = X(60);
-        for (int i = 0; i < 2; ++i) {
+        for (int i = 0; i <= (int)pages.size(); ++i) {
+            std::string label = (i == 0) ? "WELCOME" : pages[i - 1].title;
+            for (auto& lc : label) lc = (char)::toupper((unsigned char)lc);
             const bool active = activeTab_ == i;
-            const float cellW = measureW(fTab_, fTabPx, kTabs[i]) + pad * 2.0f;
+            const float cellW = measureW(fTab_, fTabPx, label.c_str()) + pad * 2.0f;
+            ImGui::PushID(i);
             ImGui::SetCursorScreenPos(ImVec2(cx, navY));
-            ImGui::InvisibleButton(kTabs[i], ImVec2(cellW, cellH));
+            ImGui::InvisibleButton("##tab", ImVec2(cellW, cellH));
             const bool hov = ImGui::IsItemHovered();
             if (ImGui::IsItemClicked()) activeTab_ = i;
+            ImGui::PopID();
             AddTextCX(dl, fTab_, fTabPx, ImVec2(cx + pad, navY + 6.0f * sy),
-                      active ? uAccent : (hov ? uText : uDim), kTabs[i], XS);
+                      active ? uAccent : (hov ? uText : uDim), label.c_str(), XS);
             if (active) dl->AddLine(ImVec2(cx, hairY), ImVec2(cx + cellW, hairY), uAccent, 2.0f * s);
             cx += cellW + gap;
         }
@@ -576,28 +584,81 @@ void Overlay::DrawHub() {
             txt(fBody_, 18.0f * s, 60, 218, uDim, "Your private control room for every Hagryph mod \xE2\x80\x94");
             txt(fBody_, 18.0f * s, 60, 218 + 26, uDim, "configuration, tools, and more, gathered in one place.");
         } else {
-            txt(fBody_, 18.0f * s, 60, 100, uDim, "General settings will appear here.");
+            // registered page — 1:1 with the AS option page (buildOptionPage / makeCheckbox /
+            // paintButton): header bold 21 at (60,86); rows from y+44, 40 apart.
+            const HagUI::Page& pg = pages[activeTab_ - 1];
+            AddTextCX(dl, fTab_, 21.0f * s, ImVec2(X(60), Y(86)), uText, pg.title.c_str(), XS);
+            float ry = 86 + 44;
+            for (int i = 0; i < (int)pg.widgets.size(); ++i) {
+                const HagUI::Widget& wd = pg.widgets[i];
+                ImGui::PushID(i);
+                if (wd.type == HagUI::WToggle) {
+                    // full-width clickable row (AS: invisible hit rect w x 30, flips the box)
+                    ImGui::SetCursorScreenPos(ImVec2(X(60), Y(ry)));
+                    ImGui::InvisibleButton("##row", ImVec2(712.0f * sx, 30.0f * sy));
+                    const bool hov = ImGui::IsItemHovered();
+                    if (ImGui::IsItemClicked() && wd.toggle) *wd.toggle = !*wd.toggle;
+                    const bool on = wd.toggle && *wd.toggle;
+                    // gold checkbox (AS paintCheckbox): 22x22 r5; border a42 (hover a82);
+                    // fill a6 (checked a22); gold 2px check glyph (5,11)-(9,16)-(17,6) when on
+                    const ImVec2 ka(X(60), Y(ry + 4)), kb(X(60) + 22.0f * sx, Y(ry + 4) + 22.0f * sy);
+                    const float kr = 5.0f * s;
+                    dl->AddRectFilled(ka, kb, IM_COL32(0xE0, 0xB3, 0x4A, on ? 56 : 15), kr);
+                    dl->AddRect(ka, kb, IM_COL32(0xE0, 0xB3, 0x4A, hov ? 209 : 107), kr, 0, 1.0f * s);
+                    if (on) {
+                        const ImVec2 pts[3] = { ImVec2(X(60 + 5), Y(ry + 4 + 11)),
+                                                ImVec2(X(60 + 9), Y(ry + 4 + 16)),
+                                                ImVec2(X(60 + 17), Y(ry + 4 + 6)) };
+                        dl->AddPolyline(pts, 3, uAccent, 0, 2.0f * s);
+                    }
+                    txt(fBody_, 17.0f * s, 60 + 36, ry + 3, uText, wd.text.c_str());
+                } else if (wd.type == HagUI::WButton) {
+                    // gold button (AS paintButton): rr7, vgrad a18->6 border a42; hover a34/14/78
+                    const float lw = measureW(fTab_, 15.0f * s, wd.text.c_str());
+                    const ImVec2 pa(X(60), Y(ry)), pb(X(60) + lw + 32.0f * sx, Y(ry) + 30.0f * sy);
+                    ImGui::SetCursorScreenPos(pa);
+                    ImGui::InvisibleButton("##btn", ImVec2(pb.x - pa.x, pb.y - pa.y));
+                    const bool hov = ImGui::IsItemHovered();
+                    if (ImGui::IsItemClicked() && wd.onClick) wd.onClick();
+                    RoundedVGrad(dl, pa, pb, IM_COL32(0xE0, 0xB3, 0x4A, hov ? 87 : 46),
+                                             IM_COL32(0xE0, 0xB3, 0x4A, hov ? 36 : 15), 7.0f * s);
+                    dl->AddRect(pa, pb, IM_COL32(0xE0, 0xB3, 0x4A, hov ? 199 : 107), 7.0f * s, 0, 1.0f * s);
+                    const float lh = fTab_ ? fTab_->CalcTextSizeA(15.0f * s, 3.4e38f, 0.0f, wd.text.c_str()).y : 15.0f * s;
+                    AddTextCX(dl, fTab_, 15.0f * s,
+                              ImVec2(pa.x + (pb.x - pa.x - lw) * 0.5f, pa.y + (pb.y - pa.y - lh) * 0.5f),
+                              uAccent, wd.text.c_str(), XS);
+                } else {
+                    txt(fBody_, 17.0f * s, 60, ry + 3, uDim, wd.text.c_str());
+                }
+                ImGui::PopID();
+                ry += 40;
+            }
+            if (pg.widgets.empty())
+                txt(fBody_, 17.0f * s, 60, ry, uDim, "This page has no options yet.");
         }
 
-        // ---- CLOSE button (AS: x60 y376 w152 h40 r7; vgrad alpha 18->6, border 42; hover 34/14/78) ----
-        const ImVec2 ba(X(60), Y(376)), bb(X(60) + 152.0f * sx, Y(376) + 40.0f * sy);
-        const float br = 7.0f * s;
-        ImGui::SetCursorScreenPos(ba);
-        ImGui::InvisibleButton("##close", ImVec2(bb.x - ba.x, bb.y - ba.y));
-        const bool bhov = ImGui::IsItemHovered();
-        if (ImGui::IsItemClicked()) menuOpen_ = false;
-        RoundedVGrad(dl, ba, bb, IM_COL32(0xE0, 0xB3, 0x4A, bhov ? 87 : 46),
-                                 IM_COL32(0xE0, 0xB3, 0x4A, bhov ? 36 : 15), br);
-        dl->AddRect(ba, bb, IM_COL32(0xE0, 0xB3, 0x4A, bhov ? 199 : 107), br, 0, 1.0f * s);
-        const float clPx = 15.0f * s;
-        const float clW = measureW(fTab_, clPx, "CLOSE");
-        const float clH = fTab_ ? fTab_->CalcTextSizeA(clPx, 3.4e38f, 0.0f, "CLOSE").y : clPx;
-        AddTextCX(dl, fTab_, clPx, ImVec2(ba.x + (bb.x - ba.x - clW) * 0.5f, ba.y + (bb.y - ba.y - clH) * 0.5f),
-                  uAccent, "CLOSE", XS);
-        // hint (AS: x=230 y~387, regular size 14) — vertically centered to the button
-        const float hintPx = 14.0f * s;
-        const float hintH = fSmall_ ? fSmall_->CalcTextSizeA(hintPx, 3.4e38f, 0.0f, "or press  ESC").y : hintPx;
-        AddTextCX(dl, fSmall_, hintPx, ImVec2(X(230), ba.y + (bb.y - ba.y - hintH) * 0.5f), uFaint, "or press  ESC", XS);
+        // ---- CLOSE button (AS: x60 y376 w152 h40 r7; vgrad alpha 18->6, border 42; hover 34/14/78)
+        //      EXCLUSIVE to the Welcome tab (AS showCloseButton(card, idx == 0)) ----
+        if (activeTab_ == 0) {
+            const ImVec2 ba(X(60), Y(376)), bb(X(60) + 152.0f * sx, Y(376) + 40.0f * sy);
+            const float br = 7.0f * s;
+            ImGui::SetCursorScreenPos(ba);
+            ImGui::InvisibleButton("##close", ImVec2(bb.x - ba.x, bb.y - ba.y));
+            const bool bhov = ImGui::IsItemHovered();
+            if (ImGui::IsItemClicked()) menuOpen_ = false;
+            RoundedVGrad(dl, ba, bb, IM_COL32(0xE0, 0xB3, 0x4A, bhov ? 87 : 46),
+                                     IM_COL32(0xE0, 0xB3, 0x4A, bhov ? 36 : 15), br);
+            dl->AddRect(ba, bb, IM_COL32(0xE0, 0xB3, 0x4A, bhov ? 199 : 107), br, 0, 1.0f * s);
+            const float clPx = 15.0f * s;
+            const float clW = measureW(fTab_, clPx, "CLOSE");
+            const float clH = fTab_ ? fTab_->CalcTextSizeA(clPx, 3.4e38f, 0.0f, "CLOSE").y : clPx;
+            AddTextCX(dl, fTab_, clPx, ImVec2(ba.x + (bb.x - ba.x - clW) * 0.5f, ba.y + (bb.y - ba.y - clH) * 0.5f),
+                      uAccent, "CLOSE", XS);
+            // hint (AS: x=230 y~387, regular size 14) — vertically centered to the button
+            const float hintPx = 14.0f * s;
+            const float hintH = fSmall_ ? fSmall_->CalcTextSizeA(hintPx, 3.4e38f, 0.0f, "or press  ESC").y : hintPx;
+            AddTextCX(dl, fSmall_, hintPx, ImVec2(X(230), ba.y + (bb.y - ba.y - hintH) * 0.5f), uFaint, "or press  ESC", XS);
+        }
 
         // ---- footer (AS: right edge x=cw-30, y=ch-40, bold size 11, right-aligned) — above the BR mark ----
         const char* est = "HAGRYPH  \xC2\xB7  EST. MMXXVI";

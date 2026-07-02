@@ -24,6 +24,12 @@ public:
     void AddToggle(int page, const char* label, bool* value);
     void AddButton(int page, const char* label, void (*onClick)());
 
+    // Read access for the renderer (Overlay::DrawHub): tabs exist ONLY for registered pages.
+    enum WType { WLabel = 0, WToggle = 1, WButton = 2 };
+    struct Widget { WType type; std::string text; bool* toggle; void (*onClick)(); };
+    struct Page   { std::string title; std::vector<Widget> widgets; };
+    const std::vector<Page>& Pages() const { return pages_; }
+
     HagUI(const HagUI&) = delete;
     HagUI& operator=(const HagUI&) = delete;
 
@@ -31,10 +37,6 @@ private:
     HagUI() = default;
     void PollInput(Overlay& r);
     void DrawHub(Overlay& r);
-
-    enum WType { WLabel = 0, WToggle = 1, WButton = 2 };
-    struct Widget { WType type; std::string text; bool* toggle; void (*onClick)(); };
-    struct Page   { std::string title; std::vector<Widget> widgets; };
 
     std::vector<Page> pages_;
     bool inited_ = false, open_ = false;
