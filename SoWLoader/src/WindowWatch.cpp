@@ -17,40 +17,46 @@ bool WindowWatch::IsGameMainWindow(HWND hwnd) {
 
 void CALLBACK WindowWatch::OnWinEvent(HWINEVENTHOOK, DWORD event, HWND hwnd,
                                       LONG idObject, LONG, DWORD, DWORD) {
-    if (idObject != OBJID_WINDOW || !IsGameMainWindow(hwnd)) return;
-    if (event == EVENT_OBJECT_CREATE) {
-        char l[112];
-        ::wsprintfA(l, "[winwatch] game window %p CREATED (starts to exist; console waits for foreground)",
-                    (void*)hwnd);
-        Log::Get().Line(l);
-    } else if (event == EVENT_SYSTEM_FOREGROUND) {
-        char l[112];
-        ::wsprintfA(l, "[winwatch] game window %p is FOREGROUND -> opening console behind it", (void*)hwnd);
-        Log::Get().Line(l);
-        Loader::Get().OnRenderLive();   // opens the console; the game window keeps the front
-        Get().Uninstall();              // one-shot: nothing left to watch
+    if (event != EVENT_OBJECT_CREATE || idObject != OBJID_WINDOW || !IsGameMainWindow(hwnd)) return;
+    if (::InterlockedExchange(&Get().fired_, 1) != 0) return;   // one-shot
+    char l[112];
+    ::wsprintfA(l, "[winwatch] game window %p CREATED (window now exists) -> opening console", (void*)hwnd);
+    Log::Get().Line(l);
+    Loader::Get().OnRenderLive();   // opens the console non-activating (never the foreground window)
+    Get().Stop();                    // nothing left to watch
+}
+
+DWORD WINAPI WindowWatch::ThreadThunk(LPVOID self) {
+    static_cast<WindowWatch*>(self)->ThreadMain();
+    return 0;
+}
+
+void WindowWatch::ThreadMain() {
+    threadId_ = ::GetCurrentThreadId();
+    // OUTOFCONTEXT: callbacks are posted to THIS thread's message queue, so the hook stays valid for
+    // this thread's whole life. Filter to our own PID (dwEventThread 0 = all threads in the process).
+    hook_ = ::SetWinEventHook(EVENT_OBJECT_CREATE, EVENT_OBJECT_CREATE,
+                              nullptr, &WindowWatch::OnWinEvent,
+                              ::GetCurrentProcessId(), 0, WINEVENT_OUTOFCONTEXT);
+    Log::Get().Line(hook_ ? "[winwatch] hook armed on dedicated thread (EVENT_OBJECT_CREATE, own pid)"
+                          : "[winwatch] SetWinEventHook FAILED");
+    if (!hook_) return;
+    MSG msg;
+    while (::GetMessageW(&msg, nullptr, 0, 0) > 0) {   // pump until WM_QUIT (posted by Stop)
+        ::TranslateMessage(&msg);
+        ::DispatchMessageW(&msg);
     }
 }
 
 void WindowWatch::Install() {
     if (installed_) return;
     installed_ = true;
-    // WINEVENT_INCONTEXT requires the module that holds the callback; we are that module (the
-    // steam_api64.dll proxy), already mapped in the only process we filter on (our own PID).
-    const HMODULE self = ::GetModuleHandleW(L"steam_api64.dll");
-    const DWORD   pid  = ::GetCurrentProcessId();
-    create_ = ::SetWinEventHook(EVENT_OBJECT_CREATE, EVENT_OBJECT_CREATE,
-                                self, &WindowWatch::OnWinEvent, pid, 0, WINEVENT_INCONTEXT);
-    fg_     = ::SetWinEventHook(EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_FOREGROUND,
-                                self, &WindowWatch::OnWinEvent, pid, 0, WINEVENT_INCONTEXT);
-    Log::Get().Line((create_ && fg_)
-        ? "[winwatch] WinEvent hooks armed (window-create + foreground, in-context, own pid)"
-        : "[winwatch] SetWinEventHook FAILED");
+    thread_ = ::CreateThread(nullptr, 0, &WindowWatch::ThreadThunk, this, 0, &threadId_);
 }
 
-void WindowWatch::Uninstall() {
-    if (create_) { ::UnhookWinEvent(create_); create_ = nullptr; }
-    if (fg_)     { ::UnhookWinEvent(fg_);     fg_ = nullptr; }
+void WindowWatch::Stop() {
+    if (hook_) { ::UnhookWinEvent(hook_); hook_ = nullptr; }
+    if (threadId_) ::PostThreadMessageW(threadId_, WM_QUIT, 0, 0);   // ends the pump -> thread exits
 }
 
 }  // namespace sow

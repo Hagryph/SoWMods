@@ -3,22 +3,23 @@
 
 namespace sow {
 
-// In-process Window/System hook (SetWinEventHook, WINEVENT_INCONTEXT, own PID only) watching the
-// GAME's window lifecycle — our DLL already lives in the process, so the callbacks run
-// synchronously on the thread that generates the event: no polling, no message pump, no RVA.
-//  - EVENT_OBJECT_CREATE     : the instant the game main window STARTS TO EXIST (logged; the
-//                              window is a 336x239 unactivated stub here — too early for the
-//                              console, which would win the foreground and become the "main"
-//                              window; that is exactly what we are fixing).
-//  - EVENT_SYSTEM_FOREGROUND : the game main window has BECOME THE FOREGROUND window — the only
-//                              moment that guarantees the console opens BEHIND it. Console opens
-//                              here, then the hooks self-remove (one-shot).
+// In-process Window/System hook watching the GAME's own window lifecycle. Our DLL already lives in
+// the process, so a SetWinEventHook filtered to our PID reports the exact moment the game's main
+// window STARTS TO EXIST (EVENT_OBJECT_CREATE) — no RVA, no engine internals, just the OS telling us
+// the window was created. That is our console-open trigger (the console opens non-activating, so it
+// never becomes the foreground/taskbar "main" window).
+//
+// CRITICAL: a WinEvent hook is bound to the thread that installs it and dies when that thread exits.
+// The first attempt armed it on the Loader worker (which returns immediately), so the hook was torn
+// down seconds later and never fired. This version owns a DEDICATED thread that installs the hook
+// and runs a message loop (WINEVENT_OUTOFCONTEXT delivers callbacks to that thread), so the hook
+// lives until we stop it.
 class WindowWatch {
 public:
     static WindowWatch& Get();
 
-    void Install();     // arm both WinEvent hooks (idempotent; call from the worker at startup)
-    void Uninstall();   // drop the hooks (called automatically once the console has opened)
+    void Install();   // spawn the watcher thread + arm the hook (idempotent)
+    void Stop();      // unhook + end the watcher thread (auto-called once the window is caught)
 
     WindowWatch(const WindowWatch&) = delete;
     WindowWatch& operator=(const WindowWatch&) = delete;
@@ -26,13 +27,17 @@ public:
 private:
     WindowWatch() = default;
 
+    static DWORD WINAPI ThreadThunk(LPVOID self);
+    void ThreadMain();
     static void CALLBACK OnWinEvent(HWINEVENTHOOK, DWORD event, HWND hwnd,
                                     LONG idObject, LONG idChild, DWORD tid, DWORD time);
     static bool IsGameMainWindow(HWND hwnd);
 
-    HWINEVENTHOOK create_ = nullptr;   // EVENT_OBJECT_CREATE
-    HWINEVENTHOOK fg_     = nullptr;   // EVENT_SYSTEM_FOREGROUND
-    bool installed_ = false;
+    HANDLE        thread_   = nullptr;
+    DWORD         threadId_ = 0;
+    HWINEVENTHOOK hook_     = nullptr;
+    bool          installed_ = false;
+    volatile LONG fired_    = 0;   // one-shot guard (callback thread + Stop)
 };
 
 }  // namespace sow
