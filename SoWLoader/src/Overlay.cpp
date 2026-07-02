@@ -639,6 +639,12 @@ void Overlay::DrawHub() {
                     const float listX = 60.0f, listW = 712.0f;
                     const float searchAS = ry, filterAS = ry + 30.0f, listTopAS = ry + 62.0f, listBotAS = 434.0f;
                     ImGui::PushFont(fBody_, 15.0f * s);
+                    // shape: rounded frames/popups, roomy padding, a visible gold scrollbar — applies to
+                    // the search box, the facet combo buttons AND their popups (4 vars, popped at the end).
+                    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding,  5.0f * s);
+                    ImGui::PushStyleVar(ImGuiStyleVar_PopupRounding,  5.0f * s);
+                    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding,   ImVec2(8.0f * sx, 4.0f * sy));
+                    ImGui::PushStyleVar(ImGuiStyleVar_ScrollbarSize,  11.0f * sx);
                     // theme (black + gold): inputs, text, borders, selectable/header, buttons, scrollbar
                     ImGui::PushStyleColor(ImGuiCol_FrameBg,        IM_COL32(0x23, 0x1E, 0x16, 235));  // 1
                     ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, IM_COL32(0x2C, 0x25, 0x19, 235));  // 2
@@ -691,7 +697,11 @@ void Overlay::DrawHub() {
                         if (sc > 0) lbl += " (" + std::to_string(sc) + ")";
                         ImGui::SetNextItemWidth(fw);
                         ImGui::PushID(fi);
-                        if (ImGui::BeginCombo("##facet", lbl.c_str(), ImGuiComboFlags_HeightLargest)) {
+                        // bound the popup: exactly the button width, capped to ~8 rows so long facets
+                        // (Set, Rarity) scroll inside the card instead of spilling past its frame.
+                        const float maxPopupH = 8.0f * ImGui::GetTextLineHeightWithSpacing() + 12.0f * sy;
+                        ImGui::SetNextWindowSizeConstraints(ImVec2(fw, 0.0f), ImVec2(fw, maxPopupH));
+                        if (ImGui::BeginCombo("##facet", lbl.c_str())) {
                             for (int j = 0; j < (int)F.opts.size(); ++j) {
                                 bool b = F.sel[j] != 0;
                                 ImGui::PushID(j);
@@ -775,7 +785,8 @@ void Overlay::DrawHub() {
                         }
                     }
                     ImGui::EndChild();
-                    ImGui::PopStyleVar();
+                    ImGui::PopStyleVar();       // list child WindowPadding
+                    ImGui::PopStyleVar(4);      // FrameRounding, PopupRounding, FramePadding, ScrollbarSize
                     ImGui::PopStyleColor(19);
                     ImGui::PopFont();
                     ry = listBotAS + 10.0f;
