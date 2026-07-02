@@ -19,7 +19,6 @@ add_library(SoWLoader SHARED
     src/Overlay.cpp
     src/GameHooks.cpp
     src/WindowWatch.cpp
-    src/Tracer.cpp
     src/HagUI.cpp
     src/HagApiExport.cpp
 )

@@ -3,15 +3,17 @@
 
 namespace sow {
 
-// Console trigger: a direct MinHook trampoline on user32!CreateWindowExW. When the engine creates
-// its main window (class L"Shadow of War", top-level), the detour opens the mod console RIGHT THERE,
-// then calls the original. This is the deterministic "the window just came into existence" point —
-// reliable and in-process (the earlier SetWinEventHook approach was flaky and sometimes never fired).
-// Owns the CreateWindowExW hook exclusively (the Tracer must NOT also hook it — one hook per target).
+// Console trigger: a direct MinHook trampoline on user32!ShowWindow. Opening the console at window
+// CREATION (CreateWindowExW) was too early — the game window is still a hidden 336x239 stub with no
+// taskbar button, so the console became the process's "main"/foreground window. The taskbar button
+// is created when the window is first SHOWN, so we trigger there instead: when ShowWindow makes the
+// game's main window (top-level, class L"Shadow of War") visible, its taskbar button now exists and
+// the game claims foreground a few ms later, so the console opens as a secondary window — never the
+// main one. Still well before the start menu. Owns the ShowWindow hook exclusively.
 class WindowWatch {
 public:
     static WindowWatch& Get();
-    void Install();   // arm the CreateWindowExW hook (idempotent; call from the worker)
+    void Install();   // arm the ShowWindow hook (idempotent; call from the worker)
 
     WindowWatch(const WindowWatch&) = delete;
     WindowWatch& operator=(const WindowWatch&) = delete;

@@ -8,25 +8,31 @@ namespace sow {
 
 WindowWatch& WindowWatch::Get() { static WindowWatch w; return w; }
 
-using CreateWinExWFn = HWND(WINAPI*)(DWORD, LPCWSTR, LPCWSTR, DWORD, int, int, int, int,
-                                     HWND, HMENU, HINSTANCE, LPVOID);
-static CreateWinExWFn oCreateWinExW = nullptr;
-static bool           g_consoleFired = false;
+using ShowWindowFn = BOOL(WINAPI*)(HWND, int);
+static ShowWindowFn oShowWindow    = nullptr;
+static bool         g_consoleFired = false;
 
-static bool IsStrW(LPCWSTR s) { return s && reinterpret_cast<uintptr_t>(s) > 0xFFFF; }
+// The game's main window: top-level, class L"Shadow of War" (registered by the engine before it
+// creates the window). Checked by class at ShowWindow time (the window exists, so GetClassName works).
+static bool IsGameMainWindow(HWND h) {
+    if (!h || ::GetAncestor(h, GA_ROOT) != h) return false;   // top-level only
+    wchar_t cls[64]{};
+    if (!::GetClassNameW(h, cls, 64)) return false;
+    return ::wcscmp(cls, L"Shadow of War") == 0;
+}
 
-// user32!CreateWindowExW detour: create the window, and the instant the GAME's main window
-// (top-level, class L"Shadow of War") comes into existence, open the console — then call original.
-static HWND WINAPI HkCreateWinExW(DWORD ex, LPCWSTR cls, LPCWSTR name, DWORD style, int x, int y,
-                                  int w, int h, HWND parent, HMENU menu, HINSTANCE inst, LPVOID p) {
-    HWND hwnd = oCreateWinExW(ex, cls, name, style, x, y, w, h, parent, menu, inst, p);
-    if (!g_consoleFired && parent == nullptr && IsStrW(cls) && ::wcscmp(cls, L"Shadow of War") == 0) {
+// user32!ShowWindow detour: show the window, and the FIRST time the game's main window is made
+// visible (nCmdShow != SW_HIDE) — i.e. its taskbar button is being created — open the console, then
+// call original. The game calls SetForegroundWindow on itself right after, so it stays the main
+// window and the console drops to a secondary taskbar entry.
+static BOOL WINAPI HkShowWindow(HWND h, int cmd) {
+    if (!g_consoleFired && cmd != SW_HIDE && IsGameMainWindow(h)) {
         g_consoleFired = true;
-        char l[96]; ::wsprintfA(l, "[winwatch] game window %p created (CreateWindowExW) -> opening console", (void*)hwnd);
+        char l[112]; ::wsprintfA(l, "[winwatch] game window %p shown (taskbar-registered) -> opening console", (void*)h);
         Log::Get().Line(l);
-        Loader::Get().OnRenderLive();   // opens the console right at window creation
+        Loader::Get().OnRenderLive();   // opens the console at the taskbar-registration moment
     }
-    return hwnd;
+    return oShowWindow(h, cmd);
 }
 
 void WindowWatch::Install() {
@@ -35,12 +41,12 @@ void WindowWatch::Install() {
     MH_STATUS s = MH_Initialize();
     if (s != MH_OK && s != MH_ERROR_ALREADY_INITIALIZED) { Log::Get().Line("[winwatch] MH_Initialize failed"); return; }
     HMODULE u32 = ::GetModuleHandleW(L"user32.dll");
-    void* target = u32 ? (void*)::GetProcAddress(u32, "CreateWindowExW") : nullptr;
-    if (target && MH_CreateHook(target, (void*)&HkCreateWinExW, (void**)&oCreateWinExW) == MH_OK &&
+    void* target = u32 ? (void*)::GetProcAddress(u32, "ShowWindow") : nullptr;
+    if (target && MH_CreateHook(target, (void*)&HkShowWindow, (void**)&oShowWindow) == MH_OK &&
         MH_EnableHook(target) == MH_OK) {
-        Log::Get().Line("[winwatch] CreateWindowExW hooked (game-window creation -> console trigger)");
+        Log::Get().Line("[winwatch] ShowWindow hooked (game-window taskbar registration -> console trigger)");
     } else {
-        Log::Get().Line("[winwatch] hook CreateWindowExW FAILED");
+        Log::Get().Line("[winwatch] hook ShowWindow FAILED");
     }
 }
 

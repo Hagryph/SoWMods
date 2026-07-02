@@ -2,7 +2,6 @@
 #include "Log.h"
 #include "HagUI.h"
 #include "Loader.h"
-#include "Tracer.h"
 
 #include <d3d11.h>
 #include <dxgi.h>
@@ -324,7 +323,6 @@ void Overlay::DrawFrame(IDXGISwapChain* swap) {
             ::SetWindowLongPtrW(gameWnd_, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(&Overlay::WndProc)));
         imguiInit_ = true;
         Loader::Get().OnRenderLive();                         // game window up + rendering -> open console
-        Tracer::Get().OnDevice(dev_, ctx_);                   // arm D3D11 vtable tracing on the real device
         Log::Get().Good("[overlay] ImGui online; WndProc subclassed on the game window (F8 opens the hub)");
     }
 
