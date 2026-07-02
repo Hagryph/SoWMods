@@ -31,10 +31,25 @@ public:
     // Immediate-mode helpers — valid only while rendering inside the Present hook (HagUI::Render).
     // Coordinates are in back-buffer pixels; origin top-left.
     void  DrawRect(float x, float y, float w, float h, Color c);
-    float DrawText(float x, float y, const std::string& utf8, int px, Color c);  // returns pixel width
-    void  MeasureText(const std::string& utf8, int px, float& w, float& h);
+    float DrawText(float x, float y, const std::string& utf8, int px, Color c,
+                   const char* font = nullptr, bool bold = true);  // returns pixel width
+    void  MeasureText(const std::string& utf8, int px, float& w, float& h,
+                      const char* font = nullptr, bool bold = true);
+    // Upload an RGBA8 buffer to a texture (cached by key; generated once) and draw it stretched.
+    // Use for procedurally-baked chrome (gradients, rounded card, glow) that stays constant.
+    void  DrawImage(const std::string& key, float x, float y, float w, float h,
+                    const uint32_t* rgba, int tw, int th, Color tint = {1, 1, 1, 1});
+    bool  HasImage(const std::string& key) const;
     float Width()  const { return curW_; }
     float Height() const { return curH_; }
+
+    // Warm mode: all Draw* calls create/cache their textures but render nothing. Used once at
+    // startup to prebake the HagUI chrome + glyphs so the first F8 opens without a hitch.
+    void  BeginWarm() { warming_ = true; }
+    void  EndWarm()   { warming_ = false; }
+
+    // Mouse position in back-buffer coordinates (client area of the game window).
+    bool  Mouse(float& x, float& y) const;
 
     Overlay(const Overlay&) = delete;
     Overlay& operator=(const Overlay&) = delete;
@@ -47,11 +62,14 @@ private:
 
     bool BuildResources(ID3D11Device* dev);
     struct Glyph { ID3D11ShaderResourceView* srv; int w, h; };
-    const Glyph* GetGlyph(const std::string& utf8, int px);
+    const Glyph* GetGlyph(const std::string& utf8, int px, const char* font, bool bold);
     void DrawQuad(ID3D11ShaderResourceView* srv, float x, float y, float w, float h, Color c);
+    struct Image { ID3D11ShaderResourceView* srv; int w, h; };
 
     static inline PresentFn oPresent_ = nullptr;
     bool installed_ = false, resTried_ = false, resReady_ = false, loggedDraw_ = false;
+    bool warming_ = false, firstFrame_ = true;
+    HWND gameWnd_ = nullptr;
 
     ID3D11Device*        dev_ = nullptr;
     ID3D11DeviceContext* ctx_ = nullptr;
@@ -67,6 +85,7 @@ private:
     ID3D11ShaderResourceView* white_    = nullptr;   // 1x1 white, for solid rects
 
     std::unordered_map<std::wstring, Glyph> glyphs_;
+    std::unordered_map<std::string, Image>  images_;   // procedurally-baked chrome, keyed by name
     float curW_ = 0, curH_ = 0;
 };
 

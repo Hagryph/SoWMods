@@ -13,6 +13,8 @@ add_library(SoWLoader SHARED
     src/dllmain.cpp
     src/Loader.cpp
     src/Log.cpp
+    src/Config.cpp
+    src/Console.cpp
     src/Overlay.cpp
     src/GameHooks.cpp
     src/HagUI.cpp

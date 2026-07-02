@@ -16,6 +16,7 @@ public:
 
     void Init();                 // called once when the overlay installs (registers the demo page)
     void Render(Overlay& r);     // called each frame from the Present hook
+    void Prebake(Overlay& r);    // warm-mode pass: bakes every chrome texture + glyph up front
 
     // Page API (mirrors HagUIAPI; the exported C functions delegate here).
     int  RegisterPage(const char* title);
@@ -28,8 +29,7 @@ public:
 
 private:
     HagUI() = default;
-    void PollInput();
-    void DrawMenuEntry(Overlay& r);
+    void PollInput(Overlay& r);
     void DrawHub(Overlay& r);
 
     enum WType { WLabel = 0, WToggle = 1, WButton = 2 };
@@ -38,8 +38,10 @@ private:
 
     std::vector<Page> pages_;
     bool inited_ = false, open_ = false;
-    int  page_ = 0, sel_ = 0;
-    bool prev_[7] = {};   // F8, Up, Down, Left, Right, Enter, Space (edge detection)
+    int  tab_ = 0, sel_ = 0;   // tab_ 0 = WELCOME landing, 1..N = registered pages
+    bool prev_[9] = {};        // F8, Up, Down, Left, Right, Enter, Space, Esc, LMB (edge detection)
+    float mx_ = -1, my_ = -1;  // mouse in back-buffer px (-1 = unavailable)
+    bool  click_ = false;      // LMB pressed this frame (edge, consumed by DrawHub)
 };
 
 }  // namespace sow

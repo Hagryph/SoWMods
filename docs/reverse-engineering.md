@@ -94,3 +94,37 @@ but only gets called at cutscene playback — much later and less deterministic.
 4. Identify the main loop / tick, input, and UI/HUD subsystems (trace from Win32 primitives outward).
 5. Enumerate RTTI (`.?AV…@@`) class roster to seed the object model.
 6. Inspect `default.archcfg` and the `.arch06` container format if asset access becomes relevant.
+
+## START menu entry registration — deep RE (2026-07-02)
+
+Goal: find where the START menu entries (Start / WBPlay / Options / Run Benchmark / Quit) get
+registered, to add a native "HagUI" item. **Result: the menu is fully DATA-DRIVEN — there is no
+hardcoded "add these entries" initializer.** Architecture (from `C:\dev\re\sow\re\*`):
+
+- **Class-type registry initializer `FUN_141b09bbc`** maps every front-end UI resource path to a C++
+  class descriptor at startup, e.g. `Interface/Menu/MenuLayer/FrontEndRoot -> CUIFrontEndRootLayer`
+  (class global `DAT_142701df8`). Per class it calls `kTypeIdFromString` (`FUN_14115b52c`, path→id)
+  then the **register primitive** `kRegisterUIClass` (`FUN_14045a0e0`, registry+id→classDesc) and
+  stores the result in a `DAT_142701xxx` global. This function is enormous — Ghidra's decompiler
+  returns "Response buffer size exceeded"; read it by disassembly around the string refs instead.
+- **Menu items are instances**, not a code list. Each item ("FrontEnd_Start", "FrontEnd_WBPlay", …)
+  is an instance of the menu-item class `DAT_1427013b8`, registered by name-id in that class's
+  instance registry (`+0x38`) and found via `kMenuItemFindByName` (`FUN_141b08b08(name,ctx)`).
+- **The visible layer's local item collection** (`CUIFrontEndRootLayer`): pointer at `layer+0x53f8`,
+  count `+0x5400`, is **3 intrusive doubly-linked lists** (heads at container `+0x4b8/+0x490/+0x568`;
+  node `+0x10` = item object, node `+0x8` = next). Look-up in it: `kFrontEndFindItem`
+  (`FUN_14195ca2c(collection,name)`). Neither `+0x53f8` nor `+0x5400` is ever written directly — the
+  container ptr is stored through the `+0x48` sub-object base (i.e. offset `+0x53b0`); the allocator
+  is `kMenuContainerBuild` (`FUN_14071eda0`, `MOV [base+0x53b0],RAX`), shared by sibling menu-class
+  ctors (`FUN_140e18010` @ class `DAT_142701e08`, `FUN_140e3c0f0` @ class `DAT_142701150`).
+- Item instances are created from the `FrontEndRoot` menu definition (packed in the Oodle `.arch06`
+  archives) by the engine's generic object-graph loader; consumed each frame by `kFrontEndItemRefresh`
+  (`FUN_141977e3c`) and `FUN_14197c614`, and activation is dispatched by name in `kFrontEndSelectHandler`
+  (`FUN_14197703c`).
+
+**Implication for a native "HagUI" entry:** two viable routes, both more work than the overlay entry
+we already ship: (a) edit the `FrontEndRoot` resource in the `.arch06` archive (needs Oodle archive
+tooling); or (b) at runtime after the layer's container is built, construct a menu-item instance of
+class `DAT_1427013b8` (name-id + localized label + selection wiring) and link it into one of the 3
+lists — hookable at `FUN_141977e3c`/`FUN_14197c614`, but requires instantiating a real engine
+menu-item object. Offsets recorded in `shared/GameOffsets.h`.

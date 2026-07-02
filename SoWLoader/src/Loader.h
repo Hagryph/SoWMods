@@ -18,6 +18,10 @@ public:
     // Called from DllMain(DLL_PROCESS_DETACH).
     void OnDetach();
 
+    // Called by the Overlay on its FIRST rendered frame: the game is fully initialized and owns
+    // its taskbar slot, so this is where the mod console opens (unless silent). Idempotent.
+    void OnRenderLive();
+
     Loader(const Loader&) = delete;
     Loader& operator=(const Loader&) = delete;
 
@@ -29,6 +33,8 @@ private:
 
     HMODULE self_ = nullptr;
     HANDLE  thread_ = nullptr;
+    bool    wantConsole_ = true;
+    bool    consoleDone_ = false;
 };
 
 }  // namespace sow

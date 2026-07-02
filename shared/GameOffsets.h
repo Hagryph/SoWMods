@@ -47,4 +47,56 @@ inline constexpr std::uintptr_t kCUIFrontEndRootLayerCtor = 0x141976838ull;
 // main menu displayed (the backdrop world was already loaded/cached). Kept for reference only.
 inline constexpr std::uintptr_t kFrontEndLoadWorld = 0x141d6f0a8ull;
 
+// --- Menu-entry registration internals (deep RE 2026-07-02; docs/reverse-engineering.md) ---
+// The START menu is DATA-DRIVEN: there is no hardcoded "add these 5 entries" list. Two layers:
+//  1) Class-type registry INITIALIZER: at startup maps every UI resource path -> C++ class desc,
+//     e.g. "Interface/Menu/MenuLayer/FrontEndRoot" -> CUIFrontEndRootLayer (class global 0x142701df8).
+//     Huge function (won't decompile whole). Calls the two primitives below once per class.
+inline constexpr std::uintptr_t kUIClassRegistryInit   = 0x141b09bbc; // registers all front-end UI classes
+inline constexpr std::uintptr_t kTypeIdFromString      = 0x14115b52c; // (out, path) -> type-id
+inline constexpr std::uintptr_t kRegisterUIClass       = 0x14045a0e0; // (registry, type-id) -> classDesc
+//  2) Menu ITEMS are instances of the menu-item class (class global 0x1427013b8); registered by
+//     name-id in that class's instance registry (+0x38) and looked up by name:
+inline constexpr std::uintptr_t kMenuItemFindByName    = 0x141b08b08; // (name, ctx) -> item instance
+// The visible layer's local item collection = 3 intrusive linked lists; ptr at layer+0x53f8, count
+// +0x5400. Allocated by the menu ctor helper below (writes the container ptr via the +0x48
+// sub-object base, i.e. +0x53b0). Consumed/refreshed + activated by the layer methods below.
+inline constexpr std::uintptr_t kFrontEndFindItem      = 0x14195ca2c; // (collection, name) -> item node
+inline constexpr std::uintptr_t kMenuContainerBuild    = 0x14071eda0; // stores the item-container ptr
+inline constexpr std::uintptr_t kFrontEndItemRefresh   = 0x141977e3c; // reads the item list each update
+inline constexpr std::uintptr_t kFrontEndSelectHandler = 0x14197703c; // dispatches item activation by name
+
+// Front-end menu ITEM object (live-verified 2026-07-02). Standard item: class desc 0x141f8c488,
+// vtable 0x141f8c498, size 0x260 bytes. Ctor sets vtable + class + base members only (the loader
+// wires ~20 sub-objects per item afterward). Layout: +0x00 vtable, +0x18 classDesc, +0x20 sequential
+// index, +0x28 name object (interned "FrontEnd_*"), +0x40 highlight-style name object,
+// +0x168 EMBEDDED list node (node+0x8 next, node+0x10 -> item); items live in list L1
+// (container+0x490). The DISPLAY label is NOT stored on the item — it is localized from the +0x28
+// name key at render time (so a native entry cannot just set a label string).
+inline constexpr std::uintptr_t kMenuItemClass  = 0x141f8c488;
+inline constexpr std::uintptr_t kMenuItemVtable = 0x141f8c498;
+inline constexpr std::uintptr_t kMenuItemCtor   = 0x14193d824; // ctor(item,ctx1,ctx2,classNode); 0x260 bytes
+
+// Generic UI object FACTORY: FUN_141940900(ctx1, ctx2, classNode) allocates (via kGameAlloc) + builds
+// the object whose class descriptor *(classNode+0x18) matches a big dispatch table; for a menu item
+// (class 0x1427013b8) it allocs 0x260 and calls kMenuItemCtor. This is how the resource loader makes
+// each item from its resource-definition node — so a native item needs a (cloned) resource node fed
+// here, not just a name. Item name/display-label/action come from that node.
+inline constexpr std::uintptr_t kUIObjectFactory = 0x141940900;
+inline constexpr std::uintptr_t kGameAlloc       = 0x1403de240; // (size) -> heap block (game allocator)
+
+// --- Localization + Scaleform text bridge (the LABEL unlock, RE'd 2026-07-02) ---
+// The front-end IS Scaleform (GFxValue). Each menu button's text is set at build via:
+//   loc = kLocalize(asciiKey);  gfxTextField[vtbl+0x330](loc);   // GetMember(+0x298) walks the path
+// kLocalize(const char* key) -> wchar_t* : looks the key up in the global StringDatabase
+// (DAT_142702000; returns L"[ERROR: StringDatabase Not Initialized]" if null). HOOK THIS to control
+// any native label — return your own wchar_t* for a chosen key. VERIFIED LIVE: overriding keys
+// containing "Benchmark" made the native "RUN BENCHMARK" button read "HagUI".
+inline constexpr std::uintptr_t kLocalize      = 0x140471f2c; // (const char* key) -> wchar_t* localized
+inline constexpr std::uintptr_t kTextBridge    = 0x14195fcbc; // sample loc(key)->GFx SetText path
+inline constexpr unsigned       kGFxGetMember  = 0x298;       // GFxValue vtable slot: GetMember(name)
+inline constexpr unsigned       kGFxSetText    = 0x330;       // GFxValue vtable slot: SetText(wstr)
+// Live front-end button loc keys: START=UI_Button_Start, WBPlay=UI_WBID_Menu, OPTIONS=UI_Menu_Options,
+// QUIT=UI_QuitToDesktop, "RUN BENCHMARK"=<key containing Benchmark>.
+
 }  // namespace game

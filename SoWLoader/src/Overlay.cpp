@@ -1,6 +1,7 @@
 #include "Overlay.h"
 #include "Log.h"
 #include "HagUI.h"
+#include "Loader.h"
 
 #include <d3d11.h>
 #include <dxgi.h>
@@ -67,12 +68,13 @@ void Overlay::Install() {
 }
 
 // GDI-rasterize `text` (white on transparent) -> white RGBA with alpha=coverage (tinted at draw).
-static bool RasterizeWhite(const wchar_t* text, int fontPx, std::vector<uint32_t>& out, int& w, int& h) {
+static bool RasterizeWhite(const wchar_t* text, int fontPx, std::vector<uint32_t>& out, int& w, int& h,
+                           const wchar_t* face, bool bold) {
     HDC screen = ::GetDC(nullptr); HDC dc = ::CreateCompatibleDC(screen); ::ReleaseDC(nullptr, screen);
     if (!dc) return false;
-    HFONT font = ::CreateFontW(fontPx, 0, 0, 0, FW_SEMIBOLD, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
+    HFONT font = ::CreateFontW(fontPx, 0, 0, 0, bold ? FW_BOLD : FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
                                OUT_TT_PRECIS, CLIP_DEFAULT_PRECIS, ANTIALIASED_QUALITY,
-                               DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI");
+                               DEFAULT_PITCH | FF_DONTCARE, face ? face : L"Segoe UI");
     HGDIOBJ oldFont = ::SelectObject(dc, font);
     const int len = ::lstrlenW(text);
     SIZE ext{}; ::GetTextExtentPoint32W(dc, text, len, &ext);
@@ -153,15 +155,30 @@ bool Overlay::BuildResources(ID3D11Device* dev) {
     return white_ != nullptr;
 }
 
-const Overlay::Glyph* Overlay::GetGlyph(const std::string& utf8, int px) {
+const Overlay::Glyph* Overlay::GetGlyph(const std::string& utf8, int px, const char* font, bool bold) {
     wchar_t wbuf[1024]{};
     ::MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), -1, wbuf, 1024);
-    std::wstring key = std::to_wstring(px); key += L'\x1'; key += wbuf;
+    wchar_t wface[128]{}; if (font) ::MultiByteToWideChar(CP_UTF8, 0, font, -1, wface, 128);
+    std::wstring key = std::to_wstring(px); key += bold ? L'\x2' : L'\x1';
+    if (font) { key += wface; } key += L'\x1'; key += wbuf;
     auto it = glyphs_.find(key);
     if (it != glyphs_.end()) return &it->second;
 
-    std::vector<uint32_t> pix; int w = 0, h = 0;
-    if (!RasterizeWhite(wbuf, px, pix, w, h) || pix.empty()) return nullptr;
+    // Rasterize at 2x and box-downsample: GDI's grayscale AA alone looks pixelated at UI sizes.
+    std::vector<uint32_t> hi; int hw = 0, hh = 0;
+    if (!RasterizeWhite(wbuf, px * 2, hi, hw, hh, font ? wface : nullptr, bold) || hi.empty()) return nullptr;
+    const int w = hw / 2, h = hh / 2;
+    if (w <= 0 || h <= 0) return nullptr;
+    std::vector<uint32_t> pix((size_t)w * h);
+    for (int y = 0; y < h; ++y) {
+        for (int x = 0; x < w; ++x) {
+            const uint32_t a = (hi[(size_t)(y * 2) * hw + x * 2]     >> 24)
+                             + (hi[(size_t)(y * 2) * hw + x * 2 + 1] >> 24)
+                             + (hi[(size_t)(y * 2 + 1) * hw + x * 2]     >> 24)
+                             + (hi[(size_t)(y * 2 + 1) * hw + x * 2 + 1] >> 24);
+            pix[(size_t)y * w + x] = 0x00FFFFFFu | ((a / 4) << 24);
+        }
+    }
     D3D11_TEXTURE2D_DESC td{}; td.Width = w; td.Height = h; td.MipLevels = 1; td.ArraySize = 1;
     td.Format = DXGI_FORMAT_R8G8B8A8_UNORM; td.SampleDesc.Count = 1; td.Usage = D3D11_USAGE_IMMUTABLE;
     td.BindFlags = D3D11_BIND_SHADER_RESOURCE;
@@ -175,7 +192,7 @@ const Overlay::Glyph* Overlay::GetGlyph(const std::string& utf8, int px) {
 }
 
 void Overlay::DrawQuad(ID3D11ShaderResourceView* srv, float x, float y, float w, float h, Color c) {
-    if (!srv || curW_ <= 0 || curH_ <= 0) return;
+    if (warming_ || !srv || curW_ <= 0 || curH_ <= 0 || w <= 0 || h <= 0) return;
     auto nx = [&](float p) { return p / curW_ * 2.0f - 1.0f; };
     auto ny = [&](float p) { return 1.0f - p / curH_ * 2.0f; };
     const Vtx v[4] = { { nx(x), ny(y + h), 0, 1 }, { nx(x), ny(y), 0, 0 },
@@ -191,14 +208,44 @@ void Overlay::DrawQuad(ID3D11ShaderResourceView* srv, float x, float y, float w,
 
 void Overlay::DrawRect(float x, float y, float w, float h, Color c) { DrawQuad(white_, x, y, w, h, c); }
 
-float Overlay::DrawText(float x, float y, const std::string& utf8, int px, Color c) {
-    const Glyph* g = GetGlyph(utf8, px); if (!g) return 0;
+float Overlay::DrawText(float x, float y, const std::string& utf8, int px, Color c,
+                        const char* font, bool bold) {
+    const Glyph* g = GetGlyph(utf8, px, font, bold); if (!g) return 0;
     DrawQuad(g->srv, x, y, (float)g->w, (float)g->h, c);
     return (float)g->w;
 }
 
-void Overlay::MeasureText(const std::string& utf8, int px, float& w, float& h) {
-    const Glyph* g = GetGlyph(utf8, px); if (g) { w = (float)g->w; h = (float)g->h; } else { w = h = 0; }
+void Overlay::MeasureText(const std::string& utf8, int px, float& w, float& h,
+                          const char* font, bool bold) {
+    const Glyph* g = GetGlyph(utf8, px, font, bold); if (g) { w = (float)g->w; h = (float)g->h; } else { w = h = 0; }
+}
+
+bool Overlay::HasImage(const std::string& key) const { return images_.find(key) != images_.end(); }
+
+void Overlay::DrawImage(const std::string& key, float x, float y, float w, float h,
+                        const uint32_t* rgba, int tw, int th, Color tint) {
+    auto it = images_.find(key);
+    if (it == images_.end()) {
+        if (!rgba || tw <= 0 || th <= 0 || !dev_) return;
+        D3D11_TEXTURE2D_DESC td{}; td.Width = tw; td.Height = th; td.MipLevels = 1; td.ArraySize = 1;
+        td.Format = DXGI_FORMAT_R8G8B8A8_UNORM; td.SampleDesc.Count = 1; td.Usage = D3D11_USAGE_IMMUTABLE;
+        td.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+        D3D11_SUBRESOURCE_DATA srd{}; srd.pSysMem = rgba; srd.SysMemPitch = tw * 4;
+        ID3D11Texture2D* tex = nullptr; ID3D11ShaderResourceView* srv = nullptr;
+        if (FAILED(dev_->CreateTexture2D(&td, &srd, &tex)) || !tex) return;
+        HRESULT hr = dev_->CreateShaderResourceView(tex, nullptr, &srv); tex->Release();
+        if (FAILED(hr)) return;
+        it = images_.emplace(key, Image{ srv, tw, th }).first;
+    }
+    DrawQuad(it->second.srv, x, y, w, h, tint);
+}
+
+bool Overlay::Mouse(float& x, float& y) const {
+    if (!gameWnd_) return false;
+    POINT p{};
+    if (!::GetCursorPos(&p) || !::ScreenToClient(gameWnd_, &p)) return false;
+    x = (float)p.x; y = (float)p.y;
+    return true;
 }
 
 long __stdcall Overlay::HookPresent(IDXGISwapChain* swap, unsigned sync, unsigned flags) {
@@ -221,6 +268,17 @@ void Overlay::DrawFrame(IDXGISwapChain* swap) {
     HRESULT hr = dev_->CreateRenderTargetView(bb, nullptr, &rtv); bb->Release();
     if (FAILED(hr) || !rtv) return;
     curW_ = (float)bd.Width; curH_ = (float)bd.Height;
+
+    if (firstFrame_) {
+        firstFrame_ = false;
+        DXGI_SWAP_CHAIN_DESC sd{};
+        if (SUCCEEDED(swap->GetDesc(&sd))) gameWnd_ = sd.OutputWindow;
+        Loader::Get().OnRenderLive();     // game is initialized + visible: open the console now
+        BeginWarm();                       // prebake all HagUI chrome/glyph textures (no drawing)
+        HagUI::Get().Prebake(*this);
+        EndWarm();
+        Log::Get().Line("[overlay] first frame: console attached, HagUI caches prebaked");
+    }
 
     // -------- save the game's pipeline state --------
     constexpr UINT kVP = 16;
@@ -256,6 +314,9 @@ void Overlay::DrawFrame(IDXGISwapChain* swap) {
         const std::string wm = "SoWLoader - Hagryph";
         float tw, th; MeasureText(wm, 16, tw, th);
         DrawText(curW_ - tw - 14.0f, 12.0f, wm, 16, { 0.80f, 0.80f, 0.82f, 0.70f });
+        const std::string hint = "F8  Menu";
+        float hw, hh; MeasureText(hint, 13, hw, hh);
+        DrawText(curW_ - hw - 14.0f, 12.0f + th - 2.0f, hint, 13, { 0.88f, 0.70f, 0.29f, 0.65f });
     }
     HagUI::Get().Render(*this);
     if (!loggedDraw_) { Log::Get().Line("[overlay] HagUI frame drawn"); loggedDraw_ = true; }

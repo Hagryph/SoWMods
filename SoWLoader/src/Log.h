@@ -1,30 +1,52 @@
 #pragma once
 #include "PCH.h"
+#include <string>
 
 namespace sow {
 
-// Tiny dependency-free file logger (Win32 only, so it is safe to touch from DllMain).
-// Writes next to the game exe: SoWLoader.log. Singleton; RAII handle.
-class Log {
+class Console;
+
+// Severity — drives console colouring; the file log records the level tag.
+enum class Lv { Info, Good, Warn, Error, Accent };
+
+// One logging channel. Every mod gets its own channel = its own file at
+// %LOCALAPPDATA%\SoWLoader\logs\<name>.log (always written), plus an optional mirror into the
+// shared mod console ([name]-prefixed, colour by severity) that the channel can switch off.
+class Logger {
 public:
-    static Log& Get();
+    void Line(const std::string& msg)   { Emit(Lv::Info,   msg); }
+    void Good(const std::string& msg)   { Emit(Lv::Good,   msg); }
+    void Warn(const std::string& msg)   { Emit(Lv::Warn,   msg); }
+    void Error(const std::string& msg)  { Emit(Lv::Error,  msg); }
+    void Accent(const std::string& msg) { Emit(Lv::Accent, msg); }
 
-    void Line(const std::string& msg);
+    // File output is unconditional; this only controls the console mirror.
+    void SetConsoleOutput(bool on) { console_ = on; }
+    bool ConsoleOutput() const     { return console_; }
+    const std::string& Name() const { return name_; }
 
-    Log(const Log&) = delete;
-    Log& operator=(const Log&) = delete;
+    Logger(const Logger&) = delete;
+    Logger& operator=(const Logger&) = delete;
 
 private:
-    Log();
-    ~Log();
+    friend class Log;
+    explicit Logger(const std::string& name);
+    ~Logger();
+    void Emit(Lv lv, const std::string& msg);
 
-    // Writable location (%LOCALAPPDATA%\SoWLoader\SoWLoader.log). The game's own folder is
-    // under Program Files and a non-elevated x64 process cannot write there (and x64 gets no
-    // UAC VirtualStore redirect), which is why logging next to the exe silently produced nothing.
-    static std::wstring LogPath();
+    std::string name_;
+    HANDLE      handle_  = INVALID_HANDLE_VALUE;
+    bool        console_ = true;
+};
 
-    HANDLE handle_ = INVALID_HANDLE_VALUE;
-    CRITICAL_SECTION cs_{};
+// The central logging service (the Loader owns setup). Channels are created on demand and live
+// for the process. The console attaches LATE (once the game has initialized); lines emitted
+// before that are kept in a replay buffer so the console still shows the full boot sequence.
+class Log {
+public:
+    static Logger& Get();                             // the loader's own channel ("SoWLoader")
+    static Logger& Channel(const std::string& mod);   // a mod's channel (one file per mod)
+    static void    AttachConsole(Console* c);         // shared sink; replays buffered lines
 };
 
 }  // namespace sow
