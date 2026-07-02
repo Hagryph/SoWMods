@@ -55,6 +55,17 @@ inline constexpr std::uintptr_t kMainWindowHwnd2 = 0x142c88000; // second copy t
 // decompiles cleanly (not Denuvo-mutated).
 inline constexpr std::uintptr_t kCUIFrontEndRootLayerCtor = 0x141976838ull;
 
+// Front-end root layer LIFECYCLE = the menu-vs-in-save signal (RE'd 2026-07-03, trace from the player
+// vtable 0x141f995e0 down to the world-load command system, then the front-end vtable). The layer is a
+// heap object (size 0x61c8); it is virtual-`delete`d when the menu is torn down for gameplay. We latch:
+//   ctor fires  -> Menu ;  vtable slot 0 (scalar deleting dtor) fires -> InGame (save loaded).
+// Verified: slot 0 == FUN_141976a24 { FUN_14197694c(); if (flags&1) free(this,0x61c8); }. The actual
+// delete is an indirect vtable call (not statically traceable) — GameHooks swaps slot 0 at runtime.
+inline constexpr std::uintptr_t kFrontEndRootLayerVtable   = 0x141f90d08ull; // *(this) after ctor
+inline constexpr std::uintptr_t kFrontEndRootLayerDtor     = 0x14197694cull; // real (member) destructor
+inline constexpr std::uintptr_t kFrontEndRootLayerDelDtor  = 0x141976a24ull; // vtable slot 0: deleting dtor
+inline constexpr std::uintptr_t kPlayerBaseVtable          = 0x141f995e0ull; // shared Character base (Talion + orcs) — NOT a unique in-save anchor
+
 // FrontEndLoadWorld — loads the front-end 3D BACKDROP world + background images. NOT the
 // "menu shown" moment: hooking 0x141d6f0a8 installed fine but the game did NOT call it when the
 // main menu displayed (the backdrop world was already loaded/cached). Kept for reference only.
