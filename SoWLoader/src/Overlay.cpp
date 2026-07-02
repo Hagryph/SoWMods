@@ -383,8 +383,10 @@ void Overlay::StyleHagUI() {
 void Overlay::LoadFonts() {
     ImGuiIO& io = ImGui::GetIO();
     const float H = curH_ > 100.0f ? curH_ : 1080.0f;   // scale type to the back buffer
+    // Latin-1 + dashes (incl. em-dash U+2014) + smart quotes so punctuation renders (not '?').
+    static const ImWchar kRanges[] = { 0x0020, 0x00FF, 0x2010, 0x2015, 0x2018, 0x2019, 0x201C, 0x201D, 0 };
     auto add = [&](const char* path, float px) -> ImFont* {
-        return io.Fonts->AddFontFromFileTTF(path, px);   // returns nullptr if missing (PushFont(null) is safe)
+        return io.Fonts->AddFontFromFileTTF(path, px, nullptr, kRanges);  // nullptr if missing (PushFont(null) safe)
     };
     fBody_  = add("C:\\Windows\\Fonts\\segoeui.ttf",  H * 0.0225f);   // first == default font
     fKick_  = add("C:\\Windows\\Fonts\\segoeui.ttf",  H * 0.0160f);
@@ -415,7 +417,7 @@ void Overlay::DrawHub() {
 
     const float cw = disp.x * 0.64f, ch = disp.y * 0.64f;
     const float padX = cw * 0.075f, padY = ch * 0.055f;   // Skyrim: content starts ~60px/28px in
-    const float r = ch * 0.014f;                          // card corner radius (rail is masked to match)
+    const float r = ch * 0.032f;                          // strong card corner radius (matches Skyrim)
     ImGui::SetNextWindowPos(ImVec2((disp.x - cw) * 0.5f, (disp.y - ch) * 0.5f));
     ImGui::SetNextWindowSize(ImVec2(cw, ch));
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(padX, padY));
@@ -432,25 +434,23 @@ void Overlay::DrawHub() {
     if (ImGui::Begin("HagUI##hub", nullptr, flags)) {
         ImDrawList* dl = ImGui::GetWindowDrawList();
         const ImVec2 p0 = ImGui::GetWindowPos();
-        const float railW = cw * 0.006f;          // Skyrim 6px on 820
-        const float glowW = cw * 0.045f;          // soft glow fading right of the rail
-
-        // ---- left accent: rail with rounded LEFT corners (follows the card radius exactly) ----
-        // base bright rail, top-left + bottom-left rounded to match the window corner
-        dl->AddRectFilled(p0, ImVec2(p0.x + railW, p0.y + ch),
-            IM_COL32(0xE0, 0xB3, 0x4A, 255), r, ImDrawFlags_RoundCornersLeft);
-        // subtle vertical darken toward the bottom (accent -> accent-dim), inside the rounded caps
-        dl->AddRectFilledMultiColor(ImVec2(p0.x, p0.y + r), ImVec2(p0.x + railW, p0.y + ch - r),
-            IM_COL32(0xB8, 0x86, 0x2F, 0),   IM_COL32(0xB8, 0x86, 0x2F, 0),
-            IM_COL32(0xB8, 0x86, 0x2F, 150), IM_COL32(0xB8, 0x86, 0x2F, 150));
-        // glow fading right (inset by the radius so it stays within the rounded corners)
-        dl->AddRectFilledMultiColor(ImVec2(p0.x + railW, p0.y + r), ImVec2(p0.x + railW + glowW, p0.y + ch - r),
-            IM_COL32(0xE0, 0xB3, 0x4A, 55), IM_COL32(0xE0, 0xB3, 0x4A, 0),
-            IM_COL32(0xE0, 0xB3, 0x4A, 0),  IM_COL32(0xE0, 0xB3, 0x4A, 55));
+        // ---- left accent: rail + glow, INSET vertically to the corner-mark level so they lie fully
+        //      within the rounded frame (never touch the corners) and span the same range as the marks ----
+        const float inset = ch * 0.048f;              // == corner-mark inset (top and bottom)
+        const float railTop = p0.y + inset, railBot = p0.y + ch - inset;
+        const float railX = p0.x + 3.0f;              // just inside the border
+        const float railW = cw * 0.0045f;             // thin bright rail
+        const float glowW = cw * 0.026f;              // narrower soft glow
+        dl->AddRectFilledMultiColor(ImVec2(railX, railTop), ImVec2(railX + railW, railBot),
+            IM_COL32(0xE0, 0xB3, 0x4A, 255), IM_COL32(0xE0, 0xB3, 0x4A, 255),
+            IM_COL32(0xB8, 0x86, 0x2F, 255), IM_COL32(0xB8, 0x86, 0x2F, 255));
+        dl->AddRectFilledMultiColor(ImVec2(railX + railW, railTop), ImVec2(railX + railW + glowW, railBot),
+            IM_COL32(0xE0, 0xB3, 0x4A, 60), IM_COL32(0xE0, 0xB3, 0x4A, 0),
+            IM_COL32(0xE0, 0xB3, 0x4A, 0),  IM_COL32(0xE0, 0xB3, 0x4A, 60));
 
         // ---- corner flourishes: horizontal gold lines, top-left + bottom-right ----
         const ImU32 uFl = IM_COL32(0xE0, 0xB3, 0x4A, 80);
-        const float flInset = cw * 0.037f, flLen = cw * 0.032f, flTop = ch * 0.048f;
+        const float flInset = cw * 0.037f, flLen = cw * 0.032f, flTop = inset;
         dl->AddLine(ImVec2(p0.x + flInset, p0.y + flTop),
                     ImVec2(p0.x + flInset + flLen, p0.y + flTop), uFl, 2.0f);
         dl->AddLine(ImVec2(p0.x + cw - flInset - flLen, p0.y + ch - flTop),
@@ -499,7 +499,7 @@ void Overlay::DrawHub() {
                 IM_COL32(0xE0, 0xB3, 0x4A, 200), IM_COL32(0xE0, 0xB3, 0x4A, 0),
                 IM_COL32(0xE0, 0xB3, 0x4A, 0),   IM_COL32(0xE0, 0xB3, 0x4A, 200));
             ImGui::Dummy(ImVec2(0, ch * 0.035f));
-            ImGui::TextColored(cDim, "Your private control room for every Hagryph mod -");
+            ImGui::TextColored(cDim, "Your private control room for every Hagryph mod \xE2\x80\x94");
             ImGui::TextColored(cDim, "configuration, tools, and more, gathered in one place.");
         } else {
             ImGui::TextColored(cDim, "General settings will appear here.");
