@@ -10,15 +10,19 @@ namespace sow {
 
 ModManager& ModManager::Get() { static ModManager m; return m; }
 
-// mods\ next to our DLL:  x64\steam_api64.dll  ->  x64\mods\ .
+// mods\ at the GAME INSTALL ROOT, not next to our DLL:
+//   ...\ShadowOfWar\x64\steam_api64.dll  ->  ...\ShadowOfWar\mods\
+// (our DLL lives in the x64\ subfolder; go up one level to the install root, then \mods).
 static std::wstring ModsDir() {
     wchar_t path[MAX_PATH]{};
     HMODULE self = ::GetModuleHandleW(L"steam_api64.dll");
     ::GetModuleFileNameW(self, path, MAX_PATH);
     std::wstring p = path;
-    const size_t slash = p.find_last_of(L"\\/");
-    const std::wstring dir = (slash == std::wstring::npos) ? std::wstring(L".") : p.substr(0, slash);
-    return dir + L"\\mods";
+    const size_t s1 = p.find_last_of(L"\\/");                          // strip the DLL filename
+    std::wstring x64dir = (s1 == std::wstring::npos) ? std::wstring(L".") : p.substr(0, s1);
+    const size_t s2 = x64dir.find_last_of(L"\\/");                     // strip the x64\ folder -> root
+    const std::wstring root = (s2 == std::wstring::npos) ? x64dir : x64dir.substr(0, s2);
+    return root + L"\\mods";
 }
 
 static std::string Narrow(const std::wstring& w) {

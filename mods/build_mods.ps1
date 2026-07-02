@@ -1,8 +1,11 @@
 # build_mods.ps1 - build every mod under mods/ (each is its own CMake project) and deploy the
-# resulting DLLs into the game's  x64\mods\  folder, where the loader picks them up in filename order.
+# resulting DLLs into the game's  <install root>\mods\  folder (NOT x64\mods\), where the loader
+# picks them up in filename order.
 #
 #   .\build_mods.ps1                 # build + deploy all mods
 #   .\build_mods.ps1 -Only SampleMod # just one mod
+#
+# -GameDir is the x64\ folder (matching build.ps1); mods deploy to its parent (the install root).
 [CmdletBinding()]
 param(
     [string]$GameDir = 'C:\Program Files (x86)\Steam\steamapps\common\ShadowOfWar\x64',
@@ -12,7 +15,8 @@ $ErrorActionPreference = 'Stop'
 $root  = $PSScriptRoot
 $cmake = 'C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe'
 
-$modsOut = Join-Path $GameDir 'mods'
+$installRoot = Split-Path $GameDir -Parent    # ...\ShadowOfWar
+$modsOut = Join-Path $installRoot 'mods'      # ...\ShadowOfWar\mods
 New-Item -ItemType Directory -Force $modsOut | Out-Null
 
 $dirs = Get-ChildItem $root -Directory | Where-Object { Test-Path (Join-Path $_.FullName 'CMakeLists.txt') }
