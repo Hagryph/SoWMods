@@ -4,6 +4,7 @@
 #include "Console.h"
 #include "GameHooks.h"
 #include "WindowWatch.h"
+#include "Tracer.h"
 
 namespace sow {
 
@@ -55,6 +56,7 @@ void Loader::Worker() {
     // Everything logged before the console attaches is buffered by Log and replayed on attach.
     WindowWatch::Get().Install();
     GameHooks::Get().Install();
+    Tracer::Get().Install();   // in-DLL API tracer (Windows-call group; D3D11 groups arm at OnDevice)
 
     auto& log = Log::Get();
     log.Accent("SoWLoader online.");
