@@ -3,6 +3,7 @@
 #include "ipc/MemAccess.h"
 #include "ipc/CallExec.h"
 #include "ipc/HookProbe.h"
+#include "ipc/MemScan.h"
 #include "Offsets.h"
 #include "Log.h"
 
@@ -211,7 +212,7 @@ std::string Server::Dispatch(const std::string& line) {
     if (cmd == "help")
         return "ok cmds: ping | base | read <off> <type> [chain..] | readb <off> <len> [chain..] | "
                "write <off> <type> <val> [chain..] | call <off> [a0..a7] | exec <hexblob> | "
-               "hook <off> | unhook <off|slot|all> | hooklog [max]  "
+               "hook <off> | unhook <off|slot|all> | hooklog [max] | scan <valueHex> [u32|u64] [max]  "
                "(off = file address off 0x140000000, e.g. 0x141976838, or abs:<VA>; "
                "type = u8/u16/u32/u64/i*/f32/f64/ptr; chain: each extra offset does p=*p+c; "
                "call/exec args are 64-bit ints; hook logs each call's 4 register args to a ring buffer "
@@ -331,6 +332,18 @@ std::string Server::Dispatch(const std::string& line) {
         std::uint64_t max = 0;   // 0 = all buffered
         if (tk.size() >= 2 && !ParseU64(tk[1], max)) return "err bad max";
         return HookProbe::Get().Drain(static_cast<std::size_t>(max));
+    }
+
+    // ---- memory scan: find every 8-aligned occurrence of a value (e.g. a class vtable) ----
+    if (cmd == "scan") {
+        if (tk.size() < 2) return "err usage: scan <valueHex> [u32|u64] [maxHits]  (value is absolute, e.g. a vtable VA)";
+        std::uint64_t val = 0;
+        if (!ParseU64(tk[1], val)) return "err bad value";
+        int size = 8;
+        if (tk.size() >= 3) { if (tk[2] == "u32") size = 4; else if (tk[2] == "u64") size = 8; else return "err type must be u32|u64"; }
+        std::uint64_t maxHits = 8192;
+        if (tk.size() >= 4 && !ParseU64(tk[3], maxHits)) return "err bad maxHits";
+        return ScanValue(val, size, static_cast<std::size_t>(maxHits));
     }
 
     return "err unknown command (try 'help')";
