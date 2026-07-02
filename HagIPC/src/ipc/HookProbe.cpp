@@ -122,12 +122,14 @@ std::string HookProbe::Drain(std::size_t maxEntries) {
     // oldest of the n we return
     std::uint32_t start = (g_head + kRing - g_count) % kRing;
     std::ostringstream o;
-    o << "ok entries=" << n << (n < g_count ? " (more buffered)" : "") << "\n";
+    // Single-line response with 0x1f field separators (the client turns 0x1f into newlines) — a
+    // real '\n' here would break the one-line-per-response protocol and desync the stream.
+    o << "ok entries=" << n << (n < g_count ? " (more buffered)" : "");
     for (std::size_t k = 0; k < n; ++k) {
         const Entry& e = g_ring[(start + k) % kRing];
-        o << e.seq << " slot" << e.slot << " ret=" << Hex(e.ret)
+        o << '\x1f' << e.seq << " slot" << e.slot << " ret=" << Hex(e.ret)
           << " a0=" << Hex(e.a0) << " a1=" << Hex(e.a1)
-          << " a2=" << Hex(e.a2) << " a3=" << Hex(e.a3) << "\n";
+          << " a2=" << Hex(e.a2) << " a3=" << Hex(e.a3);
     }
     // consume the drained entries
     g_count -= static_cast<std::uint32_t>(n);
