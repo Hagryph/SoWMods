@@ -2,61 +2,46 @@
 #include "Log.h"
 #include "Loader.h"
 
+#include <MinHook.h>
+
 namespace sow {
 
 WindowWatch& WindowWatch::Get() { static WindowWatch w; return w; }
 
-// The game's main window class, exactly as the engine registers it (RE: kWinMainThread registers
-// class L"Shadow of War" before CreateWindowExW; see shared/GameOffsets.h).
-bool WindowWatch::IsGameMainWindow(HWND hwnd) {
-    if (!hwnd || ::GetAncestor(hwnd, GA_ROOT) != hwnd) return false;   // top-level only
-    wchar_t cls[64]{};
-    if (!::GetClassNameW(hwnd, cls, 64)) return false;
-    return ::wcscmp(cls, L"Shadow of War") == 0;
-}
+using CreateWinExWFn = HWND(WINAPI*)(DWORD, LPCWSTR, LPCWSTR, DWORD, int, int, int, int,
+                                     HWND, HMENU, HINSTANCE, LPVOID);
+static CreateWinExWFn oCreateWinExW = nullptr;
+static bool           g_consoleFired = false;
 
-void CALLBACK WindowWatch::OnWinEvent(HWINEVENTHOOK, DWORD event, HWND hwnd,
-                                      LONG idObject, LONG, DWORD, DWORD) {
-    if (event != EVENT_OBJECT_CREATE || idObject != OBJID_WINDOW || !IsGameMainWindow(hwnd)) return;
-    if (::InterlockedExchange(&Get().fired_, 1) != 0) return;   // one-shot
-    char l[112];
-    ::wsprintfA(l, "[winwatch] game window %p CREATED (window now exists) -> opening console", (void*)hwnd);
-    Log::Get().Line(l);
-    Loader::Get().OnRenderLive();   // opens the console non-activating (never the foreground window)
-    Get().Stop();                    // nothing left to watch
-}
+static bool IsStrW(LPCWSTR s) { return s && reinterpret_cast<uintptr_t>(s) > 0xFFFF; }
 
-DWORD WINAPI WindowWatch::ThreadThunk(LPVOID self) {
-    static_cast<WindowWatch*>(self)->ThreadMain();
-    return 0;
-}
-
-void WindowWatch::ThreadMain() {
-    threadId_ = ::GetCurrentThreadId();
-    // OUTOFCONTEXT: callbacks are posted to THIS thread's message queue, so the hook stays valid for
-    // this thread's whole life. Filter to our own PID (dwEventThread 0 = all threads in the process).
-    hook_ = ::SetWinEventHook(EVENT_OBJECT_CREATE, EVENT_OBJECT_CREATE,
-                              nullptr, &WindowWatch::OnWinEvent,
-                              ::GetCurrentProcessId(), 0, WINEVENT_OUTOFCONTEXT);
-    Log::Get().Line(hook_ ? "[winwatch] hook armed on dedicated thread (EVENT_OBJECT_CREATE, own pid)"
-                          : "[winwatch] SetWinEventHook FAILED");
-    if (!hook_) return;
-    MSG msg;
-    while (::GetMessageW(&msg, nullptr, 0, 0) > 0) {   // pump until WM_QUIT (posted by Stop)
-        ::TranslateMessage(&msg);
-        ::DispatchMessageW(&msg);
+// user32!CreateWindowExW detour: create the window, and the instant the GAME's main window
+// (top-level, class L"Shadow of War") comes into existence, open the console — then call original.
+static HWND WINAPI HkCreateWinExW(DWORD ex, LPCWSTR cls, LPCWSTR name, DWORD style, int x, int y,
+                                  int w, int h, HWND parent, HMENU menu, HINSTANCE inst, LPVOID p) {
+    HWND hwnd = oCreateWinExW(ex, cls, name, style, x, y, w, h, parent, menu, inst, p);
+    if (!g_consoleFired && parent == nullptr && IsStrW(cls) && ::wcscmp(cls, L"Shadow of War") == 0) {
+        g_consoleFired = true;
+        char l[96]; ::wsprintfA(l, "[winwatch] game window %p created (CreateWindowExW) -> opening console", (void*)hwnd);
+        Log::Get().Line(l);
+        Loader::Get().OnRenderLive();   // opens the console right at window creation
     }
+    return hwnd;
 }
 
 void WindowWatch::Install() {
     if (installed_) return;
     installed_ = true;
-    thread_ = ::CreateThread(nullptr, 0, &WindowWatch::ThreadThunk, this, 0, &threadId_);
-}
-
-void WindowWatch::Stop() {
-    if (hook_) { ::UnhookWinEvent(hook_); hook_ = nullptr; }
-    if (threadId_) ::PostThreadMessageW(threadId_, WM_QUIT, 0, 0);   // ends the pump -> thread exits
+    MH_STATUS s = MH_Initialize();
+    if (s != MH_OK && s != MH_ERROR_ALREADY_INITIALIZED) { Log::Get().Line("[winwatch] MH_Initialize failed"); return; }
+    HMODULE u32 = ::GetModuleHandleW(L"user32.dll");
+    void* target = u32 ? (void*)::GetProcAddress(u32, "CreateWindowExW") : nullptr;
+    if (target && MH_CreateHook(target, (void*)&HkCreateWinExW, (void**)&oCreateWinExW) == MH_OK &&
+        MH_EnableHook(target) == MH_OK) {
+        Log::Get().Line("[winwatch] CreateWindowExW hooked (game-window creation -> console trigger)");
+    } else {
+        Log::Get().Line("[winwatch] hook CreateWindowExW FAILED");
+    }
 }
 
 }  // namespace sow

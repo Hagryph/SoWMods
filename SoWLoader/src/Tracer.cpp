@@ -26,41 +26,22 @@ struct Cap {
     }
 };
 
-// A real string pointer, not a class atom packed in the low word.
-static bool IsStrW(LPCWSTR s) { return s && reinterpret_cast<uintptr_t>(s) > 0xFFFF; }
-static void W2A(LPCWSTR w, char* out, int n) {
-    if (IsStrW(w)) ::WideCharToMultiByte(CP_UTF8, 0, w, -1, out, n, nullptr, nullptr);
-    else ::wsprintfA(out, "#atom%u", (unsigned)(uintptr_t)w);
-}
-
 // ===========================================================================
-//  Windows calls — user32 window lifecycle (exported functions, easy targets)
+//  Windows calls — user32 window lifecycle (exported functions, easy targets).
+//  CreateWindowExW is intentionally absent — WindowWatch owns that hook (console trigger).
 // ===========================================================================
-using CreateWinExWFn = HWND(WINAPI*)(DWORD, LPCWSTR, LPCWSTR, DWORD, int, int, int, int, HWND, HMENU, HINSTANCE, LPVOID);
-using ShowWindowFn   = BOOL(WINAPI*)(HWND, int);
-using SetWinPosFn    = BOOL(WINAPI*)(HWND, HWND, int, int, int, int, UINT);
-using SetFgWinFn     = BOOL(WINAPI*)(HWND);
-using DestroyWinFn   = BOOL(WINAPI*)(HWND);
+using ShowWindowFn = BOOL(WINAPI*)(HWND, int);
+using SetWinPosFn  = BOOL(WINAPI*)(HWND, HWND, int, int, int, int, UINT);
+using SetFgWinFn   = BOOL(WINAPI*)(HWND);
+using DestroyWinFn = BOOL(WINAPI*)(HWND);
 
-static CreateWinExWFn oCreateWinExW = nullptr;
 static ShowWindowFn   oShowWindow   = nullptr;
 static SetWinPosFn    oSetWindowPos = nullptr;
 static SetFgWinFn     oSetFgWin     = nullptr;
 static DestroyWinFn   oDestroyWin   = nullptr;
 
-static Cap cCreate, cShow, cPos, cFg, cDestroy;
+static Cap cShow, cPos, cFg, cDestroy;
 
-static HWND WINAPI HkCreateWinExW(DWORD ex, LPCWSTR cls, LPCWSTR name, DWORD style, int x, int y,
-                                  int w, int h, HWND parent, HMENU menu, HINSTANCE inst, LPVOID p) {
-    HWND r = oCreateWinExW(ex, cls, name, style, x, y, w, h, parent, menu, inst, p);
-    if (cCreate.Take("CreateWindowExW")) {
-        char cb[96]{}, nb[128]{}; W2A(cls, cb, 96); W2A(name, nb, 128);
-        char l[360]; ::wsprintfA(l, "[CreateWindowExW] cls=%.90s name=%.120s %dx%d style=0x%08X parent=%p -> hwnd=%p",
-                                 cb, nb, w, h, style, parent, r);
-        TL().Line(l);
-    }
-    return r;
-}
 static BOOL WINAPI HkShowWindow(HWND h, int cmd) {
     if (cShow.Take("ShowWindow")) { char l[96]; ::wsprintfA(l, "[ShowWindow] hwnd=%p nCmdShow=%d", h, cmd); TL().Line(l); }
     return oShowWindow(h, cmd);
@@ -162,7 +143,7 @@ void Tracer::Install() {
 
     // seed caps (set fields directly — the members are volatile)
     auto seed = [&](Cap& c) { c.left = cap_; c.capped = 0; };
-    seed(cCreate); seed(cShow); seed(cPos); seed(cFg); seed(cDestroy);
+    seed(cShow); seed(cPos); seed(cFg); seed(cDestroy);
     seed(cBuf); seed(cTex); seed(cMap); seed(cDrawI); seed(cDraw);
 
     MH_STATUS s = MH_Initialize();
@@ -171,7 +152,8 @@ void Tracer::Install() {
     if (exportsDone_ || !window_) { if (!window_) TL().Line("[trace] window group off"); return; }
     exportsDone_ = true;
     if (HMODULE u32 = ::GetModuleHandleW(L"user32.dll")) {
-        Hook((void*)::GetProcAddress(u32, "CreateWindowExW"),     (void*)&HkCreateWinExW,        (void**)&oCreateWinExW, "user32!CreateWindowExW");
+        // NOTE: CreateWindowExW is hooked by WindowWatch (the console trigger) — one hook per target,
+        // so the tracer must NOT hook it here. WindowWatch logs the game window's creation instead.
         Hook((void*)::GetProcAddress(u32, "ShowWindow"),          (void*)&HkShowWindow,          (void**)&oShowWindow,   "user32!ShowWindow");
         Hook((void*)::GetProcAddress(u32, "SetWindowPos"),        (void*)&HkSetWindowPos,        (void**)&oSetWindowPos, "user32!SetWindowPos");
         Hook((void*)::GetProcAddress(u32, "SetForegroundWindow"), (void*)&HkSetForegroundWindow, (void**)&oSetFgWin,     "user32!SetForegroundWindow");

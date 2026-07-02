@@ -27,16 +27,11 @@ bool Console::Open() {
     ::InitializeCriticalSection(&cs_); csInit_ = true;
     ::SetConsoleTitleW(L"SoWLoader  -  mod console");
     if (HWND cw = ::GetConsoleWindow()) {
-        // Never let the console be the process's "main" window. A TOOLWINDOW (and NOT an APPWINDOW)
-        // is kept off the taskbar and out of Alt-Tab; NOACTIVATE means it can't steal foreground.
-        // This is what makes it safe to open the console the instant the game window is created —
-        // the game window still becomes the sole taskbar/foreground window.
-        LONG_PTR ex = ::GetWindowLongPtrW(cw, GWL_EXSTYLE);
-        ex = (ex | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE) & ~WS_EX_APPWINDOW;
-        ::SetWindowLongPtrW(cw, GWL_EXSTYLE, ex);
+        // Visible console (its own taskbar button), but don't let it stay the foreground/"main"
+        // window: show without activating and drop it to the bottom of the z-order, then hand
+        // foreground back to whatever had it. The game window takes foreground when it is shown.
         ::ShowWindow(cw, SW_SHOWNOACTIVATE);
-        ::SetWindowPos(cw, HWND_BOTTOM, 0, 0, 0, 0,
-                       SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+        ::SetWindowPos(cw, HWND_BOTTOM, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
     }
     if (fg) ::SetForegroundWindow(fg);
     open_ = true;
