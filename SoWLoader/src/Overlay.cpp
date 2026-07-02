@@ -368,30 +368,58 @@ static ImU32 LerpCol(ImU32 a, ImU32 b, float t) {
     return IM_COL32(c(0), c(8), c(16), c(24));
 }
 
-// Left accent = bright rail (vertical accent->accent-dim gradient) + glow (horizontal gold->transparent),
-// as ONE unit. INSET from the card edge by `d` with a concentric (r-d) arc, so a ~d-px border sliver
-// shows around it everywhere (straight edges AND rounded corners, consistently). Rail and glow share
-// the exact same left edge (the arc), rasterized as horizontal strips — no misalignment gap/ticker.
-static void AccentLeft(ImDrawList* dl, ImVec2 p0, float cw, float ch, float r, float d,
-                       float railW, float glowW) {
-    const float R = r - d;                                   // inset arc radius (center stays p0+ (r,r))
-    const float top = p0.y + d, bot = p0.y + ch - d;
+// Left accent, 1:1 with the Skyrim HagUI (HagUI_Root.as buildWelcome, "railG" + "rmask"):
+//   glow: rect(cx, cy, glowW, ch), linear HORIZONTAL gradient gold alpha 26% -> 0
+//   rail: rect(cx, cy, railW, ch), linear VERTICAL gradient accent -> accent-dim, on top
+// Both are plain full-height bars flush with the card edge, MASKED by the card's own
+// rounded-rect path rrPath(cx, cy, cw, ch, r). ImGui has no masks, so the mask is applied
+// analytically: the bars are emitted as a straight middle quad plus arc-following trapezoids
+// in the corners, with per-vertex colors sampled from the UNCLIPPED gradient boxes — the cut
+// never shifts or squeezes the gradient, exactly like the Flash mask. The bars are straight
+// and get cut by the corner arc; they do not bend around it.
+static void AccentLeft(ImDrawList* dl, ImVec2 p0, float ch, float r, float railW, float glowW) {
+    const float x0 = p0.x, yT = p0.y, yB = p0.y + ch;
     const ImU32 aTop = IM_COL32(0xE0, 0xB3, 0x4A, 255), aBot = IM_COL32(0xB8, 0x86, 0x2F, 255);
-    const ImU32 gL   = IM_COL32(0xE0, 0xB3, 0x4A, 66),  gR   = IM_COL32(0xE0, 0xB3, 0x4A, 0);
-    auto vcol  = [&](float y) { return LerpCol(aTop, aBot, (y - top) / (bot - top)); };
-    auto strip = [&](float y0, float y1, float xl) {
-        dl->AddRectFilledMultiColor(ImVec2(xl, y0), ImVec2(xl + railW, y1), vcol(y0), vcol(y0), vcol(y1), vcol(y1));  // rail
-        dl->AddRectFilledMultiColor(ImVec2(xl + railW, y0), ImVec2(xl + glowW, y1), gL, gR, gR, gL);                 // glow
+    // AS gradient boxes: boxM(cx, cy, 30, ch) horizontal / boxM(cx, cy, 6, ch, pi/2) vertical
+    auto glowCol = [&](float x, float) {
+        float t = (x - x0) / glowW; t = t < 0.0f ? 0.0f : (t > 1.0f ? 1.0f : t);
+        return IM_COL32(0xE0, 0xB3, 0x4A, (int)(66.0f * (1.0f - t) + 0.5f));   // AS alpha 26/100
     };
-    strip(top + R, bot - R, p0.x + d);                       // straight middle
-    const int N = 18;
-    for (int i = 0; i < N; ++i) {
-        const float f0 = (float)i / N, f1 = (float)(i + 1) / N;
-        const float dy = R * (1.0f - f0);                    // arc center (y=p0.y+r) -> strip top
-        const float xl = p0.x + r - std::sqrt(std::max(0.0f, R * R - dy * dy));
-        strip(top + R * f0, top + R * f1, xl);               // top corner
-        strip(bot - R * f1, bot - R * f0, xl);               // bottom corner
-    }
+    auto railCol = [&](float, float y) { return LerpCol(aTop, aBot, (y - yT) / (yB - yT)); };
+
+    // trapezoid with vertical right edge + slanted left edge, colored by col(x, y)
+    const ImVec2 uv = ImGui::GetFontTexUvWhitePixel();
+    auto quad = [&](float xlt, float xlb, float xr, float yt, float yb, auto&& col) {
+        if (yb <= yt) return;
+        xlt = std::min(xlt, xr); xlb = std::min(xlb, xr);
+        if (xlt >= xr && xlb >= xr) return;
+        dl->PrimReserve(6, 4);
+        const ImDrawIdx i0 = (ImDrawIdx)dl->_VtxCurrentIdx;
+        dl->PrimWriteVtx(ImVec2(xlt, yt), uv, col(xlt, yt));
+        dl->PrimWriteVtx(ImVec2(xr,  yt), uv, col(xr,  yt));
+        dl->PrimWriteVtx(ImVec2(xr,  yb), uv, col(xr,  yb));
+        dl->PrimWriteVtx(ImVec2(xlb, yb), uv, col(xlb, yb));
+        dl->PrimWriteIdx(i0);     dl->PrimWriteIdx(i0 + 1); dl->PrimWriteIdx(i0 + 2);
+        dl->PrimWriteIdx(i0);     dl->PrimWriteIdx(i0 + 2); dl->PrimWriteIdx(i0 + 3);
+    };
+
+    // one full-height bar of width w, left edge clipped by the card's r-corners (the AS mask)
+    auto bar = [&](float w, auto&& col) {
+        const float xr = x0 + w;
+        quad(x0, x0, xr, yT + r, yB - r, col);                     // straight middle
+        const int N = 12;                                          // arc slices per corner
+        for (int i = 0; i < N; ++i) {
+            const float t0 = 1.5707963f * i / N, t1 = 1.5707963f * (i + 1) / N;
+            const float xa = x0 + r * (1.0f - std::sin(t0));       // arc x, pole side of the slice
+            const float xb = x0 + r * (1.0f - std::sin(t1));       // arc x, equator side
+            const float da = r * (1.0f - std::cos(t0)), db = r * (1.0f - std::cos(t1));
+            quad(xa, xb, xr, yT + da, yT + db, col);               // top corner
+            quad(xb, xa, xr, yB - db, yB - da, col);               // bottom corner (mirrored)
+        }
+    };
+
+    bar(glowW, glowCol);   // AS draw order: glow rect first...
+    bar(railW, railCol);   // ...bright rail on top, both under the same mask
 }
 
 // Draw text horizontally condensed by `xs` (0..1) around pos.x: emit the glyphs, then scale the new
@@ -508,9 +536,8 @@ void Overlay::DrawHub() {
             return (f ? f->CalcTextSizeA(px, 3.4e38f, 0.0f, t).x : ImGui::CalcTextSize(t).x) * XS;
         };
 
-        // ---- left accent: rail + glow as one unit, inset 1px inside the border with a concentric arc
-        //      (border sliver shows consistently at straight edges AND corners; no gap/ticker) ----
-        AccentLeft(dl, p0, cw, ch, r, 1.0f, 6.0f * sx, 30.0f * sx);
+        // ---- left accent (AS: glow 30w gold 26->0 + rail 6w accent->dim, masked to the card path) ----
+        AccentLeft(dl, p0, ch, r, 6.0f * sx, 30.0f * sx);
 
         // ---- corner flourishes (AS: gold alpha 30, TL x30..56 y22, BR x cw-56..cw-30 y ch-22) ----
         const ImU32 uFl = IM_COL32(0xE0, 0xB3, 0x4A, 77);
