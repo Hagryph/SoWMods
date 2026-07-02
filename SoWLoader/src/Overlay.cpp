@@ -1,7 +1,9 @@
 #include "Overlay.h"
 #include "Log.h"
 #include "HagUI.h"
+#include "GameHooks.h"
 #include "Loader.h"
+#include "SoWModAPI.h"   // ../shared: SOWMOD_LOCAL scope constant
 
 #include <d3d11.h>
 #include <dxgi.h>
@@ -331,6 +333,14 @@ void Overlay::DrawFrame(IDXGISwapChain* swap) {
     // path (F8, ESC, CLOSE button) from one place.
     if (menuOpen_ != cursorShown_) { ::ShowCursor(menuOpen_); cursorShown_ = menuOpen_; }
 
+    // Game-state heartbeat: the front-end item-refresh ticks while a menu is up and freezes once a
+    // save is loaded and gameplay takes over. A stalled beat (many frames unchanged) => in a save.
+    {
+        const unsigned long long t = GameHooks::MenuHeartbeat();
+        if (t != lastMenuTick_) { lastMenuTick_ = t; menuStale_ = 0; }
+        else if (menuStale_ < 100000) ++menuStale_;
+    }
+
     ImGui_ImplDX11_NewFrame();
     ImGui_ImplWin32_NewFrame();
     ImGui::NewFrame();
@@ -502,6 +512,12 @@ void Overlay::DrawWatermark() {
     dl->AddText(fSmall_, sz, ImVec2(disp.x - hSz.x - 16.0f, 12.0f + sz + 2.0f), IM_COL32(224, 179, 74, 170), hint);
 }
 
+// A save is loaded (gameplay running) once the front-end has appeared at least once AND its heartbeat
+// has been frozen for a stretch of frames (the menu stopped updating because gameplay took over).
+bool Overlay::InSave() const {
+    return GameHooks::MenuEverShown() && menuStale_ > 30;
+}
+
 void Overlay::DrawHub() {
     ImGuiIO& io = ImGui::GetIO();
     const ImVec2 disp = io.DisplaySize;
@@ -553,12 +569,17 @@ void Overlay::DrawHub() {
         // ---- tabs (AS: nx=60 ny=28, pad16 gap12, bold size15, hairline + active underline at ny+34)
         //      WELCOME + one tab per MOD-REGISTERED page (HagUI cross-plugin API) — none hardcoded ----
         const auto& pages = HagUI::Get().Pages();
-        if (activeTab_ > (int)pages.size()) activeTab_ = 0;   // registry can change between frames
+        // SCOPE gating: global tabs always show; save-local tabs show only once a save is loaded.
+        const bool inSave = InSave();
+        std::vector<int> vis;                                 // page indices visible right now
+        for (int p = 0; p < (int)pages.size(); ++p)
+            if (pages[p].scope != SOWMOD_LOCAL || inSave) vis.push_back(p);
+        if (activeTab_ > (int)vis.size()) activeTab_ = 0;     // visible set can change between frames
         const float fTabPx = 15.0f * s, pad = 16.0f * sx, gap = 12.0f * sx, cellH = 35.0f * sy;
         const float navY = Y(28), hairY = Y(28 + 34);
         float cx = X(60);
-        for (int i = 0; i <= (int)pages.size(); ++i) {
-            std::string label = (i == 0) ? "WELCOME" : pages[i - 1].title;
+        for (int i = 0; i <= (int)vis.size(); ++i) {
+            std::string label = (i == 0) ? "WELCOME" : pages[vis[i - 1]].title;
             for (auto& lc : label) lc = (char)::toupper((unsigned char)lc);
             const bool active = activeTab_ == i;
             const float cellW = measureW(fTab_, fTabPx, label.c_str()) + pad * 2.0f;
@@ -590,7 +611,7 @@ void Overlay::DrawHub() {
         } else {
             // registered page — 1:1 with the AS option page (buildOptionPage / makeCheckbox /
             // paintButton): header bold 21 at (60,86); rows from y+44, 40 apart.
-            const HagUI::Page& pg = pages[activeTab_ - 1];
+            const HagUI::Page& pg = pages[vis[activeTab_ - 1]];
             AddTextCX(dl, fTab_, 21.0f * s, ImVec2(X(60), Y(86)), uText, pg.title.c_str(), XS);
             float ry = 86 + 44;
             for (int i = 0; i < (int)pg.widgets.size(); ++i) {
@@ -637,7 +658,8 @@ void Overlay::DrawHub() {
                     // Row 1: search + Clear. Row 2: one multi-select dropdown per facet. Then a grouped
                     // list (header on facet 0, sub-header on facet 1). ImGui's child gives scrollbar/wheel.
                     const float listX = 60.0f, listW = 712.0f;
-                    const float searchAS = ry, filterAS = ry + 30.0f, listTopAS = ry + 62.0f, listBotAS = 434.0f;
+                    // extra breathing room above and below the filter row (search .. filter .. list)
+                    const float searchAS = ry, filterAS = ry + 38.0f, listTopAS = ry + 80.0f, listBotAS = 434.0f;
                     ImGui::PushFont(fBody_, 15.0f * s);
                     // shape: rounded frames/popups, roomy padding, a visible gold scrollbar — applies to
                     // the search box, the facet combo buttons AND their popups (4 vars, popped at the end).

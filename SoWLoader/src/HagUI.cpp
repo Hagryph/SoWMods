@@ -146,8 +146,11 @@ void HagUI::Init() {
 }
 
 int HagUI::RegisterPage(const char* title) {
-    pages_.push_back(Page{ title ? title : "", {} });
+    pages_.push_back(Page{ title ? title : "", 0, {} });
     return (int)pages_.size() - 1;
+}
+void HagUI::SetPageScope(int page, int scope) {
+    if (page >= 0 && page < (int)pages_.size()) pages_[page].scope = scope;
 }
 void HagUI::AddLabel(int page, const char* text) {
     if (page >= 0 && page < (int)pages_.size()) pages_[page].widgets.push_back({ WLabel, text ? text : "", nullptr, nullptr });

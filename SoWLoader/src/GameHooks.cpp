@@ -27,6 +27,7 @@ GameHooks& GameHooks::Get() { static GameHooks instance; return instance; }
 static volatile LONG s_overlayClaimed = 0;
 static bool          s_ctorLogged     = false;
 static bool          g_menuLive       = false;   // set when the front-end root layer is constructed
+static volatile LONG64 g_menuTick     = 0;        // ++ each front-end item-refresh; freezes in-game
 static volatile LONG s_svCap          = 0;       // SetVariable log budget (armed at menu build)
 static volatile LONG s_locCap         = 0;       // loc-key log budget (armed at menu build)
 static volatile LONG s_facCap         = 0;       // factory-classNode log budget (armed at menu build)
@@ -503,8 +504,12 @@ static void* __fastcall HookItemRefresh(void* self) {
             }
         }
     }
+    ::InterlockedIncrement64(&g_menuTick);   // menu-alive heartbeat (frozen once gameplay takes over)
     return oItemRefresh(self);
 }
+
+unsigned long long GameHooks::MenuHeartbeat() { return (unsigned long long)g_menuTick; }
+bool               GameHooks::MenuEverShown() { return g_menuLive; }
 
 void GameHooks::Install() {
     auto& log = Log::Get();

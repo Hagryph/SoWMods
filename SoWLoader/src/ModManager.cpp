@@ -72,12 +72,20 @@ void ModManager::LoadAll() {
             if (const char* n = namefn(); n && *n) tabName = n;
         }
         if (size_t dot = tabName.rfind(".dll"); dot != std::string::npos) tabName.erase(dot);
+
+        // SCOPE: global (menu + in-game) or local/save (in-game only). Absent export => global.
+        int scope = SOWMOD_GLOBAL;
+        if (auto scopefn = reinterpret_cast<SoWMod_Scope_t>(::GetProcAddress(mod, "SoWMod_Scope")))
+            scope = scopefn();
+
         const int page = HagUI::Get().RegisterPage(tabName.c_str());   // the loader owns tab creation
+        HagUI::Get().SetPageScope(page, scope);
 
         auto init = reinterpret_cast<SoWMod_Init_t>(::GetProcAddress(mod, "SoWMod_Init"));
-        char l[280];
-        ::wsprintfA(l, "[mods]  %2d. %-32s loaded @ %p  tab=\"%.40s\"%s", idx, nn.c_str(), (void*)mod,
-                    tabName.c_str(), init ? "" : " (no SoWMod_Init)");
+        char l[300];
+        ::wsprintfA(l, "[mods]  %2d. %-32s loaded @ %p  tab=\"%.40s\" [%s]%s", idx, nn.c_str(), (void*)mod,
+                    tabName.c_str(), scope == SOWMOD_LOCAL ? "save-local" : "global",
+                    init ? "" : " (no SoWMod_Init)");
         log.Good(l);
         if (init) init(page);   // outside the loader lock now (LoadLibrary returned) -> safe to do real work
     }

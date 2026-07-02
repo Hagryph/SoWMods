@@ -49,6 +49,10 @@ std::vector<Row> LoadCatalog() {
 // This mod's single tab is auto-named after this.
 extern "C" __declspec(dllexport) const char* SoWMod_Name() { return "Inventory Editor"; }
 
+// Save-local: an inventory editor only makes sense with a loaded save, so its tab appears in the hub
+// only in-game (hidden at the main menu). See shared/SoWModAPI.h.
+extern "C" __declspec(dllexport) int SoWMod_Scope() { return SOWMOD_LOCAL; }
+
 // The loader created this mod's ONE tab and hands us its page. We fill only that page.
 extern "C" __declspec(dllexport) void SoWMod_Init(int page) {
     auto get = reinterpret_cast<HagUI_GetAPI_t>(

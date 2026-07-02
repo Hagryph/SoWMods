@@ -15,6 +15,13 @@ public:
     // The overlay installs from that ctor only (real menu-load) — no timer, no fallback.
     void Install();
 
+    // Game-state signals for scope-gated mods (see shared/SoWModAPI.h).
+    //  MenuHeartbeat() ticks every time the front-end menu updates; it FREEZES once a save is loaded
+    //    and gameplay takes over, so a stalled heartbeat == in-game. MenuEverShown() is true once the
+    //    front-end has appeared at least once (so we don't read "in-game" during the boot splash).
+    static unsigned long long MenuHeartbeat();
+    static bool               MenuEverShown();
+
     GameHooks(const GameHooks&) = delete;
     GameHooks& operator=(const GameHooks&) = delete;
 

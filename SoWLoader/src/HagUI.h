@@ -20,6 +20,7 @@ public:
 
     // Page API (mirrors HagUIAPI; the exported C functions delegate here).
     int  RegisterPage(const char* title);
+    void SetPageScope(int page, int scope);   // SOWMOD_GLOBAL / SOWMOD_LOCAL (see shared/SoWModAPI.h)
     void AddLabel(int page, const char* text);
     void AddToggle(int page, const char* label, bool* value);
     void AddButton(int page, const char* label, void (*onClick)());
@@ -45,7 +46,7 @@ public:
         mutable int  listSel   = -1;                 // selected row (-1 = none)
         mutable char search[64] = {};                // search box text (ImGui InputText buffer)
     };
-    struct Page   { std::string title; std::vector<Widget> widgets; };
+    struct Page   { std::string title; int scope = 0; std::vector<Widget> widgets; };  // scope: 0=global,1=local
     const std::vector<Page>& Pages() const { return pages_; }
 
     HagUI(const HagUI&) = delete;
