@@ -28,14 +28,13 @@ static volatile LONG s_overlayClaimed = 0;
 static bool          s_ctorLogged     = false;
 static bool          g_menuLive       = false;   // set when the front-end root layer is constructed
 
-// Event-latched game state (no per-frame polling — the game stops presenting when backgrounded, so a
-// per-frame heuristic is unreliable). The front-end ROOT layer's lifecycle is the signal: its ctor
-// fires on entering a menu, its dtor fires when the menu is torn down for gameplay (a save loading).
-enum class GState : LONG { Boot = 0, Menu = 1, InGame = 2 };
-static volatile LONG   g_state          = (LONG)GState::Boot;
-using RootLayerDtorFn  = void* (__fastcall*)(void*, unsigned);
-static RootLayerDtorFn  oRootLayerDtor  = nullptr;   // original dtor (vtable slot 0), called through
-static bool             s_dtorHooked    = false;
+// Game-state signal, driven by the FRONT-END's update activity on the GAME thread. RE showed SoW builds
+// the menu AND the HUD once and toggles VISIBILITY (the front-end root layer is hidden, not destroyed,
+// when a save loads — its dtor never fires). But the front-end's per-update item-refresh runs while the
+// menu is the active screen and STOPS once gameplay takes over. So a stale wall-clock (game thread, not
+// render frames — those stall when backgrounded) since the last front-end update == in a save.
+static volatile LONG64 g_lastMenuMs   = 0;      // GetTickCount64() of the last front-end update
+static const DWORD     kInSaveStaleMs = 1500;   // no menu update for this long => in a save (menu ticks ~2Hz)
 static volatile LONG s_svCap          = 0;       // SetVariable log budget (armed at menu build)
 static volatile LONG s_locCap         = 0;       // loc-key log budget (armed at menu build)
 static volatile LONG s_facCap         = 0;       // factory-classNode log budget (armed at menu build)
@@ -52,40 +51,15 @@ static void EnsureOverlay(const char* who) {
 using RootLayerCtorFn = void* (__fastcall*)(void*, void*, void*);
 static RootLayerCtorFn oRootLayerCtor = nullptr;
 
-// The front-end root layer's deleting destructor (vtable slot 0). It runs when the menu is torn down
-// — i.e. we are leaving the menu into gameplay (a save has loaded). Latch InGame here.
-static void* __fastcall HookRootLayerDtor(void* self, unsigned flags) {
-    if (::InterlockedExchange(&g_state, (LONG)GState::InGame) != (LONG)GState::InGame)
-        Log::Get().Line("[frontend] root layer destroyed — entered gameplay (save loaded)");
-    return oRootLayerDtor(self, flags);
-}
-
-// One-time: hook the root layer's vtable dtor by swapping slot 0 (no MinHook / no thread suspension).
-static void HookRootLayerDtorOnce(void* self) {
-    if (s_dtorHooked || !self || ::IsBadReadPtr(self, sizeof(void*))) return;
-    void** vt = *reinterpret_cast<void***>(self);
-    if (!vt || ::IsBadReadPtr(vt, sizeof(void*))) return;
-    DWORD old = 0;
-    if (!::VirtualProtect(&vt[0], sizeof(void*), PAGE_READWRITE, &old)) return;
-    oRootLayerDtor = reinterpret_cast<RootLayerDtorFn>(vt[0]);
-    vt[0] = reinterpret_cast<void*>(&HookRootLayerDtor);
-    ::VirtualProtect(&vt[0], sizeof(void*), old, &old);
-    s_dtorHooked = true;
-    Log::Get().Line("[frontend] root-layer dtor hooked (menu-exit -> in-game signal)");
-}
-
 static void* __fastcall HookRootLayerCtor(void* self, void* a2, void* a3) {
     if (!s_ctorLogged) {
         s_ctorLogged = true;
         Log::Get().Line("[frontend] CUIFrontEndRootLayer ctor hit — START MENU UI created");
     }
-    g_menuLive = true; s_locCap = 300;   // arm the loc-key logger for the menu-build window
-    void* r = oRootLayerCtor(self, a2, a3);   // forward FIRST so the vtable is installed on `self`
-    HookRootLayerDtorOnce(self);              // learn when this menu gets torn down (-> gameplay)
-    if (::InterlockedExchange(&g_state, (LONG)GState::Menu) != (LONG)GState::Menu)
-        Log::Get().Line("[frontend] front-end menu active (save-local mod tabs hidden)");
+    g_menuLive = true; s_locCap = 300;                 // arm the loc-key logger for the menu-build window
+    g_lastMenuMs = (LONG64)::GetTickCount64();          // menu just (re)built => fresh heartbeat => Menu
     EnsureOverlay("frontend-rootlayer-ctor");
-    return r;
+    return oRootLayerCtor(self, a2, a3);                // forward to original (trampoline; never destructive)
 }
 
 // Scaleform SetVariable(movie, pathObj, value, p4, flag). pathObj's first field points to the path
@@ -538,11 +512,26 @@ static void* __fastcall HookItemRefresh(void* self) {
             }
         }
     }
+    {   // front-end update heartbeat (GAME thread, ~2Hz at the menu). Bump the wall clock so InSave() can
+        // tell menu (updating) from in-game (stopped). Log only abnormally long gaps (> the stale window).
+        static LONG64 s_prev = 0;
+        const LONG64 now = (LONG64)::GetTickCount64();
+        const LONG64 gap = s_prev ? now - s_prev : 0; s_prev = now;
+        g_lastMenuMs = now;
+        if (gap > (LONG64)kInSaveStaleMs) {
+            char b[128]; ::wsprintfA(b, "[hbeat] long menu-update gap=%I64dms (returned from in-game?)", gap);
+            Log::Get().Line(b);
+        }
+    }
     return oItemRefresh(self);
 }
 
-// A save is loaded once the front-end root layer has been destroyed (menu torn down for gameplay).
-bool GameHooks::InSave() { return (GState)g_state == GState::InGame; }
+// In a save once the front-end has stopped updating for a while (menu hidden, gameplay running). Uses
+// wall-clock on the game thread, so it is immune to render cadence / window backgrounding.
+bool GameHooks::InSave() {
+    if (!g_menuLive) return false;              // never reached a menu yet => not in a save
+    return ((LONG64)::GetTickCount64() - g_lastMenuMs) > (LONG64)kInSaveStaleMs;
+}
 
 void GameHooks::Install() {
     auto& log = Log::Get();
