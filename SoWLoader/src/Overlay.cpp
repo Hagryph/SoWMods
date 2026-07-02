@@ -415,10 +415,11 @@ void Overlay::DrawHub() {
 
     const float cw = disp.x * 0.64f, ch = disp.y * 0.64f;
     const float padX = cw * 0.075f, padY = ch * 0.055f;   // Skyrim: content starts ~60px/28px in
+    const float r = ch * 0.014f;                          // card corner radius (rail is masked to match)
     ImGui::SetNextWindowPos(ImVec2((disp.x - cw) * 0.5f, (disp.y - ch) * 0.5f));
     ImGui::SetNextWindowSize(ImVec2(cw, ch));
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(padX, padY));
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);   // sharp: crisp border + rail aligns to the edge
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, r);
     const ImGuiWindowFlags flags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
         ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollbar |
         ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoBringToFrontOnFocus;
@@ -434,13 +435,18 @@ void Overlay::DrawHub() {
         const float railW = cw * 0.006f;          // Skyrim 6px on 820
         const float glowW = cw * 0.045f;          // soft glow fading right of the rail
 
-        // ---- left accent: bright rail (vertical accent->accent-dim) + glow fading right ----
-        dl->AddRectFilledMultiColor(p0, ImVec2(p0.x + railW, p0.y + ch),
-            IM_COL32(0xE0, 0xB3, 0x4A, 255), IM_COL32(0xE0, 0xB3, 0x4A, 255),
-            IM_COL32(0xB8, 0x86, 0x2F, 255), IM_COL32(0xB8, 0x86, 0x2F, 255));
-        dl->AddRectFilledMultiColor(ImVec2(p0.x + railW, p0.y), ImVec2(p0.x + railW + glowW, p0.y + ch),
-            IM_COL32(0xE0, 0xB3, 0x4A, 60), IM_COL32(0xE0, 0xB3, 0x4A, 0),
-            IM_COL32(0xE0, 0xB3, 0x4A, 0),  IM_COL32(0xE0, 0xB3, 0x4A, 60));
+        // ---- left accent: rail with rounded LEFT corners (follows the card radius exactly) ----
+        // base bright rail, top-left + bottom-left rounded to match the window corner
+        dl->AddRectFilled(p0, ImVec2(p0.x + railW, p0.y + ch),
+            IM_COL32(0xE0, 0xB3, 0x4A, 255), r, ImDrawFlags_RoundCornersLeft);
+        // subtle vertical darken toward the bottom (accent -> accent-dim), inside the rounded caps
+        dl->AddRectFilledMultiColor(ImVec2(p0.x, p0.y + r), ImVec2(p0.x + railW, p0.y + ch - r),
+            IM_COL32(0xB8, 0x86, 0x2F, 0),   IM_COL32(0xB8, 0x86, 0x2F, 0),
+            IM_COL32(0xB8, 0x86, 0x2F, 150), IM_COL32(0xB8, 0x86, 0x2F, 150));
+        // glow fading right (inset by the radius so it stays within the rounded corners)
+        dl->AddRectFilledMultiColor(ImVec2(p0.x + railW, p0.y + r), ImVec2(p0.x + railW + glowW, p0.y + ch - r),
+            IM_COL32(0xE0, 0xB3, 0x4A, 55), IM_COL32(0xE0, 0xB3, 0x4A, 0),
+            IM_COL32(0xE0, 0xB3, 0x4A, 0),  IM_COL32(0xE0, 0xB3, 0x4A, 55));
 
         // ---- corner flourishes: horizontal gold lines, top-left + bottom-right ----
         const ImU32 uFl = IM_COL32(0xE0, 0xB3, 0x4A, 80);
