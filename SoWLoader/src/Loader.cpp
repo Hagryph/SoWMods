@@ -4,6 +4,7 @@
 #include "Console.h"
 #include "GameHooks.h"
 #include "WindowWatch.h"
+#include "ModManager.h"
 
 namespace sow {
 
@@ -68,15 +69,19 @@ void Loader::Worker() {
         log.Line(std::string("console   : ") + (wantConsole_ ? "opens when the game window is up" : "silent (file log only)"));
     }
 
-    // Module roster (proper-modloader feel). External SoWLoader\mods\*.dll loading plugs in here next.
+    // Module roster (proper-modloader feel). The loader core + HagUI are the two mains compiled into
+    // this DLL; every other mod is a standalone DLL in x64\mods\ (loaded just below).
     log.Good("modules:");
     log.Line("   loader   steam_api64 proxy   ok   (796 exports forwarded)");
     log.Line("   hooks    GameHooks           arming");
     log.Line("   render   Overlay (D3D11)     pending start menu");
     log.Line("   ui       HagUI framework     pending start menu");
 
-    log.Line("[worker] injection point VALIDATED — proxy is live; hooks armed (window + start-menu).");
-    // TODO(next milestone): enumerate SoWLoader\\mods\\*.dll and LoadLibrary each here.
+    // Load external mods now (DLLs in x64\mods\, in filename order). Each may register HagUI pages
+    // and/or install its own game hooks in SoWMod_Init.
+    ModManager::Get().LoadAll();
+
+    log.Line("[worker] injection point VALIDATED — proxy is live; hooks armed; mods loaded.");
 }
 
 }  // namespace sow
