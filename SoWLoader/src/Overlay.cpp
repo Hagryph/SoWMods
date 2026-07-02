@@ -368,21 +368,29 @@ static ImU32 LerpCol(ImU32 a, ImU32 b, float t) {
     return IM_COL32(c(0), c(8), c(16), c(24));
 }
 
-// Horizontal gradient (left->right color), FULL height a..b, with the LEFT edge rounded (radius rad)
-// at top & bottom so it follows the card's rounded corners exactly. The corners are rasterized as
-// horizontal strips whose left edge tracks the arc — full length, no gap, no visible quarter-circle.
-static void GlowLeft(ImDrawList* dl, ImVec2 a, ImVec2 b, ImU32 left, ImU32 right, float rad) {
-    const float W = b.x - a.x;
-    auto colAt = [&](float x) { return LerpCol(left, right, W > 0 ? (x - a.x) / W : 0.0f); };
-    dl->AddRectFilledMultiColor(ImVec2(a.x, a.y + rad), ImVec2(b.x, b.y - rad), left, right, right, left);  // straight middle
-    const int N = 14;
+// Left accent = bright rail (vertical accent->accent-dim gradient) + glow (horizontal gold->transparent),
+// as ONE unit. INSET from the card edge by `d` with a concentric (r-d) arc, so a ~d-px border sliver
+// shows around it everywhere (straight edges AND rounded corners, consistently). Rail and glow share
+// the exact same left edge (the arc), rasterized as horizontal strips — no misalignment gap/ticker.
+static void AccentLeft(ImDrawList* dl, ImVec2 p0, float cw, float ch, float r, float d,
+                       float railW, float glowW) {
+    const float R = r - d;                                   // inset arc radius (center stays p0+ (r,r))
+    const float top = p0.y + d, bot = p0.y + ch - d;
+    const ImU32 aTop = IM_COL32(0xE0, 0xB3, 0x4A, 255), aBot = IM_COL32(0xB8, 0x86, 0x2F, 255);
+    const ImU32 gL   = IM_COL32(0xE0, 0xB3, 0x4A, 66),  gR   = IM_COL32(0xE0, 0xB3, 0x4A, 0);
+    auto vcol  = [&](float y) { return LerpCol(aTop, aBot, (y - top) / (bot - top)); };
+    auto strip = [&](float y0, float y1, float xl) {
+        dl->AddRectFilledMultiColor(ImVec2(xl, y0), ImVec2(xl + railW, y1), vcol(y0), vcol(y0), vcol(y1), vcol(y1));  // rail
+        dl->AddRectFilledMultiColor(ImVec2(xl + railW, y0), ImVec2(xl + glowW, y1), gL, gR, gR, gL);                 // glow
+    };
+    strip(top + R, bot - R, p0.x + d);                       // straight middle
+    const int N = 18;
     for (int i = 0; i < N; ++i) {
-        const float t0 = rad * (float)i / N, t1 = rad * (float)(i + 1) / N;   // 0..rad down from the top edge
-        const float dy = rad - t0;                                           // arc-center(y=a.y+rad) -> strip top
-        const float xl = a.x + rad - std::sqrt(std::max(0.0f, rad * rad - dy * dy));
-        const ImU32 cl = colAt(xl);
-        dl->AddRectFilledMultiColor(ImVec2(xl, a.y + t0), ImVec2(b.x, a.y + t1), cl, right, right, cl);      // top corner
-        dl->AddRectFilledMultiColor(ImVec2(xl, b.y - t1), ImVec2(b.x, b.y - t0), cl, right, right, cl);      // bottom corner
+        const float f0 = (float)i / N, f1 = (float)(i + 1) / N;
+        const float dy = R * (1.0f - f0);                    // arc center (y=p0.y+r) -> strip top
+        const float xl = p0.x + r - std::sqrt(std::max(0.0f, R * R - dy * dy));
+        strip(top + R * f0, top + R * f1, xl);               // top corner
+        strip(bot - R * f1, bot - R * f0, xl);               // bottom corner
     }
 }
 
@@ -500,18 +508,9 @@ void Overlay::DrawHub() {
             return (f ? f->CalcTextSizeA(px, 3.4e38f, 0.0f, t).x : ImGui::CalcTextSize(t).x) * XS;
         };
 
-        // ---- left accent ----
-        const float glowW = 30.0f * sx, railW = 6.0f * sx;
-        // glow: horizontal gold->transparent fade, FULL height, with rounded-left corners that follow
-        // the card arc (rasterized strips) — full length, no gap/ticker, no quarter-circle.
-        GlowLeft(dl, p0, ImVec2(p0.x + glowW, p0.y + ch),
-                 IM_COL32(0xE0, 0xB3, 0x4A, 66), IM_COL32(0xE0, 0xB3, 0x4A, 0), r);
-        // rail: bright vertical gradient, MASKED to the rounded card (clip a card-wide RoundedVGrad to
-        // the 6px band so its left corners follow the card radius) — the rail the user approved.
-        dl->PushClipRect(p0, ImVec2(p0.x + railW, p0.y + ch), true);
-        RoundedVGrad(dl, p0, ImVec2(p0.x + cw, p0.y + ch),
-                     IM_COL32(0xE0, 0xB3, 0x4A, 255), IM_COL32(0xB8, 0x86, 0x2F, 255), r);
-        dl->PopClipRect();
+        // ---- left accent: rail + glow as one unit, inset 1px inside the border with a concentric arc
+        //      (border sliver shows consistently at straight edges AND corners; no gap/ticker) ----
+        AccentLeft(dl, p0, cw, ch, r, 1.0f, 6.0f * sx, 30.0f * sx);
 
         // ---- corner flourishes (AS: gold alpha 30, TL x30..56 y22, BR x cw-56..cw-30 y ch-22) ----
         const ImU32 uFl = IM_COL32(0xE0, 0xB3, 0x4A, 77);
