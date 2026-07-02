@@ -15,6 +15,7 @@ struct ID3D11BlendState;
 struct ID3D11DepthStencilState;
 struct ID3D11RasterizerState;
 struct ID3D11ShaderResourceView;
+struct ImFont;   // Dear ImGui (global namespace)
 
 namespace sow {
 
@@ -65,11 +66,18 @@ private:
     // ---- ImGui hub (the in-frame HagUI, drawn into the game's own back buffer) ----
     static LRESULT __stdcall WndProc(HWND, UINT, WPARAM, LPARAM);  // game-window subclass for input
     void StyleHagUI();        // black + gold ImGui theme
+    void LoadFonts();         // real TTFs at resolution-scaled sizes (no bitmap-font pixelation)
     void DrawWatermark();     // always-on "SoWLoader — Hagryph" + F8 hint (ImGui foreground list)
     void DrawHub();           // the modal hub window (tabs, welcome, close)
     bool imguiInit_ = false;
     bool menuOpen_  = false;
+    int  activeTab_ = 0;
     WNDPROC origWndProc_ = nullptr;
+    ImFont* fBody_  = nullptr;   // Segoe UI     (default / body)
+    ImFont* fKick_  = nullptr;   // Segoe UI     (small "WELCOME TO" kicker)
+    ImFont* fTab_   = nullptr;   // Segoe UI Bold (tab labels)
+    ImFont* fSmall_ = nullptr;   // Segoe UI     (footer / hints)
+    ImFont* fWord_  = nullptr;   // Georgia Bold  (HagUI wordmark)
 
     bool BuildResources(ID3D11Device* dev);
     struct Glyph { ID3D11ShaderResourceView* srv; int w, h; };

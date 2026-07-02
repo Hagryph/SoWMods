@@ -306,6 +306,7 @@ void Overlay::DrawFrame(IDXGISwapChain* swap) {
         io.IniFilename = nullptr;                              // no imgui.ini next to the game
         io.ConfigFlags &= ~ImGuiConfigFlags_NavEnableGamepad; // don't fight the game's controller
         StyleHagUI();
+        LoadFonts();                                          // real TTFs sized to this back buffer
         ImGui_ImplWin32_Init(gameWnd_);
         ImGui_ImplDX11_Init(dev_, ctx_);
         origWndProc_ = reinterpret_cast<WNDPROC>(
@@ -334,6 +335,8 @@ void Overlay::DrawFrame(IDXGISwapChain* swap) {
 static ImVec4 Rgb(int r, int g, int b, float a = 1.0f) {
     return ImVec4(r / 255.0f, g / 255.0f, b / 255.0f, a);
 }
+// ImGui 1.92 removed single-arg PushFont; push each TTF at the size it was loaded with (LegacySize).
+static void PushF(ImFont* f) { ImGui::PushFont(f, f ? f->LegacySize : 0.0f); }
 void Overlay::StyleHagUI() {
     ImGui::StyleColorsDark();
     ImGuiStyle& s = ImGui::GetStyle();
@@ -369,15 +372,30 @@ void Overlay::StyleHagUI() {
     c[ImGuiCol_PopupBg]         = Rgb(0x1A, 0x17, 0x12, 0.98f);
 }
 
+void Overlay::LoadFonts() {
+    ImGuiIO& io = ImGui::GetIO();
+    const float H = curH_ > 100.0f ? curH_ : 1080.0f;   // scale type to the back buffer
+    auto add = [&](const char* path, float px) -> ImFont* {
+        return io.Fonts->AddFontFromFileTTF(path, px);   // returns nullptr if missing (PushFont(null) is safe)
+    };
+    fBody_  = add("C:\\Windows\\Fonts\\segoeui.ttf",  H * 0.0225f);   // first == default font
+    fKick_  = add("C:\\Windows\\Fonts\\segoeui.ttf",  H * 0.0160f);
+    fTab_   = add("C:\\Windows\\Fonts\\segoeuib.ttf", H * 0.0200f);
+    fSmall_ = add("C:\\Windows\\Fonts\\segoeui.ttf",  H * 0.0150f);
+    fWord_  = add("C:\\Windows\\Fonts\\georgiab.ttf", H * 0.0720f);
+    io.Fonts->Build();
+}
+
 void Overlay::DrawWatermark() {
     ImDrawList* dl = ImGui::GetForegroundDrawList();
     const ImVec2 disp = ImGui::GetIO().DisplaySize;
-    const char* wm = "SoWLoader \xE2\x80\x94 Hagryph";   // em-dash
+    const float sz = fSmall_ ? fSmall_->LegacySize : ImGui::GetFontSize();
+    const char* wm = "SoWLoader - Hagryph";
     const char* hint = "F8  Menu";
-    const ImVec2 wmSz = ImGui::CalcTextSize(wm);
-    dl->AddText(ImVec2(disp.x - wmSz.x - 14.0f, 10.0f), IM_COL32(205, 205, 210, 180), wm);
-    dl->AddText(ImVec2(disp.x - ImGui::CalcTextSize(hint).x - 14.0f, 10.0f + wmSz.y + 2.0f),
-                IM_COL32(224, 179, 74, 170), hint);
+    const ImVec2 wmSz = fSmall_ ? fSmall_->CalcTextSizeA(sz, 3.4e38f, 0.0f, wm) : ImGui::CalcTextSize(wm);
+    dl->AddText(fSmall_, sz, ImVec2(disp.x - wmSz.x - 16.0f, 12.0f), IM_COL32(205, 205, 210, 170), wm);
+    const ImVec2 hSz = fSmall_ ? fSmall_->CalcTextSizeA(sz, 3.4e38f, 0.0f, hint) : ImGui::CalcTextSize(hint);
+    dl->AddText(fSmall_, sz, ImVec2(disp.x - hSz.x - 16.0f, 12.0f + sz + 2.0f), IM_COL32(224, 179, 74, 170), hint);
 }
 
 void Overlay::DrawHub() {
@@ -385,62 +403,122 @@ void Overlay::DrawHub() {
     const ImVec2 disp = io.DisplaySize;
 
     // dim + block the game behind the modal card
-    ImGui::GetBackgroundDrawList()->AddRectFilled(ImVec2(0, 0), disp, IM_COL32(6, 6, 10, 180));
+    ImGui::GetBackgroundDrawList()->AddRectFilled(ImVec2(0, 0), disp, IM_COL32(6, 6, 10, 190));
 
     const float cw = disp.x * 0.64f, ch = disp.y * 0.64f;
+    const float padX = cw * 0.075f, padY = ch * 0.055f;   // Skyrim: content starts ~60px/28px in
     ImGui::SetNextWindowPos(ImVec2((disp.x - cw) * 0.5f, (disp.y - ch) * 0.5f));
     ImGui::SetNextWindowSize(ImVec2(cw, ch));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(padX, padY));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
     const ImGuiWindowFlags flags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
         ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollbar |
         ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoBringToFrontOnFocus;
 
-    if (ImGui::Begin("HagUI##hub", nullptr, flags)) {
-        // left accent rail
-        const ImVec2 p0 = ImGui::GetWindowPos();
-        ImGui::GetWindowDrawList()->AddRectFilled(
-            p0, ImVec2(p0.x + 5.0f, p0.y + ch), IM_COL32(224, 179, 74, 255));
+    const ImVec4 cAccent = Rgb(0xE0, 0xB3, 0x4A);
+    const ImVec4 cText   = Rgb(0xEC, 0xE6, 0xDA);
+    const ImVec4 cDim    = Rgb(0x9C, 0x94, 0x86);
+    const ImVec4 cFaint  = Rgb(0x6B, 0x64, 0x56);
 
-        if (ImGui::BeginTabBar("##tabs", ImGuiTabBarFlags_None)) {
-            if (ImGui::BeginTabItem("WELCOME")) {
-                ImGui::Dummy(ImVec2(0, 10));
-                ImGui::TextColored(Rgb(0x6B, 0x64, 0x56), "W E L C O M E   T O");
-                ImGui::SetWindowFontScale(3.0f);
-                ImGui::TextColored(Rgb(0xEC, 0xE6, 0xDA), "Hag");
-                ImGui::SameLine(0, 0);
-                ImGui::TextColored(Rgb(0xE0, 0xB3, 0x4A), "UI");
-                ImGui::SetWindowFontScale(1.0f);
-                ImGui::Dummy(ImVec2(0, 6));
-                ImGui::PushStyleColor(ImGuiCol_Separator, Rgb(0xE0, 0xB3, 0x4A, 0.6f));
-                ImGui::Separator();
-                ImGui::PopStyleColor();
-                ImGui::Dummy(ImVec2(0, 10));
-                ImGui::TextColored(Rgb(0x9C, 0x94, 0x86),
-                    "Your private control room for every Hagryph mod \xE2\x80\x94");
-                ImGui::TextColored(Rgb(0x9C, 0x94, 0x86),
-                    "configuration, tools, and more, gathered in one place.");
-                ImGui::EndTabItem();
-            }
-            if (ImGui::BeginTabItem("GENERAL")) {
-                ImGui::Dummy(ImVec2(0, 10));
-                ImGui::TextDisabled("General settings will appear here.");
-                ImGui::EndTabItem();
-            }
-            ImGui::EndTabBar();
+    if (ImGui::Begin("HagUI##hub", nullptr, flags)) {
+        ImDrawList* dl = ImGui::GetWindowDrawList();
+        const ImVec2 p0 = ImGui::GetWindowPos();
+        const float railW = cw * 0.006f;          // Skyrim 6px on 820
+        const float glowW = cw * 0.045f;          // soft glow fading right of the rail
+
+        // ---- left accent: bright rail (vertical accent->accent-dim) + glow fading right ----
+        dl->AddRectFilledMultiColor(p0, ImVec2(p0.x + railW, p0.y + ch),
+            IM_COL32(0xE0, 0xB3, 0x4A, 255), IM_COL32(0xE0, 0xB3, 0x4A, 255),
+            IM_COL32(0xB8, 0x86, 0x2F, 255), IM_COL32(0xB8, 0x86, 0x2F, 255));
+        dl->AddRectFilledMultiColor(ImVec2(p0.x + railW, p0.y), ImVec2(p0.x + railW + glowW, p0.y + ch),
+            IM_COL32(0xE0, 0xB3, 0x4A, 60), IM_COL32(0xE0, 0xB3, 0x4A, 0),
+            IM_COL32(0xE0, 0xB3, 0x4A, 0),  IM_COL32(0xE0, 0xB3, 0x4A, 60));
+
+        // ---- corner flourishes: horizontal gold lines, top-left + bottom-right ----
+        const ImU32 uFl = IM_COL32(0xE0, 0xB3, 0x4A, 80);
+        const float flInset = cw * 0.037f, flLen = cw * 0.032f, flTop = ch * 0.048f;
+        dl->AddLine(ImVec2(p0.x + flInset, p0.y + flTop),
+                    ImVec2(p0.x + flInset + flLen, p0.y + flTop), uFl, 2.0f);
+        dl->AddLine(ImVec2(p0.x + cw - flInset - flLen, p0.y + ch - flTop),
+                    ImVec2(p0.x + cw - flInset, p0.y + ch - flTop), uFl, 2.0f);
+
+        // ---- tab strip (custom: active = gold + underline, inactive = dim, hover brightens) ----
+        static const char* kTabs[] = { "WELCOME", "GENERAL" };
+        constexpr int kNTabs = 2;
+        PushF(fTab_);
+        ImGui::PushStyleColor(ImGuiCol_Button,        IM_COL32(0, 0, 0, 0));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(0, 0, 0, 0));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive,  IM_COL32(0, 0, 0, 0));
+        float rowBottom = 0.0f;
+        for (int i = 0; i < kNTabs; ++i) {
+            if (i) ImGui::SameLine(0, cw * 0.012f);
+            const bool active = activeTab_ == i;
+            ImGui::PushStyleColor(ImGuiCol_Text, active ? cAccent : cDim);
+            if (ImGui::Button(kTabs[i])) activeTab_ = i;
+            ImGui::PopStyleColor();
+            const ImVec2 a = ImGui::GetItemRectMin(), b = ImGui::GetItemRectMax();
+            rowBottom = b.y;
+            if (active) dl->AddLine(ImVec2(a.x, b.y), ImVec2(b.x, b.y), IM_COL32(0xE0, 0xB3, 0x4A, 255), 2.0f);
+        }
+        ImGui::PopStyleColor(3);
+        ImGui::PopFont();
+        // faint hairline under the whole row, spanning the content width
+        dl->AddLine(ImVec2(p0.x + padX, rowBottom), ImVec2(p0.x + cw - padX, rowBottom),
+                    IM_COL32(0xE0, 0xB3, 0x4A, 40), 1.0f);
+
+        ImGui::Dummy(ImVec2(0, ch * 0.05f));
+
+        // ---- active page ----
+        if (activeTab_ == 0) {
+            PushF(fKick_);
+            ImGui::TextColored(cFaint, "W E L C O M E   T O");
+            ImGui::PopFont();
+            ImGui::Dummy(ImVec2(0, ch * 0.008f));
+            PushF(fWord_);
+            ImGui::TextColored(cText, "Hag"); ImGui::SameLine(0, 0);
+            ImGui::TextColored(cAccent, "UI");
+            ImGui::PopFont();
+            // gold->transparent divider
+            ImGui::Dummy(ImVec2(0, ch * 0.02f));
+            const ImVec2 dv = ImGui::GetCursorScreenPos();
+            dl->AddRectFilledMultiColor(dv, ImVec2(dv.x + cw * 0.30f, dv.y + 2.0f),
+                IM_COL32(0xE0, 0xB3, 0x4A, 200), IM_COL32(0xE0, 0xB3, 0x4A, 0),
+                IM_COL32(0xE0, 0xB3, 0x4A, 0),   IM_COL32(0xE0, 0xB3, 0x4A, 200));
+            ImGui::Dummy(ImVec2(0, ch * 0.035f));
+            ImGui::TextColored(cDim, "Your private control room for every Hagryph mod -");
+            ImGui::TextColored(cDim, "configuration, tools, and more, gathered in one place.");
+        } else {
+            ImGui::TextColored(cDim, "General settings will appear here.");
         }
 
-        // CLOSE button + hint, pinned near the bottom-left
-        ImGui::SetCursorPosY(ch - 78.0f);
-        if (ImGui::Button("CLOSE", ImVec2(150, 40))) menuOpen_ = false;
-        ImGui::SameLine();
-        ImGui::TextColored(Rgb(0x6B, 0x64, 0x56), "or press F8");
+        // ---- CLOSE button + hint, pinned bottom-left ----
+        const float btnW = cw * 0.13f, btnH = ch * 0.072f;
+        ImGui::SetCursorPos(ImVec2(padX, ch - padY - btnH));
+        PushF(fBody_);
+        ImGui::PushStyleColor(ImGuiCol_Text, cAccent);
+        ImGui::PushStyleColor(ImGuiCol_Button, Rgb(0x23, 0x1E, 0x16));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, Rgb(0x3A, 0x2F, 0x18));
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
+        if (ImGui::Button("CLOSE", ImVec2(btnW, btnH))) menuOpen_ = false;
+        ImGui::PopStyleVar();
+        ImGui::PopStyleColor(3);
+        ImGui::PopFont();
+        ImGui::SameLine(0, cw * 0.014f);
+        PushF(fSmall_);
+        ImGui::AlignTextToFramePadding();
+        ImGui::TextColored(cFaint, "or press F8");
+        ImGui::PopFont();
 
-        // EST footer, bottom-right
+        // ---- EST footer, bottom-right (draw-list, absolute) ----
         const char* est = "HAGRYPH  \xC2\xB7  EST. MMXXVI";
-        const ImVec2 estSz = ImGui::CalcTextSize(est);
-        ImGui::SetCursorPos(ImVec2(cw - estSz.x - 30.0f, ch - 34.0f));
-        ImGui::TextColored(Rgb(0x6B, 0x64, 0x56), "%s", est);
+        const float estSz = fSmall_ ? fSmall_->LegacySize : ImGui::GetFontSize();
+        const ImVec2 estDim = fSmall_ ? fSmall_->CalcTextSizeA(estSz, 3.4e38f, 0.0f, est) : ImGui::CalcTextSize(est);
+        dl->AddText(fSmall_, estSz,
+            ImVec2(p0.x + cw - estDim.x - cw * 0.037f, p0.y + ch - estDim.y - ch * 0.03f),
+            IM_COL32(0x6B, 0x64, 0x56, 255), est);
     }
     ImGui::End();
+    ImGui::PopStyleVar(2);
 }
 
 }  // namespace sow
