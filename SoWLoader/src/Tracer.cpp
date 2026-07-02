@@ -183,16 +183,18 @@ void Tracer::Install() {
 void Tracer::OnDevice(ID3D11Device* dev, ID3D11DeviceContext* ctx) {
     if (!enabled_ || vtablesDone_ || (!gfxmem_ && !draws_) || !dev || !ctx) return;
     vtablesDone_ = true;
-    // ID3D11Device vtable: 3 CreateBuffer, 5 CreateTexture2D.
-    // ID3D11DeviceContext vtable: 8 DrawIndexed, 9 Draw, 10 Map.
+    // ID3D11Device : IUnknown           -> 3 CreateBuffer, 5 CreateTexture2D.
+    // ID3D11DeviceContext : ID3D11DeviceChild (which adds GetDevice/GetPrivateData/SetPrivateData/
+    // SetPrivateDataInterface at 3..6 on top of IUnknown), so the context methods start at 7:
+    //   12 DrawIndexed, 13 Draw, 14 Map, 15 Unmap. (Off-by-4 here = hooking PSSetSamplers -> crash.)
     if (gfxmem_) {
-        Hook(Vt(dev, 3), (void*)&HkCreateBuffer,    (void**)&oCreateBuffer, "ID3D11Device::CreateBuffer");
-        Hook(Vt(dev, 5), (void*)&HkCreateTexture2D, (void**)&oCreateTex2D,  "ID3D11Device::CreateTexture2D");
-        Hook(Vt(ctx, 10), (void*)&HkMap,            (void**)&oMap,          "ID3D11DeviceContext::Map");
+        Hook(Vt(dev, 3),  (void*)&HkCreateBuffer,    (void**)&oCreateBuffer, "ID3D11Device::CreateBuffer");
+        Hook(Vt(dev, 5),  (void*)&HkCreateTexture2D, (void**)&oCreateTex2D,  "ID3D11Device::CreateTexture2D");
+        Hook(Vt(ctx, 14), (void*)&HkMap,             (void**)&oMap,          "ID3D11DeviceContext::Map");
     }
     if (draws_) {
-        Hook(Vt(ctx, 8), (void*)&HkDrawIndexed, (void**)&oDrawIndexed, "ID3D11DeviceContext::DrawIndexed");
-        Hook(Vt(ctx, 9), (void*)&HkDraw,        (void**)&oDraw,        "ID3D11DeviceContext::Draw");
+        Hook(Vt(ctx, 12), (void*)&HkDrawIndexed, (void**)&oDrawIndexed, "ID3D11DeviceContext::DrawIndexed");
+        Hook(Vt(ctx, 13), (void*)&HkDraw,        (void**)&oDraw,        "ID3D11DeviceContext::Draw");
     }
     TL().Good("[trace] D3D11 vtable tracing armed (DirectX calls + graphics memory)");
 }
