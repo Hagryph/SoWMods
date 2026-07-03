@@ -2,7 +2,6 @@
 #include "Log.h"
 #include "HagUI.h"
 #include "GameHooks.h"
-#include "GameOffsets.h"   // ../shared: game::FromRVA + kUiSuspend (pause + free-cursor flag)
 #include "Loader.h"
 #include "SoWModAPI.h"   // ../shared: SOWMOD_LOCAL scope constant
 
@@ -274,10 +273,6 @@ LRESULT __stdcall Overlay::WndProc(HWND h, UINT msg, WPARAM w, LPARAM l) {
     if (msg == WM_KEYDOWN && w == VK_F8 && (l & 0x40000000) == 0) o.menuOpen_ = !o.menuOpen_;
     // ESC closes the hub while it's open (cursor visibility is reconciled in DrawFrame).
     if (msg == WM_KEYDOWN && w == VK_ESCAPE && o.menuOpen_) o.menuOpen_ = false;
-    // Drive the pause/free-cursor flag from the MESSAGE thread on F8/ESC too, so the game always resumes
-    // even if rendering (and thus DrawFrame) is part of what the flag pauses.
-    if (msg == WM_KEYDOWN && (w == VK_F8 || w == VK_ESCAPE))
-        *reinterpret_cast<volatile int*>(game::FromRVA(game::kUiSuspend)) = o.menuOpen_ ? 1 : 0;
 
     if (o.imguiInit_) {
         ImGui_ImplWin32_WndProcHandler(h, msg, w, l);
@@ -340,11 +335,9 @@ void Overlay::DrawFrame(IDXGISwapChain* swap) {
     // Reconcile the OS cursor with the hub state (balanced ShowCursor +1/-1), covering every close
     // path (F8, ESC, CLOSE button) from one place.
     if (menuOpen_ != cursorShown_) { ::ShowCursor(menuOpen_); cursorShown_ = menuOpen_; }
-    // SoW's "suspend for UI" flag: 1 while the hub is open FREEZES the world AND frees the cursor (the
-    // game's cursor-lock + sim both skip when it's non-zero); 0 restores. Written each frame so it wins
-    // over any game reset — a game-native pause that resumes cleanly. (Also driven from WndProc on F8/ESC
-    // so the game still resumes if rendering is part of what pauses.)
-    *reinterpret_cast<volatile int*>(game::FromRVA(game::kUiSuspend)) = menuOpen_ ? 1 : 0;
+    // In-game the engine ClipCursor()s the pointer to the window for mouselook; release it every frame
+    // while the hub is open so the cursor is free to roam the UI (the game re-clips once we close).
+    if (menuOpen_) ::ClipCursor(nullptr);
 
     ImGui_ImplDX11_NewFrame();
     ImGui_ImplWin32_NewFrame();
