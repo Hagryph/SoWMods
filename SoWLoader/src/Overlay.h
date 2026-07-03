@@ -53,11 +53,14 @@ public:
     bool  Mouse(float& x, float& y) const;
 
     bool  MenuOpen() const { return menuOpen_; }
+    void  SetInGame(bool inGame);   // called by GameHooks' world/menu transition hooks
 
     Overlay(const Overlay&) = delete;
     Overlay& operator=(const Overlay&) = delete;
 
 private:
+    enum class AppState { MainMenu, InGame };
+
     Overlay() = default;
     using PresentFn = long (__stdcall*)(IDXGISwapChain*, unsigned, unsigned);
     static long __stdcall HookPresent(IDXGISwapChain*, unsigned, unsigned);
@@ -65,8 +68,7 @@ private:
 
     // ---- ImGui hub (the in-frame HagUI, drawn into the game's own back buffer) ----
     static LRESULT __stdcall WndProc(HWND, UINT, WPARAM, LPARAM);  // game-window subclass for input
-    // True once a SAVE/world is loaded. Gates save-local mod tabs in the hub.
-    // Event-latched in GameHooks, so there is no per-frame poll.
+    // True once a SAVE/world is loaded. Pushed by GameHooks transition hooks; no polling here.
     bool InSave() const;
 
     void StyleHagUI();        // black + gold ImGui theme
@@ -76,6 +78,7 @@ private:
     void DrawHub();           // the modal hub window (tabs, welcome, close)
     bool imguiInit_   = false;
     bool menuOpen_    = false;
+    AppState appState_ = AppState::MainMenu;
     bool cursorShown_ = false;   // tracks forced OS cursor visibility for the hub
     int  cursorShowBalance_ = 0;
     int  activeTab_   = 0;

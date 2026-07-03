@@ -1,7 +1,6 @@
 #include "Overlay.h"
 #include "Log.h"
 #include "HagUI.h"
-#include "GameHooks.h"
 #include "GameOffsets.h"   // ../shared: game::FromRVA + kPauseToggle (call the game's own pause)
 #include "Loader.h"
 #include "SoWModAPI.h"   // ../shared: SOWMOD_LOCAL scope constant
@@ -326,13 +325,14 @@ LRESULT __stdcall Overlay::WndProc(HWND h, UINT msg, WPARAM w, LPARAM l) {
     if (msg == WM_KEYDOWN && w == VK_F8 && (l & 0x40000000) == 0) {
         o.menuOpen_ = !o.menuOpen_;
         o.SyncCursorState();   // apply immediately; don't wait for the next Present
-        char b[96]; ::wsprintfA(b, "[F8] hub=%d inSave=%d", (int)o.menuOpen_, (int)GameHooks::InSave());
+        char b[112]; ::wsprintfA(b, "[F8] hub=%d app=%s", (int)o.menuOpen_,
+                                 o.appState_ == AppState::InGame ? "ingame" : "main-menu");
         Log::Get().Line(b);
         // NOTE: game sim-freeze is NOT wired — the pause lever is unfound (the FUN_1406cdf0c uiCtx chain is
         // garbage and SoW doesn't freeze on focus loss; see shared/GameOffsets.h "PAUSE"). Camera is still
-        // locked (we eat WM_INPUT while open) and the cursor is freed (kCursorCtrlDisable), which makes the
-        // hub usable; freezing the world is a follow-up. SyncGamePause() is left defined but intentionally
-        // not called until the real SimulationTimeScale lever is found.
+        // locked in a save (we eat WM_INPUT while open) and the cursor is freed there via the
+        // in-game-only cursor handoff; freezing the world is a follow-up. SyncGamePause() is left
+        // defined but intentionally not called until the real SimulationTimeScale lever is found.
     }
     // ESC closes the hub while it's open (cursor visibility is reconciled in DrawFrame).
     if (msg == WM_KEYDOWN && w == VK_ESCAPE && o.menuOpen_) {
@@ -367,10 +367,10 @@ LRESULT __stdcall Overlay::WndProc(HWND h, UINT msg, WPARAM w, LPARAM l) {
 void Overlay::SyncCursorState() {
     if (!imguiInit_) return;
 
-    // CURSOR for the hub. Use the OS cursor; ImGui's software cursor is rendered at the game menu
-    // cadence and visibly trails during hover movement. The balanced ShowCursor calls only live while
-    // the hub is open, and kCursorCtrlDisable keeps the engine from recentering/clipping/hiding it.
-    if (menuOpen_) {
+    // In the main menu the game is already in cursor/UI mode. The heavy cursor handoff is only needed
+    // in a loaded save, where the engine owns mouselook, recentering, clipping, and cursor visibility.
+    const bool needsGameCursorUnlock = menuOpen_ && appState_ == AppState::InGame;
+    if (needsGameCursorUnlock) {
         UnlockHubCursor();
         ImGui::GetIO().MouseDrawCursor = false;
         if (!cursorShown_) {
@@ -655,8 +655,15 @@ void Overlay::DrawWatermark() {
     dl->AddText(fSmall_, sz, ImVec2(disp.x - hSz.x - 16.0f, 12.0f + sz + 2.0f), IM_COL32(224, 179, 74, 170), hint);
 }
 
-// Save-loaded state is event-latched in GameHooks, not polled here.
-bool Overlay::InSave() const { return GameHooks::InSave(); }
+// Save-loaded state is pushed by GameHooks' world/menu transition hooks, not polled here.
+bool Overlay::InSave() const { return appState_ == AppState::InGame; }
+
+void Overlay::SetInGame(bool inGame) {
+    const AppState next = inGame ? AppState::InGame : AppState::MainMenu;
+    if (appState_ == next) return;
+    appState_ = next;
+    SyncCursorState();
+}
 
 void Overlay::DrawHub() {
     ImGuiIO& io = ImGui::GetIO();

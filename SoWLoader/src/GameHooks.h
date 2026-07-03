@@ -13,10 +13,6 @@ public:
     // Install the menu and world-load hooks. Call from the worker thread.
     void Install();
 
-    // Game-state signal for scope-gated mods (see shared/SoWModAPI.h). Event-latched, NOT polled:
-    // front-end ctor and save-to-menu teardown clear it, OnWorldLoad sets it.
-    static bool InSave();
-
     GameHooks(const GameHooks&) = delete;
     GameHooks& operator=(const GameHooks&) = delete;
 

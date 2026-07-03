@@ -48,6 +48,7 @@ static void* __fastcall HookRootLayerCtor(void* self, void* a2, void* a3) {
     }
     void* r = oRootLayerCtor(self, a2, a3);     // forward first so the object is fully initialized
     ::InterlockedExchange(&g_inSave, 0);
+    Overlay::Get().SetInGame(false);
     EnsureOverlay("frontend-rootlayer-ctor");
     return r;
 }
@@ -60,6 +61,7 @@ static OnWorldLoadFn oOnWorldLoad = nullptr;
 static void __fastcall HookOnWorldLoad(void* self, void* worldInfo, void* faction) {
     oOnWorldLoad(self, worldInfo, faction);
     ::InterlockedExchange(&g_inSave, 1);
+    Overlay::Get().SetInGame(true);
     if (!s_worldLogged) {
         s_worldLogged = true;
         Log::Get().Line("[state] OnWorldLoad hit - save/world loaded");
@@ -77,10 +79,8 @@ static void __fastcall HookSaveToFrontEndClear(void* self) {
     if (::InterlockedExchange(&g_inSave, 0) != 0) {
         Log::Get().Line("[state] save-to-front-end clear hit - menu/not-in-save");
     }
+    Overlay::Get().SetInGame(false);
 }
-
-// Event-driven: g_inSave is written only by the state hooks, so this is a trivial bool read.
-bool GameHooks::InSave() { return g_inSave != 0; }
 
 void GameHooks::Install() {
     auto& log = Log::Get();
