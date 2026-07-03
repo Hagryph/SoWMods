@@ -373,12 +373,21 @@ void Overlay::DrawFrame(IDXGISwapChain* swap) {
     }
 
     ImGui::GetIO().MouseDrawCursor = false;   // use the smooth OS hardware cursor, not ImGui's software one
-    // Reconcile the OS cursor with the hub state (balanced ShowCursor +1/-1), covering every close
-    // path (F8, ESC, CLOSE button) from one place.
-    if (menuOpen_ != cursorShown_) { ::ShowCursor(menuOpen_); cursorShown_ = menuOpen_; }
-    // In-game the engine ClipCursor()s the pointer to the window for mouselook; release it every frame
-    // while the hub is open so the cursor is free to roam the UI (the game re-clips once we close).
-    if (menuOpen_) ::ClipCursor(nullptr);
+    // The engine hides the OS cursor via a ShowCursor() refcount it drives negative (often every frame) and
+    // ClipCursor()s the pointer to the window for mouselook. A single +1 on the open transition loses that
+    // refcount war, so every frame while the hub is open we PIN the count to exactly 0 (visible): climb up
+    // out of negative, and back down if we overshot above 0. Combined with eating WM_INPUT (camera lock),
+    // this frees the cursor to roam the UI. On close we drive it back to -1 so the game gets its hidden state.
+    if (menuOpen_) {
+        int c = ::ShowCursor(TRUE);
+        while (c < 0) c = ::ShowCursor(TRUE);    // still hidden -> keep raising
+        while (c > 0) c = ::ShowCursor(FALSE);   // overshot -> lower back to 0
+        ::ClipCursor(nullptr);                   // release the mouselook clip every frame
+        cursorShown_ = true;
+    } else if (cursorShown_) {
+        while (::ShowCursor(FALSE) >= 0) {}       // just closed -> restore the engine's hidden cursor
+        cursorShown_ = false;
+    }
 
     ImGui_ImplDX11_NewFrame();
     ImGui_ImplWin32_NewFrame();
