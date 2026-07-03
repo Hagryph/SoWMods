@@ -305,7 +305,9 @@ LRESULT __stdcall Overlay::WndProc(HWND h, UINT msg, WPARAM w, LPARAM l) {
         o.menuOpen_ = !o.menuOpen_;
         char b[96]; ::wsprintfA(b, "[F8] hub=%d inSave=%d", (int)o.menuOpen_, (int)GameHooks::InSave());
         Log::Get().Line(b);
-        SyncGamePause(o.menuOpen_ && GameHooks::InSave());  // reconcile now (the swallow below returns early)
+        // Reconcile now (the input-swallow below returns before line 333). NOT gated on InSave(): the
+        // pause-show self-gates — FUN_1406cdf0c no-ops when the "PauseMenu" screen is absent (main menu).
+        SyncGamePause(o.menuOpen_);
     }
     // ESC closes the hub while it's open (cursor visibility is reconciled in DrawFrame).
     if (msg == WM_KEYDOWN && w == VK_ESCAPE && o.menuOpen_) o.menuOpen_ = false;
@@ -330,9 +332,9 @@ LRESULT __stdcall Overlay::WndProc(HWND h, UINT msg, WPARAM w, LPARAM l) {
             }
         }
     }
-    // Keep the game's own pause matched to the hub (freeze + cursor via the game's ESC path), in a save
-    // only. Runs on every message, so a CLOSE-button close (set on the render thread) resyncs on next input.
-    SyncGamePause(o.menuOpen_ && GameHooks::InSave());
+    // Keep the game's own pause matched to the hub (freeze + cursor via the game's ESC path). Runs on every
+    // message, so a CLOSE-button close (set on the render thread) resyncs on next input. Self-gates in-save.
+    SyncGamePause(o.menuOpen_);
     return ::CallWindowProcW(o.origWndProc_, h, msg, w, l);
 }
 
