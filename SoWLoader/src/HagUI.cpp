@@ -168,16 +168,24 @@ void HagUI::AddList(int page, const char* const* items, const char* const* cats,
 }
 void HagUI::AddFacetedList(int page, const char* const* facetNames, int facetCount,
                            const char* const* displays, int itemCount, const char* const* facetValues) {
+    AddFacetedActionList(page, facetNames, facetCount, displays, nullptr, itemCount, facetValues, nullptr);
+}
+void HagUI::AddFacetedActionList(int page, const char* const* facetNames, int facetCount,
+                                 const char* const* displays, const char* const* ids, int itemCount,
+                                 const char* const* facetValues, void (*onAdd)(const char* id, int count)) {
     if (page < 0 || page >= (int)pages_.size() || itemCount < 0 || facetCount < 0) return;
     Widget w{}; w.type = WList; w.toggle = nullptr; w.onClick = nullptr;
+    w.onItemAdd = onAdd;
     w.facets.resize(facetCount);
     for (int f = 0; f < facetCount; ++f)
         w.facets[f].name = (facetNames && facetNames[f]) ? facetNames[f] : "";
 
     auto blank = [](const std::string& v) { return v.empty() || v == "-"; };
     w.items.reserve(itemCount); w.itemFacetIdx.reserve(itemCount);
+    if (ids) w.itemIds.reserve(itemCount);
     for (int i = 0; i < itemCount; ++i) {
         w.items.emplace_back(displays && displays[i] ? displays[i] : "");
+        if (ids) w.itemIds.emplace_back(ids[i] ? ids[i] : "");
         std::vector<int> idx(facetCount, -1);
         for (int f = 0; f < facetCount; ++f) {
             // facetValues is row-major itemCount x facetCount (see HagUIAPI.h)

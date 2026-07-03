@@ -101,6 +101,17 @@ inline constexpr std::uintptr_t kFrontEndRootLayerDtor     = 0x14197694cull; // 
 inline constexpr std::uintptr_t kFrontEndRootLayerDelDtor  = 0x141976a24ull; // vtable slot 0: deleting dtor
 inline constexpr std::uintptr_t kPlayerBaseVtable          = 0x141f995e0ull; // shared Character base (Talion + orcs) — NOT a unique in-save anchor
 
+// --- Inventory editor live add path (RE'd + live-verified 2026-07-03) ---
+// Inventory container vtable. The current player container is found by scanning for this vtable and
+// validating owner/vector fields; do not hardcode heap addresses.
+inline constexpr std::uintptr_t kInventoryContainerVtable = 0x141fd63f0ull;
+// DAT_142700530 -> Inventory.Item descriptor. Descriptor +0x28 = row count, +0x38 = sorted row table.
+// Rows are 0x28 bytes: +0x04 hash, +0x20 record-name char*. The row start is the Inventory.Item* used
+// by the inventory container entries.
+inline constexpr std::uintptr_t kInventoryItemDescriptor = 0x142700530ull;
+inline constexpr std::uintptr_t kInventoryAddItem        = 0x1401c01e0ull; // (container, itemRow, count)
+inline constexpr std::uintptr_t kInventorySetEntryCount  = 0x1401bfec8ull; // (entry, newCount)
+
 // FrontEndLoadWorld — rejected probe. It loads the front-end 3D BACKDROP world + background images,
 // not the "menu shown" or save->menu return moment: hooking 0x141d6f0a8 installed fine but it did
 // not fire when returning from a save to the main menu. Kept for reference only; not used by hooks.

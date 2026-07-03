@@ -935,6 +935,7 @@ void Overlay::DrawHub() {
                     }
 
                     // --- grouped, scrolling list ---
+                    bool openAddPopup = false;
                     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(10.0f * sx, 6.0f * sy));
                     ImGui::SetCursorScreenPos(ImVec2(X(listX), Y(listTopAS)));
                     ImGui::BeginChild("##itemlist", ImVec2(listW * sx, (listBotAS - listTopAS) * sy),
@@ -981,12 +982,26 @@ void Overlay::DrawHub() {
                                 if (idx >= 0) { if (!tag.empty()) tag += "  \xC2\xB7  "; tag += wd.facets[fi].opts[idx]; }
                             }
                             ImGui::PushID(k);
-                            ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(0, 0, 0, 0));
-                            if (ImGui::Selectable(wd.items[k].c_str(), wd.listSel == k)) wd.listSel = k;
-                            ImGui::PopStyleColor();
+                            const float rowW = ImGui::GetContentRegionAvail().x;
+                            const float rowH = ImGui::GetTextLineHeightWithSpacing();
+                            ImGui::InvisibleButton("##itemrow", ImVec2(rowW, rowH));
+                            const bool rowHovered = ImGui::IsItemHovered();
+                            if (ImGui::IsItemClicked()) {
+                                wd.listSel = k;
+                                if (wd.onItemAdd && k < (int)wd.itemIds.size() && !wd.itemIds[k].empty()) {
+                                    wd.actionSel = k;
+                                    wd.actionCount = 1;
+                                    openAddPopup = true;
+                                }
+                            }
                             {
                                 const ImVec2 ra = ImGui::GetItemRectMin();
                                 const ImVec2 rb = ImGui::GetItemRectMax();
+                                if (wd.listSel == k || rowHovered) {
+                                    const ImU32 bg = wd.listSel == k ? IM_COL32(0xE0, 0xB3, 0x4A, 42)
+                                                                     : IM_COL32(0xE0, 0xB3, 0x4A, 24);
+                                    dl->AddRectFilled(ra, rb, bg, 4.0f * s);
+                                }
                                 const float rowW = rb.x - ra.x;
                                 const float tagGap = 10.0f * sx;
                                 float tagW = 0.0f;
@@ -1010,6 +1025,31 @@ void Overlay::DrawHub() {
                         }
                     }
                     ImGui::EndChild();
+                    if (openAddPopup) {
+                        ImGui::OpenPopup("Add item##count");
+                    }
+                    if (wd.onItemAdd && ImGui::BeginPopupModal("Add item##count", nullptr,
+                            ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings)) {
+                        const int k = wd.actionSel;
+                        const char* itemName = (k >= 0 && k < (int)wd.items.size()) ? wd.items[k].c_str() : "";
+                        ImGui::TextUnformatted(itemName);
+                        ImGui::Separator();
+                        ImGui::SetNextItemWidth(150.0f * sx);
+                        if (ImGui::InputInt("Count", &wd.actionCount, 1, 10)) {
+                            if (wd.actionCount < 1) wd.actionCount = 1;
+                            if (wd.actionCount > 9999) wd.actionCount = 9999;
+                        }
+                        if (ImGui::Button("Add", ImVec2(90.0f * sx, 0.0f))) {
+                            if (k >= 0 && k < (int)wd.itemIds.size())
+                                wd.onItemAdd(wd.itemIds[k].c_str(), wd.actionCount);
+                            ImGui::CloseCurrentPopup();
+                        }
+                        ImGui::SameLine();
+                        if (ImGui::Button("Cancel", ImVec2(90.0f * sx, 0.0f))) {
+                            ImGui::CloseCurrentPopup();
+                        }
+                        ImGui::EndPopup();
+                    }
                     ImGui::PopStyleVar();       // list child WindowPadding
                     ImGui::PopStyleVar(4);      // FrameRounding, PopupRounding, FramePadding, ScrollbarSize
                     ImGui::PopStyleColor(19);

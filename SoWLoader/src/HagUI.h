@@ -27,6 +27,9 @@ public:
     void AddList(int page, const char* const* items, const char* const* cats, int count);
     void AddFacetedList(int page, const char* const* facetNames, int facetCount,
                         const char* const* displays, int itemCount, const char* const* facetValues);
+    void AddFacetedActionList(int page, const char* const* facetNames, int facetCount,
+                              const char* const* displays, const char* const* ids, int itemCount,
+                              const char* const* facetValues, void (*onAdd)(const char* id, int count));
 
     // Read access for the renderer (Overlay::DrawHub): tabs exist ONLY for registered pages.
     enum WType { WLabel = 0, WToggle = 1, WButton = 2, WList = 3 };
@@ -41,9 +44,13 @@ public:
         WType type; std::string text; bool* toggle; void (*onClick)();
         // WList payload (set once) + live UI state (mutated by the renderer each frame).
         std::vector<std::string>      items;         // row display strings
+        std::vector<std::string>      itemIds;       // optional stable row ids for action lists
         std::vector<std::vector<int>> itemFacetIdx;  // [item][facet] -> opt index in facets[f], or -1
         std::vector<Facet>            facets;        // facet defs + live selection masks
+        void (*onItemAdd)(const char* id, int count) = nullptr;
         mutable int  listSel   = -1;                 // selected row (-1 = none)
+        mutable int  actionSel = -1;                 // row pending in the count popup
+        mutable int  actionCount = 1;
         mutable char search[64] = {};                // search box text (ImGui InputText buffer)
     };
     struct Page   { std::string title; int scope = 0; std::vector<Widget> widgets; };  // scope: 0=global,1=local

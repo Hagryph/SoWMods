@@ -13,7 +13,7 @@
 
 extern "C" {
 
-constexpr std::uint32_t HAGUI_ABI_VERSION = 3;
+constexpr std::uint32_t HAGUI_ABI_VERSION = 4;
 
 struct HagUIAPI {
     std::uint32_t abiVersion;                              // == HAGUI_ABI_VERSION
@@ -35,6 +35,12 @@ struct HagUIAPI {
     void (*AddFacetedList)(int page, const char* const* facetNames, int facetCount,
                            const char* const* displays, int itemCount,
                            const char* const* facetValues);
+    // v4: same visual/list behavior as AddFacetedList, but each row carries a stable caller-owned
+    // id copied by HagUI. Clicking a row opens a count prompt and then calls onAdd(id, count).
+    void (*AddFacetedActionList)(int page, const char* const* facetNames, int facetCount,
+                                 const char* const* displays, const char* const* ids, int itemCount,
+                                 const char* const* facetValues,
+                                 void (*onAdd)(const char* id, int count));
 };
 
 // Exported by the loader DLL. Returns null if the requested ABI version is unsupported.

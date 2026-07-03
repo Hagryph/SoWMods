@@ -10,7 +10,12 @@
 #include <vector>
 #include <fstream>
 #include <sstream>
+#include <algorithm>
+#include <cstdint>
+#include <cstring>
+#include <unordered_map>
 
+#include "GameOffsets.h"
 #include "HagUIAPI.h"    // ../../shared
 #include "SoWModAPI.h"   // ../../shared
 
@@ -20,6 +25,268 @@ HMODULE g_self = nullptr;
 struct Row { std::string category, slot, set, rarity, tier, record, display; };
 
 void Log(const std::string& m) { ::OutputDebugStringA(("[InventoryEditor] " + m + "\n").c_str()); }
+
+constexpr std::uintptr_t kRowSize = 0x28;
+constexpr std::uintptr_t kInvVecBegin = 0x740;
+constexpr std::uintptr_t kInvVecEnd = 0x748;
+constexpr std::uintptr_t kInvDirty = 0x76c;
+
+template <class T>
+bool ReadMem(std::uintptr_t addr, T& out) {
+    __try {
+        out = *reinterpret_cast<T*>(addr);
+        return true;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+}
+
+template <class T>
+bool WriteMem(std::uintptr_t addr, const T& value) {
+    __try {
+        *reinterpret_cast<T*>(addr) = value;
+        return true;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+}
+
+size_t SafeStringLen(const char* s) {
+    if (!s) return {};
+    __try {
+        return ::strnlen_s(s, 256);
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return 0;
+    }
+}
+
+std::string SafeString(const char* s) {
+    const size_t n = SafeStringLen(s);
+    return n ? std::string(s, n) : std::string{};
+}
+
+bool CallSetEntryCount(std::uintptr_t entry, std::uint32_t count) {
+    using SetCountFn = void(__fastcall*)(std::uintptr_t, std::uint32_t);
+    __try {
+        reinterpret_cast<SetCountFn>(game::FromRVA(game::kInventorySetEntryCount))(entry, count);
+        return true;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+}
+
+bool CallAddItem(std::uintptr_t inv, std::uintptr_t itemRow, std::uint32_t count) {
+    using AddFn = bool(__fastcall*)(std::uintptr_t, std::uintptr_t, std::uint32_t);
+    __try {
+        return reinterpret_cast<AddFn>(game::FromRVA(game::kInventoryAddItem))(inv, itemRow, count);
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+}
+
+bool IsReadableRange(std::uintptr_t addr, std::size_t len) {
+    MEMORY_BASIC_INFORMATION mbi{};
+    if (!addr || !::VirtualQuery(reinterpret_cast<void*>(addr), &mbi, sizeof(mbi))) return false;
+    if (mbi.State != MEM_COMMIT || (mbi.Protect & PAGE_GUARD) || (mbi.Protect & PAGE_NOACCESS)) return false;
+    const auto start = reinterpret_cast<std::uintptr_t>(mbi.BaseAddress);
+    const auto end = start + mbi.RegionSize;
+    return addr >= start && len <= end - addr;
+}
+
+std::vector<std::string> Split(const std::string& s, char sep) {
+    std::vector<std::string> out;
+    std::string cur;
+    std::istringstream is(s);
+    while (std::getline(is, cur, sep)) out.push_back(cur);
+    return out;
+}
+
+bool StartsWith(const std::string& s, const char* prefix) {
+    const size_t n = std::strlen(prefix);
+    return s.size() >= n && s.compare(0, n, prefix) == 0;
+}
+
+const char* SlotToken(const std::string& gearType) {
+    if (gearType.find("Sword") != std::string::npos) return "1Sword";
+    if (gearType.find("Dagger") != std::string::npos) return "2Dagger";
+    if (gearType.find("Bow") != std::string::npos) return "3Bow";
+    if (gearType.find("Armor") != std::string::npos) return "4Armor";
+    if (gearType.find("Cape") != std::string::npos || gearType.find("Cloak") != std::string::npos) return "5Cape";
+    return "";
+}
+
+bool IsLegendaryTheme(const std::string& v) {
+    static const char* kThemes[] = {
+        "Celebrimbor", "Vendetta", "Dark", "Feral", "Machine", "Marauder", "Mystic",
+        "Outlaw", "Ringwraith", "Slaughter", "Terror", "Warmonger", "Ringcraft"
+    };
+    for (const char* t : kThemes) if (v == t) return true;
+    return false;
+}
+
+std::vector<std::string> CandidateItemRecords(const std::string& record) {
+    std::vector<std::string> out;
+    out.push_back(record);
+    if (!StartsWith(record, "GearArt_")) return out;
+
+    auto parts = Split(record.substr(8), '_');
+    if (parts.empty()) return out;
+    const std::string type = parts[0];
+    const std::string slot = SlotToken(type);
+    if (slot.empty()) return out;
+
+    std::string theme;
+    std::string tierOrRarity;
+    if (parts.size() >= 2) theme = parts[1];
+    if (parts.size() >= 3) tierOrRarity = parts[2];
+
+    auto addPrimary = [&](const std::string& suffix) {
+        out.push_back("Primary_" + slot + "_" + suffix);
+        if (type.find("BowSnipe") != std::string::npos) out.push_back("PrimSnipe_3Bow_" + suffix);
+    };
+
+    if (theme == "1Common" || theme == "2Uncommon" || theme == "3Rare" || theme == "4Epic") {
+        addPrimary(theme);
+    } else if (IsLegendaryTheme(theme)) {
+        addPrimary("5Lgnd_" + theme);
+        addPrimary("5Lgnd_" + theme + "_DebugGrant");
+    } else if (tierOrRarity == "3Rare" || tierOrRarity == "4Epic") {
+        addPrimary(tierOrRarity);
+    }
+    return out;
+}
+
+std::unordered_map<std::string, std::uintptr_t>& ItemIndex() {
+    static std::unordered_map<std::string, std::uintptr_t> index;
+    static bool built = false;
+    if (built) return index;
+    built = true;
+
+    std::uintptr_t desc = 0;
+    if (!ReadMem(game::FromRVA(game::kInventoryItemDescriptor), desc) || !desc) {
+        Log("Inventory.Item descriptor unavailable");
+        return index;
+    }
+    std::uint32_t count = 0;
+    std::uintptr_t table = 0;
+    if (!ReadMem(desc + 0x28, count) || !ReadMem(desc + 0x38, table) || !table) {
+        Log("Inventory.Item descriptor has no table");
+        return index;
+    }
+    for (std::uint32_t i = 0; i < count; ++i) {
+        const std::uintptr_t row = table + i * kRowSize;
+        const char* name = nullptr;
+        if (!ReadMem(row + 0x20, name)) continue;
+        std::string key = SafeString(name);
+        if (!key.empty()) index.emplace(std::move(key), row);
+    }
+    Log("indexed " + std::to_string(index.size()) + " Inventory.Item rows");
+    return index;
+}
+
+std::uintptr_t ResolveItemRow(const std::string& record, std::string& resolvedName) {
+    auto& index = ItemIndex();
+    for (const auto& candidate : CandidateItemRecords(record)) {
+        auto it = index.find(candidate);
+        if (it != index.end()) {
+            resolvedName = candidate;
+            return it->second;
+        }
+    }
+    return 0;
+}
+
+bool ValidateInventoryContainer(std::uintptr_t candidate) {
+    std::uintptr_t vtable = 0, owner = 0, ownerVtable = 0, begin = 0, end = 0;
+    if (!ReadMem(candidate, vtable) || vtable != game::FromRVA(game::kInventoryContainerVtable)) return false;
+    if (!ReadMem(candidate + 0x440, owner) || !owner) return false;
+    if (!ReadMem(owner, ownerVtable) || ownerVtable != game::FromRVA(game::kPlayerBaseVtable)) return false;
+    if (!ReadMem(candidate + kInvVecBegin, begin) || !ReadMem(candidate + kInvVecEnd, end)) return false;
+    if (end < begin || ((end - begin) & 7) != 0) return false;
+    const std::uintptr_t count = (end - begin) / 8;
+    return count > 0 && count < 5000 && IsReadableRange(begin, static_cast<std::size_t>(end - begin));
+}
+
+std::uintptr_t FindInventoryContainer() {
+    static std::uintptr_t cached = 0;
+    if (cached && ValidateInventoryContainer(cached)) return cached;
+
+    const std::uintptr_t target = game::FromRVA(game::kInventoryContainerVtable);
+    SYSTEM_INFO si{};
+    ::GetSystemInfo(&si);
+    std::uintptr_t p = reinterpret_cast<std::uintptr_t>(si.lpMinimumApplicationAddress);
+    const std::uintptr_t max = reinterpret_cast<std::uintptr_t>(si.lpMaximumApplicationAddress);
+    while (p < max) {
+        MEMORY_BASIC_INFORMATION mbi{};
+        if (!::VirtualQuery(reinterpret_cast<void*>(p), &mbi, sizeof(mbi))) break;
+        const std::uintptr_t base = reinterpret_cast<std::uintptr_t>(mbi.BaseAddress);
+        const std::uintptr_t end = base + mbi.RegionSize;
+        const bool readable = mbi.State == MEM_COMMIT && !(mbi.Protect & PAGE_GUARD) &&
+                              !(mbi.Protect & PAGE_NOACCESS);
+        if (readable) {
+            for (std::uintptr_t q = base; q + sizeof(std::uintptr_t) <= end; q += sizeof(std::uintptr_t)) {
+                std::uintptr_t value = 0;
+                if (ReadMem(q, value) && value == target && ValidateInventoryContainer(q)) {
+                    cached = q;
+                    Log("inventory container found @ 0x" + std::to_string(cached));
+                    return cached;
+                }
+            }
+        }
+        p = end;
+    }
+    Log("inventory container not found");
+    return 0;
+}
+
+std::uintptr_t FindEntry(std::uintptr_t container, std::uintptr_t itemRow, std::uint32_t* count = nullptr) {
+    std::uintptr_t begin = 0, end = 0;
+    if (!ReadMem(container + kInvVecBegin, begin) || !ReadMem(container + kInvVecEnd, end) || end < begin)
+        return 0;
+    for (std::uintptr_t p = begin; p < end; p += sizeof(std::uintptr_t)) {
+        std::uintptr_t entry = 0, entryItem = 0;
+        if (!ReadMem(p, entry) || !entry || !ReadMem(entry, entryItem)) continue;
+        if (entryItem == itemRow) {
+            if (count) ReadMem(entry + 0x20, *count);
+            return entry;
+        }
+    }
+    return 0;
+}
+
+void GrantItem(const char* id, int count) {
+    if (!id || count <= 0) return;
+    if (count > 9999) count = 9999;
+
+    std::string resolved;
+    const std::uintptr_t itemRow = ResolveItemRow(id, resolved);
+    if (!itemRow) {
+        Log(std::string("no Inventory.Item mapping for ") + id);
+        return;
+    }
+    const std::uintptr_t inv = FindInventoryContainer();
+    if (!inv) return;
+
+    std::uint32_t before = 0;
+    const std::uintptr_t existing = FindEntry(inv, itemRow, &before);
+    if (existing) {
+        const std::uint32_t afterCount = before + static_cast<std::uint32_t>(count);
+        if (!CallSetEntryCount(existing, afterCount)) {
+            WriteMem(existing + 0x20, afterCount);
+        }
+        const std::uint8_t dirty = 1;
+        WriteMem(inv + kInvDirty, dirty);
+    } else {
+        if (!CallAddItem(inv, itemRow, static_cast<std::uint32_t>(count))) {
+            Log("add wrapper raised SEH after call; verifying memory anyway");
+        }
+    }
+
+    std::uint32_t after = 0;
+    const std::uintptr_t entry = FindEntry(inv, itemRow, &after);
+    Log(std::string("grant ") + id + " -> " + resolved +
+        (entry ? (" count " + std::to_string(before) + " -> " + std::to_string(after)) : " failed"));
+}
 
 std::wstring CatalogPath() {
     wchar_t p[MAX_PATH]{};
@@ -71,22 +338,27 @@ extern "C" __declspec(dllexport) void SoWMod_Init(int page) {
     const int nf = (int)(sizeof(kFacets) / sizeof(kFacets[0]));
 
     std::vector<std::string> displays;                 // owns the row strings
+    std::vector<std::string> ids;                      // owns stable row ids passed back on click
     std::vector<std::string> values;                   // owns the facet-value strings (row-major)
     displays.reserve(rows.size());
+    ids.reserve(rows.size());
     values.reserve(rows.size() * nf);
     for (const auto& r : rows) {
         displays.push_back(r.display);
+        ids.push_back(r.record);
         values.push_back(r.category);                  // facet 0
         values.push_back(r.slot);                      // facet 1
         values.push_back(r.set);                       // facet 2
         values.push_back(r.rarity);                    // facet 3
         values.push_back(r.tier);                      // facet 4
     }
-    std::vector<const char*> dp, vp;
-    dp.reserve(displays.size()); vp.reserve(values.size());
+    std::vector<const char*> dp, ip, vp;
+    dp.reserve(displays.size()); ip.reserve(ids.size()); vp.reserve(values.size());
     for (const auto& s : displays) dp.push_back(s.c_str());
+    for (const auto& s : ids)      ip.push_back(s.c_str());
     for (const auto& s : values)   vp.push_back(s.c_str());
-    ui->AddFacetedList(page, kFacets, nf, dp.data(), (int)displays.size(), vp.data());  // HagUI copies
+    ui->AddFacetedActionList(page, kFacets, nf, dp.data(), ip.data(), (int)displays.size(),
+                             vp.data(), &GrantItem);  // HagUI copies
     Log("filled tab (page " + std::to_string(page) + ") with " + std::to_string(displays.size()) + " items");
 }
 
