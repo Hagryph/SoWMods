@@ -71,6 +71,7 @@ private:
 
     void StyleHagUI();        // black + gold ImGui theme
     void LoadFonts();         // real TTFs at resolution-scaled sizes (no bitmap-font pixelation)
+    void SyncCursorState();   // game cursor gate + Win32 capture/clip/show handoff for the hub
     void DrawWatermark();     // always-on "SoWLoader — Hagryph" + F8 hint (ImGui foreground list)
     void DrawHub();           // the modal hub window (tabs, welcome, close)
     bool imguiInit_   = false;

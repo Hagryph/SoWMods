@@ -286,6 +286,12 @@ static int ForceShowCursor() {
 static void RestoreShowCursor(int calls) {
     while (calls-- > 0) ::ShowCursor(FALSE);
 }
+static void UnlockHubCursor() {
+    SafeSetCursorFlag(1);                              // engine: stop recenter/clip/hide-show routines
+    ::ReleaseCapture();                                // Win32: drop any mouse capture held by the game window
+    ::ClipCursor(nullptr);                             // Win32: clear any client-rect cursor clamp
+    ::SetCursor(::LoadCursorW(nullptr, IDC_ARROW));    // Win32: keep a normal hardware arrow over the hub
+}
 [[maybe_unused]] static std::uintptr_t PauseUiCtx() {   // SEH-only: resolve uiCtx = *(*(engine) + 0xe38); 0 on fault
     __try {
         const std::uintptr_t eng = *reinterpret_cast<std::uintptr_t*>(game::FromRVA(game::kEngineSingleton));
@@ -319,6 +325,7 @@ LRESULT __stdcall Overlay::WndProc(HWND h, UINT msg, WPARAM w, LPARAM l) {
     // F8 toggles the hub (ignore auto-repeat: bit 30 of lParam set == key was already down).
     if (msg == WM_KEYDOWN && w == VK_F8 && (l & 0x40000000) == 0) {
         o.menuOpen_ = !o.menuOpen_;
+        o.SyncCursorState();   // apply immediately; don't wait for the next Present
         char b[96]; ::wsprintfA(b, "[F8] hub=%d inSave=%d", (int)o.menuOpen_, (int)GameHooks::InSave());
         Log::Get().Line(b);
         // NOTE: game sim-freeze is NOT wired — the pause lever is unfound (the FUN_1406cdf0c uiCtx chain is
@@ -328,7 +335,10 @@ LRESULT __stdcall Overlay::WndProc(HWND h, UINT msg, WPARAM w, LPARAM l) {
         // not called until the real SimulationTimeScale lever is found.
     }
     // ESC closes the hub while it's open (cursor visibility is reconciled in DrawFrame).
-    if (msg == WM_KEYDOWN && w == VK_ESCAPE && o.menuOpen_) o.menuOpen_ = false;
+    if (msg == WM_KEYDOWN && w == VK_ESCAPE && o.menuOpen_) {
+        o.menuOpen_ = false;
+        o.SyncCursorState();
+    }
 
     if (o.imguiInit_) {
         ImGui_ImplWin32_WndProcHandler(h, msg, w, l);
@@ -352,6 +362,28 @@ LRESULT __stdcall Overlay::WndProc(HWND h, UINT msg, WPARAM w, LPARAM l) {
     }
     // (Game sim-freeze intentionally not wired — see the F8 handler note above and GameOffsets.h "PAUSE".)
     return ::CallWindowProcW(o.origWndProc_, h, msg, w, l);
+}
+
+void Overlay::SyncCursorState() {
+    if (!imguiInit_) return;
+
+    // CURSOR for the hub. Use the OS cursor; ImGui's software cursor is rendered at the game menu
+    // cadence and visibly trails during hover movement. The balanced ShowCursor calls only live while
+    // the hub is open, and kCursorCtrlDisable keeps the engine from recentering/clipping/hiding it.
+    if (menuOpen_) {
+        UnlockHubCursor();
+        ImGui::GetIO().MouseDrawCursor = false;
+        if (!cursorShown_) {
+            cursorShowBalance_ = ForceShowCursor();
+            cursorShown_ = true;
+        }
+    } else if (cursorShown_) {
+        SafeSetCursorFlag(0);                              // engine: resume cursor control (mouselook recapture)
+        ImGui::GetIO().MouseDrawCursor = false;
+        RestoreShowCursor(cursorShowBalance_);
+        cursorShowBalance_ = 0;
+        cursorShown_ = false;
+    }
 }
 
 void Overlay::DrawFrame(IDXGISwapChain* swap) {
@@ -388,25 +420,7 @@ void Overlay::DrawFrame(IDXGISwapChain* swap) {
         Log::Get().Good("[overlay] ImGui online; WndProc subclassed on the game window (F8 opens the hub)");
     }
 
-    // CURSOR for the hub. Use the OS cursor; ImGui's software cursor is rendered at the game menu
-    // cadence and visibly trails during hover movement. The balanced ShowCursor calls only live while
-    // the hub is open, and kCursorCtrlDisable keeps the engine from recentering/clipping it.
-    if (menuOpen_) {
-        SafeSetCursorFlag(1);                              // engine: stop recenter/clip so ImGui reads true mouse
-        ImGui::GetIO().MouseDrawCursor = false;
-        if (!cursorShown_) {
-            cursorShowBalance_ = ForceShowCursor();
-            cursorShown_ = true;
-        }
-        ::SetCursor(::LoadCursorW(nullptr, IDC_ARROW));
-        ::ClipCursor(nullptr);
-    } else if (cursorShown_) {
-        SafeSetCursorFlag(0);                              // engine: resume cursor control (mouselook recapture)
-        ImGui::GetIO().MouseDrawCursor = false;
-        RestoreShowCursor(cursorShowBalance_);
-        cursorShowBalance_ = 0;
-        cursorShown_ = false;
-    }
+    SyncCursorState();
 
     ImGui_ImplDX11_NewFrame();
     ImGui_ImplWin32_NewFrame();
