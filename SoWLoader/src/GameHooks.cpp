@@ -5,7 +5,6 @@
 #include "GameOffsets.h"   // ../shared : game::FromRVA + the hand-found RVAs
 
 #include <MinHook.h>
-#include <tlhelp32.h>   // thread enumeration for arming the hardware breakpoint on every thread
 #include <string>
 #include <cstdint>
 
