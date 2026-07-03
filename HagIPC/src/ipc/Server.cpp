@@ -4,6 +4,7 @@
 #include "ipc/CallExec.h"
 #include "ipc/HookProbe.h"
 #include "ipc/WatchProbe.h"
+#include "ipc/MonitorProbe.h"
 #include "ipc/MemScan.h"
 #include "Offsets.h"
 #include "Log.h"
@@ -345,6 +346,20 @@ std::string Server::Dispatch(const std::string& line) {
         return WatchProbe::Get().Arm(addr, len);
     }
     if (cmd == "unwatch") { return WatchProbe::Get().Disarm(); }
+
+    // ---- sampling call-edge monitor: record who-calls-whom across all threads while active ----
+    if (cmd == "monitor") {
+        if (tk.size() >= 2 && tk[1] == "stop") return MonitorProbe::Get().Stop();
+        if (tk.size() < 2 || tk[1] != "start") return "err usage: monitor start [intervalMs] | monitor stop";
+        unsigned ms = 0;
+        if (tk.size() >= 3) { std::uint64_t v = 0; if (!ParseU64(tk[2], v)) return "err bad intervalMs"; ms = (unsigned)v; }
+        return MonitorProbe::Get().Start(ms);
+    }
+    if (cmd == "monitorlog") {
+        std::uint64_t max = 0;
+        if (tk.size() >= 2 && !ParseU64(tk[1], max)) return "err bad max";
+        return MonitorProbe::Get().Drain(static_cast<std::size_t>(max));
+    }
     if (cmd == "watchlog") {
         std::uint64_t max = 0;
         if (tk.size() >= 2 && !ParseU64(tk[1], max)) return "err bad max";
