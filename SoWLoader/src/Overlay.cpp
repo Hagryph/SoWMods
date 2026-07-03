@@ -2,6 +2,7 @@
 #include "Log.h"
 #include "HagUI.h"
 #include "GameHooks.h"
+#include "GameOffsets.h"   // ../shared: game::FromRVA + kPauseToggle (call the game's own pause)
 #include "Loader.h"
 #include "SoWModAPI.h"   // ../shared: SOWMOD_LOCAL scope constant
 
@@ -264,6 +265,23 @@ long __stdcall Overlay::HookPresent(IDXGISwapChain* swap, unsigned sync, unsigne
     return oPresent_(swap, sync, flags);
 }
 
+// Drive the game's OWN pause (what ESC calls) to match the hub state. FUN_1406cdf0c toggles the pause
+// menu = the game's real sim-freeze + cursor. We track our own toggle and flip it only on change, so the
+// pause opens/closes exactly with the hub. MUST run on the game message thread (this is WndProc). SEH-only
+// helper (no C++ objects) so __try is legal; a bad/early state just no-ops.
+static void SyncGamePause(bool wantPaused) {
+    static bool s_paused = false;
+    if (wantPaused == s_paused) return;
+    __try {
+        const std::uintptr_t eng = *reinterpret_cast<std::uintptr_t*>(game::FromRVA(game::kEngineSingleton));
+        if (!eng) return;
+        void* uiCtx = *reinterpret_cast<void**>(eng + game::kUiCtxOff);
+        if (!uiCtx) return;
+        reinterpret_cast<void(__fastcall*)(void*)>(game::FromRVA(game::kPauseToggle))(uiCtx);
+        s_paused = wantPaused;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {}
+}
+
 // Subclassed onto the GAME window: ImGui reads input from the game's own message stream (no separate
 // window -> no focus split, no z-order/monitor problems). While the hub is open we swallow input so it
 // doesn't leak to the game; when closed everything passes straight through.
@@ -294,6 +312,9 @@ LRESULT __stdcall Overlay::WndProc(HWND h, UINT msg, WPARAM w, LPARAM l) {
             }
         }
     }
+    // Keep the game's own pause matched to the hub (freeze + cursor via the game's ESC path), in a save
+    // only. Runs on every message, so a CLOSE-button close (set on the render thread) resyncs on next input.
+    SyncGamePause(o.menuOpen_ && GameHooks::InSave());
     return ::CallWindowProcW(o.origWndProc_, h, msg, w, l);
 }
 
@@ -517,8 +538,9 @@ void Overlay::DrawHub() {
     ImGuiIO& io = ImGui::GetIO();
     const ImVec2 disp = io.DisplaySize;
 
-    // dim + block the game behind the modal card
-    ImGui::GetBackgroundDrawList()->AddRectFilled(ImVec2(0, 0), disp, IM_COL32(6, 6, 10, 190));
+    // dim + block the game behind the modal card. In a save the game's own pause menu is open behind us
+    // (that's how we freeze), so make the backdrop OPAQUE there to hide it — at the menu, keep it a dim.
+    ImGui::GetBackgroundDrawList()->AddRectFilled(ImVec2(0, 0), disp, IM_COL32(6, 6, 10, InSave() ? 255 : 190));
 
     // The Skyrim card is 820x462; our card keeps that ~1.78 aspect, so one scale maps every AS
     // coordinate to screen (sx for x, sy for y, s for radii/sizes/fonts).

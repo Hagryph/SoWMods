@@ -50,8 +50,16 @@ inline constexpr std::uintptr_t kMainWindowHwnd2 = 0x142c88000; // second copy t
 // NOTE: DAT_1427030c8 is a cursor-clamp-disable flag (every cursor clamp/hide/recenter routine gates on
 // `== 0`), BUT setting it to 1 in gameplay had NO observable effect — the "pause + free cursor" seen
 // while probing it was actually the game pausing on WINDOW FOCUS LOSS (our tooling stole focus), not
-// this flag. Left here only as a warning: it is NOT the pause lever. The real pause is the sim
-// time-scale system (CUIPauseMenuBaseLayer::OnActivate -> FUN_14046bdec time-scale-0 request).
+// this flag. Left here only as a warning: it is NOT the pause lever.
+
+// PAUSE — what the ESC hotkey calls (RE'd 2026-07-03, live-verified: toggled the pause menu closed).
+// The ESC handler does `FUN_1406cdf0c(*(DAT_1426ffa98 + 0xe38))` — a ONE-arg toggle of the "PauseMenu"
+// screen, which runs the game's real pause (sim freeze via the time-scale system + cursor). Reproduce it
+// as: uiCtx = *(*(kEngineSingleton) + kUiCtxOff); ((void(__fastcall*)(void*))kPauseToggle)(uiCtx). MUST be
+// called on the game's message/main thread (our WndProc qualifies) — it mutates UI state.
+inline constexpr std::uintptr_t kPauseToggle    = 0x1406cdf0c; // FUN_1406cdf0c(uiCtx): toggle pause menu
+inline constexpr std::uintptr_t kEngineSingleton = 0x1426ffa98; // DAT_1426ffa98: ptr-to the engine singleton
+inline constexpr std::uintptr_t kUiCtxOff       = 0xe38;       // engine + 0xe38 -> the pause UI context
 
 // --- Front-end / start menu (LithTech "Kraken" ClientShell) ---
 // CUIFrontEndRootLayer::CUIFrontEndRootLayer — constructor of the front-end menu's ROOT UI layer.
