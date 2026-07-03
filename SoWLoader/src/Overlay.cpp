@@ -571,11 +571,18 @@ static void DrawFieldTextClipped(ImDrawList* dl, ImFont* f, float px,
                                  ImVec2 frameMin, ImVec2 frameMax,
                                  const char* text, ImU32 col,
                                  float padX, float padY,
-                                 bool caret) {
+                                 bool caret,
+                                 const ImVec4* outerClip = nullptr) {
     if (!text) text = "";
     const float edgeGuard = 1.0f;
-    const ImVec4 clip(frameMin.x + padX + edgeGuard, frameMin.y + padY + edgeGuard,
-                      frameMax.x - padX - edgeGuard, frameMax.y - padY - edgeGuard);
+    ImVec4 clip(frameMin.x + padX + edgeGuard, frameMin.y + padY + edgeGuard,
+                frameMax.x - padX - edgeGuard, frameMax.y - padY - edgeGuard);
+    if (outerClip) {
+        clip.x = std::max(clip.x, outerClip->x);
+        clip.y = std::max(clip.y, outerClip->y);
+        clip.z = std::min(clip.z, outerClip->z);
+        clip.w = std::min(clip.w, outerClip->w);
+    }
     if (clip.z <= clip.x || clip.w <= clip.y) return;
 
     const ImVec2 sz = f ? f->CalcTextSizeA(px, 3.4e38f, 0.0f, text) : ImGui::CalcTextSize(text);
@@ -932,6 +939,11 @@ void Overlay::DrawHub() {
                     ImGui::SetCursorScreenPos(ImVec2(X(listX), Y(listTopAS)));
                     ImGui::BeginChild("##itemlist", ImVec2(listW * sx, (listBotAS - listTopAS) * sy),
                                       true, ImGuiWindowFlags_None);
+                    const ImVec2 childMin = ImGui::GetWindowPos();
+                    const ImVec2 childSize = ImGui::GetWindowSize();
+                    const ImVec4 listClip(childMin.x + 1.0f, childMin.y + 1.0f,
+                                          childMin.x + childSize.x - 1.0f,
+                                          childMin.y + childSize.y - 1.0f);
                     if (vis.empty()) {
                         ImGui::TextDisabled("no items match the current filters");
                     } else {
@@ -986,10 +998,12 @@ void Overlay::DrawHub() {
                                 const float tagLeft = rb.x - tagW;
                                 const float itemRight = tag.empty() ? rb.x : std::max(ra.x, tagLeft - tagGap);
                                 DrawFieldTextClipped(dl, fBody_, 15.0f * s, ra, ImVec2(itemRight, rb.y),
-                                                     wd.items[k].c_str(), uText, 6.0f * sx, 1.0f * sy, false);
+                                                     wd.items[k].c_str(), uText, 6.0f * sx, 1.0f * sy, false,
+                                                     &listClip);
                                 if (!tag.empty()) {
                                     DrawFieldTextClipped(dl, fBody_, 15.0f * s, ImVec2(tagLeft, ra.y), rb,
-                                                         tag.c_str(), uFaint, 4.0f * sx, 1.0f * sy, false);
+                                                         tag.c_str(), uFaint, 4.0f * sx, 1.0f * sy, false,
+                                                         &listClip);
                                 }
                             }
                             ImGui::PopID();
