@@ -274,6 +274,18 @@ static void SafeSetCursorFlag(unsigned v) {   // SEH-only: kCursorCtrlDisable = 
     __try { *reinterpret_cast<volatile unsigned*>(game::FromRVA(game::kCursorCtrlDisable)) = v; }
     __except (EXCEPTION_EXECUTE_HANDLER) {}
 }
+static int ForceShowCursor() {
+    int calls = 0;
+    int count = -1;
+    do {
+        count = ::ShowCursor(TRUE);
+        ++calls;
+    } while (count < 0 && calls < 32);
+    return calls;
+}
+static void RestoreShowCursor(int calls) {
+    while (calls-- > 0) ::ShowCursor(FALSE);
+}
 [[maybe_unused]] static std::uintptr_t PauseUiCtx() {   // SEH-only: resolve uiCtx = *(*(engine) + 0xe38); 0 on fault
     __try {
         const std::uintptr_t eng = *reinterpret_cast<std::uintptr_t*>(game::FromRVA(game::kEngineSingleton));
@@ -376,20 +388,23 @@ void Overlay::DrawFrame(IDXGISwapChain* swap) {
         Log::Get().Good("[overlay] ImGui online; WndProc subclassed on the game window (F8 opens the hub)");
     }
 
-    // CURSOR for the hub. Fighting the OS cursor loses: the engine keeps it hidden (ShowCursor refcount it
-    // owns) and blanks the image (hCursor=0) — verified live via GetCursorInfo. So we DON'T use the OS cursor;
-    // we let ImGui draw its OWN software cursor (part of our frame → always visible over the game, and it even
-    // shows up in PrintWindow captures). The one thing we still need from the engine is to stop it recentering
-    // the pointer, or ImGui would read a wrong (re-centered) mouse position: kCursorCtrlDisable = 1 makes the
-    // engine hands-off (every clip/hide/recenter routine gates on == 0). Eating WM_INPUT locks the camera.
+    // CURSOR for the hub. Use the OS cursor; ImGui's software cursor is rendered at the game menu
+    // cadence and visibly trails during hover movement. The balanced ShowCursor calls only live while
+    // the hub is open, and kCursorCtrlDisable keeps the engine from recentering/clipping it.
     if (menuOpen_) {
         SafeSetCursorFlag(1);                              // engine: stop recenter/clip so ImGui reads true mouse
-        ImGui::GetIO().MouseDrawCursor = true;            // ImGui paints its own cursor sprite
+        ImGui::GetIO().MouseDrawCursor = false;
+        if (!cursorShown_) {
+            cursorShowBalance_ = ForceShowCursor();
+            cursorShown_ = true;
+        }
+        ::SetCursor(::LoadCursorW(nullptr, IDC_ARROW));
         ::ClipCursor(nullptr);
-        cursorShown_ = true;
     } else if (cursorShown_) {
         SafeSetCursorFlag(0);                              // engine: resume cursor control (mouselook recapture)
         ImGui::GetIO().MouseDrawCursor = false;
+        RestoreShowCursor(cursorShowBalance_);
+        cursorShowBalance_ = 0;
         cursorShown_ = false;
     }
 
@@ -413,18 +428,58 @@ static ImVec4 Rgb(int r, int g, int b, float a = 1.0f) {
 // ImGui 1.92 removed single-arg PushFont; push each TTF at the size it was loaded with (LegacySize).
 static void PushF(ImFont* f) { ImGui::PushFont(f, f ? f->LegacySize : 0.0f); }
 
-// Rounded rect with a vertical color gradient (AddRectFilledMultiColor can't round). Straight
-// gradient middle + rounded caps top/bottom; caps are clipped to their zone so the radius isn't
-// clamped by a short rect. Colors are continuous, so it reads as one smooth gradient.
+// Rounded rect with a vertical color gradient (AddRectFilledMultiColor can't round). Draw it as
+// horizontal strips clipped analytically to the rounded shape; this avoids cap/middle seam lines.
 static void RoundedVGrad(ImDrawList* dl, ImVec2 a, ImVec2 b, ImU32 top, ImU32 bot, float rad) {
-    if (rad <= 0.5f || b.y - a.y <= 2.0f * rad) { dl->AddRectFilledMultiColor(a, b, top, top, bot, bot); return; }
-    dl->AddRectFilledMultiColor(ImVec2(a.x, a.y + rad), ImVec2(b.x, b.y - rad), top, top, bot, bot);
-    dl->PushClipRect(ImVec2(a.x, a.y), ImVec2(b.x, a.y + rad), true);
-    dl->AddRectFilled(a, ImVec2(b.x, a.y + 2.0f * rad), top, rad, ImDrawFlags_RoundCornersTop);
-    dl->PopClipRect();
-    dl->PushClipRect(ImVec2(a.x, b.y - rad), ImVec2(b.x, b.y), true);
-    dl->AddRectFilled(ImVec2(a.x, b.y - 2.0f * rad), b, bot, rad, ImDrawFlags_RoundCornersBottom);
-    dl->PopClipRect();
+    const float w = b.x - a.x;
+    const float h = b.y - a.y;
+    if (rad <= 0.5f || w <= 1.0f || h <= 1.0f) {
+        dl->AddRectFilledMultiColor(a, b, top, top, bot, bot);
+        return;
+    }
+
+    rad = std::min(rad, std::min(w, h) * 0.5f);
+    const int bands = std::max(8, (int)std::ceil(h));
+    const ImVec2 uv = ImGui::GetFontTexUvWhitePixel();
+
+    auto colAt = [&](float y) {
+        float t = (y - a.y) / h;
+        t = t < 0.0f ? 0.0f : (t > 1.0f ? 1.0f : t);
+        auto c = [&](int sh) {
+            const int A = (top >> sh) & 0xFF;
+            const int B = (bot >> sh) & 0xFF;
+            return (int)(A + (B - A) * t + 0.5f);
+        };
+        return IM_COL32(c(0), c(8), c(16), c(24));
+    };
+    auto insetAt = [&](float y) {
+        if (y < a.y + rad) {
+            const float dy = (a.y + rad) - y;
+            return rad - std::sqrt(std::max(0.0f, rad * rad - dy * dy));
+        }
+        if (y > b.y - rad) {
+            const float dy = y - (b.y - rad);
+            return rad - std::sqrt(std::max(0.0f, rad * rad - dy * dy));
+        }
+        return 0.0f;
+    };
+
+    dl->PrimReserve(bands * 6, bands * 4);
+    for (int i = 0; i < bands; ++i) {
+        const float y0 = a.y + h * (float)i / (float)bands;
+        const float y1 = a.y + h * (float)(i + 1) / (float)bands;
+        const float x0 = insetAt(y0);
+        const float x1 = insetAt(y1);
+        const ImU32 c0 = colAt(y0);
+        const ImU32 c1 = colAt(y1);
+        const ImDrawIdx idx = (ImDrawIdx)dl->_VtxCurrentIdx;
+        dl->PrimWriteVtx(ImVec2(a.x + x0, y0), uv, c0);
+        dl->PrimWriteVtx(ImVec2(b.x - x0, y0), uv, c0);
+        dl->PrimWriteVtx(ImVec2(b.x - x1, y1), uv, c1);
+        dl->PrimWriteVtx(ImVec2(a.x + x1, y1), uv, c1);
+        dl->PrimWriteIdx(idx); dl->PrimWriteIdx(idx + 1); dl->PrimWriteIdx(idx + 2);
+        dl->PrimWriteIdx(idx); dl->PrimWriteIdx(idx + 2); dl->PrimWriteIdx(idx + 3);
+    }
 }
 
 static ImU32 LerpCol(ImU32 a, ImU32 b, float t) {
@@ -496,6 +551,28 @@ static void AddTextCX(ImDrawList* dl, ImFont* f, float px, ImVec2 pos, ImU32 col
     dl->AddText(f, px, pos, col, t);
     for (int i = v0; i < dl->VtxBuffer.Size; ++i)
         dl->VtxBuffer[i].pos.x = pos.x + (dl->VtxBuffer[i].pos.x - pos.x) * xs;
+}
+
+static void DrawFieldTextClipped(ImDrawList* dl, ImFont* f, float px,
+                                 ImVec2 frameMin, ImVec2 frameMax,
+                                 const char* text, ImU32 col,
+                                 float padX, float padY,
+                                 bool caret) {
+    if (!text) text = "";
+    const float edgeGuard = 1.0f;
+    const ImVec4 clip(frameMin.x + padX + edgeGuard, frameMin.y + padY + edgeGuard,
+                      frameMax.x - padX - edgeGuard, frameMax.y - padY - edgeGuard);
+    if (clip.z <= clip.x || clip.w <= clip.y) return;
+
+    const ImVec2 sz = f ? f->CalcTextSizeA(px, 3.4e38f, 0.0f, text) : ImGui::CalcTextSize(text);
+    float y = frameMin.y + (frameMax.y - frameMin.y - sz.y) * 0.5f;
+    y = std::max(clip.y, std::min(y, clip.w - sz.y));
+    dl->AddText(f, px, ImVec2(clip.x, y), col, text, nullptr, 0.0f, &clip);
+
+    if (caret && std::fmod(ImGui::GetTime(), 1.0) < 0.55) {
+        const float cx = std::min(clip.x + sz.x + 1.0f, clip.z - 1.0f);
+        dl->AddLine(ImVec2(cx, clip.y + 1.0f), ImVec2(cx, clip.w - 1.0f), col, 1.0f);
+    }
 }
 void Overlay::StyleHagUI() {
     ImGui::StyleColorsDark();
@@ -745,8 +822,21 @@ void Overlay::DrawHub() {
 
                     // --- row 1: search box + Clear ---
                     ImGui::SetCursorScreenPos(ImVec2(X(listX), Y(searchAS)));
-                    ImGui::SetNextItemWidth(listW * 0.74f * sx);
+                    const float searchW = listW * 0.74f * sx;
+                    ImGui::SetNextItemWidth(searchW);
+                    ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(0, 0, 0, 0));
+                    ImGui::PushStyleColor(ImGuiCol_TextDisabled, IM_COL32(0, 0, 0, 0));
                     ImGui::InputTextWithHint("##search", "search\xE2\x80\xA6", wd.search, sizeof(wd.search));
+                    ImGui::PopStyleColor(2);
+                    {
+                        const ImVec2 fa = ImGui::GetItemRectMin();
+                        const ImVec2 fb = ImGui::GetItemRectMax();
+                        const bool active = ImGui::IsItemActive();
+                        const char* shown = wd.search[0] ? wd.search : "search...";
+                        DrawFieldTextClipped(dl, fBody_, 15.0f * s, fa, fb, shown,
+                                             wd.search[0] ? uText : uFaint,
+                                             8.0f * sx, 3.0f * sy, active && wd.search[0]);
+                    }
                     ImGui::SameLine(0.0f, 10.0f * sx);
                     if (!anyActive) ImGui::BeginDisabled();
                     if (ImGui::Button("Clear", ImVec2(listW * 0.22f * sx, 0))) {
@@ -774,7 +864,19 @@ void Overlay::DrawHub() {
                         // (Set, Rarity) scroll inside the card instead of spilling past its frame.
                         const float maxPopupH = 8.0f * ImGui::GetTextLineHeightWithSpacing() + 12.0f * sy;
                         ImGui::SetNextWindowSizeConstraints(ImVec2(fw, 0.0f), ImVec2(fw, maxPopupH));
-                        if (ImGui::BeginCombo("##facet", lbl.c_str())) {
+                        ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(0, 0, 0, 0));
+                        const bool comboOpen = ImGui::BeginCombo("##facet", lbl.c_str());
+                        ImGui::PopStyleColor();
+                        {
+                            const ImVec2 fa = ImGui::GetItemRectMin();
+                            const ImVec2 fb = ImGui::GetItemRectMax();
+                            const float arrowReserve = ImGui::GetFrameHeight();
+                            DrawFieldTextClipped(dl, fBody_, 15.0f * s, fa,
+                                                 ImVec2(std::max(fa.x, fb.x - arrowReserve), fb.y),
+                                                 lbl.c_str(), uText,
+                                                 8.0f * sx, 3.0f * sy, false);
+                        }
+                        if (comboOpen) {
                             for (int j = 0; j < (int)F.opts.size(); ++j) {
                                 bool b = F.sel[j] != 0;
                                 ImGui::PushID(j);
@@ -846,13 +948,28 @@ void Overlay::DrawHub() {
                                 if (idx >= 0) { if (!tag.empty()) tag += "  \xC2\xB7  "; tag += wd.facets[fi].opts[idx]; }
                             }
                             ImGui::PushID(k);
+                            ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(0, 0, 0, 0));
                             if (ImGui::Selectable(wd.items[k].c_str(), wd.listSel == k)) wd.listSel = k;
-                            if (!tag.empty()) {
-                                const float tw = ImGui::CalcTextSize(tag.c_str()).x;
-                                ImGui::SameLine();
-                                const float rx = ImGui::GetContentRegionMax().x - tw;
-                                if (rx > ImGui::GetCursorPosX()) ImGui::SetCursorPosX(rx);
-                                ImGui::TextDisabled("%s", tag.c_str());
+                            ImGui::PopStyleColor();
+                            {
+                                const ImVec2 ra = ImGui::GetItemRectMin();
+                                const ImVec2 rb = ImGui::GetItemRectMax();
+                                const float rowW = rb.x - ra.x;
+                                const float tagGap = 10.0f * sx;
+                                float tagW = 0.0f;
+                                if (!tag.empty()) {
+                                    tagW = fBody_ ? fBody_->CalcTextSizeA(15.0f * s, 3.4e38f, 0.0f, tag.c_str()).x
+                                                   : ImGui::CalcTextSize(tag.c_str()).x;
+                                    tagW = std::min(tagW + 10.0f * sx, rowW * 0.42f);
+                                }
+                                const float tagLeft = rb.x - tagW;
+                                const float itemRight = tag.empty() ? rb.x : std::max(ra.x, tagLeft - tagGap);
+                                DrawFieldTextClipped(dl, fBody_, 15.0f * s, ra, ImVec2(itemRight, rb.y),
+                                                     wd.items[k].c_str(), uText, 6.0f * sx, 1.0f * sy, false);
+                                if (!tag.empty()) {
+                                    DrawFieldTextClipped(dl, fBody_, 15.0f * s, ImVec2(tagLeft, ra.y), rb,
+                                                         tag.c_str(), uFaint, 4.0f * sx, 1.0f * sy, false);
+                                }
                             }
                             ImGui::PopID();
                         }

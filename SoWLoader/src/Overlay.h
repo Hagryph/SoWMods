@@ -75,7 +75,8 @@ private:
     void DrawHub();           // the modal hub window (tabs, welcome, close)
     bool imguiInit_   = false;
     bool menuOpen_    = false;
-    bool cursorShown_ = false;   // tracks ShowCursor() balance for the hub
+    bool cursorShown_ = false;   // tracks forced OS cursor visibility for the hub
+    int  cursorShowBalance_ = 0;
     int  activeTab_   = 0;
     WNDPROC origWndProc_ = nullptr;
     // Fonts are the dynamic ImGui 1.92 type — one family each, rendered at any size via AddText.
