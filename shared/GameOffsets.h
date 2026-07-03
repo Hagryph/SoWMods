@@ -52,12 +52,16 @@ inline constexpr std::uintptr_t kMainWindowHwnd2 = 0x142c88000; // second copy t
 // while probing it was actually the game pausing on WINDOW FOCUS LOSS (our tooling stole focus), not
 // this flag. Left here only as a warning: it is NOT the pause lever.
 
-// PAUSE — what the ESC hotkey calls (RE'd 2026-07-03, live-verified: toggled the pause menu closed).
-// The ESC handler does `FUN_1406cdf0c(*(DAT_1426ffa98 + 0xe38))` — a ONE-arg toggle of the "PauseMenu"
-// screen, which runs the game's real pause (sim freeze via the time-scale system + cursor). Reproduce it
-// as: uiCtx = *(*(kEngineSingleton) + kUiCtxOff); ((void(__fastcall*)(void*))kPauseToggle)(uiCtx). MUST be
-// called on the game's message/main thread (our WndProc qualifies) — it mutates UI state.
-inline constexpr std::uintptr_t kPauseToggle    = 0x1406cdf0c; // FUN_1406cdf0c(uiCtx): toggle pause menu
+// PAUSE — what the ESC hotkey calls (RE'd 2026-07-03; corrected 2026-07-03: it is NOT a toggle).
+// FUN_1406cdf0c(uiCtx, unused, char show) is the pause-menu SHOW/HIDE primitive — THREE args. It looks up the
+// "PauseMenu" screen and calls FUN_1406cdfa0(uiCtx+0x40, screen, show): show!=0 activates it (its OnActivate,
+// FUN_141961068, pushes a SimulationTimeScale request via FUN_14046bdec = real sim-freeze + frees the cursor),
+// show==0 deactivates it. Earlier "it closed" was a 1-arg call where R8(show) happened to be 0. Reproduce:
+//   uiCtx = *(*(kEngineSingleton) + kUiCtxOff);
+//   ((void(__fastcall*)(void*,void*,char))kPauseToggle)(uiCtx, 0, wantPaused);   // explicit show flag
+// MUST be called on the game's message/main thread (our WndProc qualifies) — it mutates UI state.
+// (The full ESC handler FUN_1406cdd24 wraps this with input-capture setup; kPauseToggle alone drives freeze.)
+inline constexpr std::uintptr_t kPauseToggle    = 0x1406cdf0c; // FUN_1406cdf0c(uiCtx,_,show): show/hide PauseMenu
 inline constexpr std::uintptr_t kEngineSingleton = 0x1426ffa98; // DAT_1426ffa98: ptr-to the engine singleton
 inline constexpr std::uintptr_t kUiCtxOff       = 0xe38;       // engine + 0xe38 -> the pause UI context
 

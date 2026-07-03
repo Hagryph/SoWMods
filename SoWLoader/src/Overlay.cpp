@@ -265,10 +265,11 @@ long __stdcall Overlay::HookPresent(IDXGISwapChain* swap, unsigned sync, unsigne
     return oPresent_(swap, sync, flags);
 }
 
-// Drive the game's OWN pause (what ESC calls) to match the hub state. FUN_1406cdf0c toggles the pause
-// menu = the game's real sim-freeze + cursor. We track our own toggle and flip it only on change, so the
-// pause opens/closes exactly with the hub. MUST run on the game message thread (this is WndProc). SEH-only
-// helper (no C++ objects) so __try is legal; a bad/early state just no-ops.
+// Drive the game's OWN pause (what ESC calls) to match the hub state. FUN_1406cdf0c(uiCtx, 0, show) is the
+// pause-menu SHOW/HIDE primitive (NOT a toggle): param_3 is an explicit flag — 1 activates the "PauseMenu"
+// screen (its OnActivate pushes the SimulationTimeScale=0 request = real sim-freeze + frees the cursor), 0
+// deactivates it. We command show vs hide directly from the hub state, so there is no toggle-desync. MUST run
+// on the game message thread (this is WndProc). SEH-only helpers (no C++ objects) so __try is legal.
 static std::uintptr_t PauseUiCtx() {   // SEH-only: resolve uiCtx = *(*(engine) + 0xe38); 0 on fault
     __try {
         const std::uintptr_t eng = *reinterpret_cast<std::uintptr_t*>(game::FromRVA(game::kEngineSingleton));
@@ -276,10 +277,10 @@ static std::uintptr_t PauseUiCtx() {   // SEH-only: resolve uiCtx = *(*(engine) 
         return *reinterpret_cast<std::uintptr_t*>(eng + game::kUiCtxOff);
     } __except (EXCEPTION_EXECUTE_HANDLER) { return 0; }
 }
-static bool CallPauseToggle(std::uintptr_t uiCtx) {   // SEH-only: call FUN_1406cdf0c(uiCtx); false on fault
+static bool CallPauseShow(std::uintptr_t uiCtx, bool show) {   // SEH-only: FUN_1406cdf0c(uiCtx, 0, show)
     __try {
-        reinterpret_cast<void(__fastcall*)(void*)>(game::FromRVA(game::kPauseToggle))(
-            reinterpret_cast<void*>(uiCtx));
+        reinterpret_cast<void(__fastcall*)(void*, void*, char)>(game::FromRVA(game::kPauseToggle))(
+            reinterpret_cast<void*>(uiCtx), nullptr, show ? 1 : 0);
         return true;
     } __except (EXCEPTION_EXECUTE_HANDLER) { return false; }
 }
@@ -287,11 +288,11 @@ static void SyncGamePause(bool wantPaused) {
     static bool s_paused = false;
     if (wantPaused == s_paused) return;
     const std::uintptr_t uiCtx = PauseUiCtx();
-    { char b[128]; ::wsprintfA(b, "[pause] want=%d uiCtx=0x%p (toggling the game pause)", (int)wantPaused, (void*)uiCtx);
+    { char b[128]; ::wsprintfA(b, "[pause] want=%d uiCtx=0x%p (show/hide PauseMenu)", (int)wantPaused, (void*)uiCtx);
       Log::Get().Line(b); }
     if (!uiCtx) return;
-    if (CallPauseToggle(uiCtx)) s_paused = wantPaused;
-    else Log::Get().Line("[pause] toggle FAULTED");
+    if (CallPauseShow(uiCtx, wantPaused)) s_paused = wantPaused;
+    else Log::Get().Line("[pause] show/hide FAULTED");
 }
 
 // Subclassed onto the GAME window: ImGui reads input from the game's own message stream (no separate
@@ -304,6 +305,7 @@ LRESULT __stdcall Overlay::WndProc(HWND h, UINT msg, WPARAM w, LPARAM l) {
         o.menuOpen_ = !o.menuOpen_;
         char b[96]; ::wsprintfA(b, "[F8] hub=%d inSave=%d", (int)o.menuOpen_, (int)GameHooks::InSave());
         Log::Get().Line(b);
+        SyncGamePause(o.menuOpen_ && GameHooks::InSave());  // reconcile now (the swallow below returns early)
     }
     // ESC closes the hub while it's open (cursor visibility is reconciled in DrawFrame).
     if (msg == WM_KEYDOWN && w == VK_ESCAPE && o.menuOpen_) o.menuOpen_ = false;
