@@ -28,13 +28,14 @@ static volatile LONG s_overlayClaimed = 0;
 static bool          s_ctorLogged     = false;
 static bool          g_menuLive       = false;   // set when the front-end root layer is constructed
 
-// Game-state signal, driven by the FRONT-END's update activity on the GAME thread. RE showed SoW builds
-// the menu AND the HUD once and toggles VISIBILITY (the front-end root layer is hidden, not destroyed,
-// when a save loads — its dtor never fires). But the front-end's per-update item-refresh runs while the
-// menu is the active screen and STOPS once gameplay takes over. So a stale wall-clock (game thread, not
-// render frames — those stall when backgrounded) since the last front-end update == in a save.
-static volatile LONG64 g_lastMenuMs   = 0;      // GetTickCount64() of the last front-end update
-static const DWORD     kInSaveStaleMs = 1500;   // no menu update for this long => in a save (menu ticks ~2Hz)
+// Game-state signal = a real member of the front-end root layer. RE showed SoW builds the menu once and
+// toggles VISIBILITY (the layer is hidden, not destroyed, on load — so there's no dtor/lifecycle event).
+// A HagIPC hardware write breakpoint pinned the exact state variable: front-end + 0x2c (the menu-item
+// list's size/flag) is NON-ZERO while the menu is shown and 0 once gameplay takes over. Its writer is a
+// shared vector-clear (not cleanly hookable), so we simply READ it off the instance we capture in the
+// ctor — a definitive menu-vs-in-save state, no heartbeat, no polling of a timing signal.
+static void* volatile  g_frontEnd     = nullptr;   // captured front-end root layer instance
+static constexpr unsigned kActiveOff  = 0x2c;      // front-end member: != 0 at menu, 0 in a save
 static volatile LONG s_svCap          = 0;       // SetVariable log budget (armed at menu build)
 static volatile LONG s_locCap         = 0;       // loc-key log budget (armed at menu build)
 static volatile LONG s_facCap         = 0;       // factory-classNode log budget (armed at menu build)
@@ -57,7 +58,7 @@ static void* __fastcall HookRootLayerCtor(void* self, void* a2, void* a3) {
         Log::Get().Line("[frontend] CUIFrontEndRootLayer ctor hit — START MENU UI created");
     }
     g_menuLive = true; s_locCap = 300;                 // arm the loc-key logger for the menu-build window
-    g_lastMenuMs = (LONG64)::GetTickCount64();          // menu just (re)built => fresh heartbeat => Menu
+    g_frontEnd = self;                                 // capture the instance; InSave() reads self+0x2c
     EnsureOverlay("frontend-rootlayer-ctor");
     return oRootLayerCtor(self, a2, a3);                // forward to original (trampoline; never destructive)
 }
@@ -512,25 +513,20 @@ static void* __fastcall HookItemRefresh(void* self) {
             }
         }
     }
-    {   // front-end update heartbeat (GAME thread, ~2Hz at the menu). Bump the wall clock so InSave() can
-        // tell menu (updating) from in-game (stopped). Log only abnormally long gaps (> the stale window).
-        static LONG64 s_prev = 0;
-        const LONG64 now = (LONG64)::GetTickCount64();
-        const LONG64 gap = s_prev ? now - s_prev : 0; s_prev = now;
-        g_lastMenuMs = now;
-        if (gap > (LONG64)kInSaveStaleMs) {
-            char b[128]; ::wsprintfA(b, "[hbeat] long menu-update gap=%I64dms (returned from in-game?)", gap);
-            Log::Get().Line(b);
-        }
-    }
     return oItemRefresh(self);
 }
 
-// In a save once the front-end has stopped updating for a while (menu hidden, gameplay running). Uses
-// wall-clock on the game thread, so it is immune to render cadence / window backgrounding.
+// In a save iff the front-end root layer exists AND its active member (self+0x2c) has been cleared to 0
+// (menu hidden, gameplay running). Direct state read of the variable pinned by the write breakpoint —
+// no heartbeat, no timing. Guarded: null until the menu is first built; SEH-safe on the member read.
 bool GameHooks::InSave() {
-    if (!g_menuLive) return false;              // never reached a menu yet => not in a save
-    return ((LONG64)::GetTickCount64() - g_lastMenuMs) > (LONG64)kInSaveStaleMs;
+    void* fe = g_frontEnd;
+    if (!fe) return false;
+    __try {
+        return *reinterpret_cast<volatile int*>(reinterpret_cast<char*>(fe) + kActiveOff) == 0;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
 }
 
 void GameHooks::Install() {
