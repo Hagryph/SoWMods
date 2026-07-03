@@ -1,0 +1,14 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -NoProfile -ExecutionPolicy Bypass -File 'C:\\Users\\Yannis\\Desktop\\Desktop\\projects\\SoWMods\\.codex\\hooks\\auto-commit.ps1'"
+          }
+        ]
+      }
+    ]
+  }
+}

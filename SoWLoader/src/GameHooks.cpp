@@ -1,12 +1,10 @@
 #include "GameHooks.h"
 #include "Log.h"
 #include "Overlay.h"
-#include "Loader.h"        // Loader::OnGameWindow -> open console
 #include "GameOffsets.h"   // ../shared : game::FromRVA + the hand-found RVAs
 
 #include <MinHook.h>
 #include <string>
-#include <cstdint>
 
 namespace sow {
 
@@ -17,85 +15,19 @@ namespace sow {
 // correctly but proved TOO EARLY for the console: at that instant the window is an unactivated
 // 336x239 stub, so the console still won the foreground and became the "main" window. The console
 // trigger now lives in WindowWatch (SetWinEventHook in-context): the console opens when the game
-// window BECOMES FOREGROUND — the only moment that guarantees it drops behind the game.
+// window BECOMES FOREGROUND - the only moment that guarantees it drops behind the game.
 
 GameHooks& GameHooks::Get() { static GameHooks instance; return instance; }
 
-// Claim-once so the overlay is installed exactly one time no matter which path gets there first
-// (the front-end trigger on the game thread, or the worker-thread fallback).
+// Claim-once so the overlay is installed exactly one time no matter which path gets there first.
 static volatile LONG s_overlayClaimed = 0;
 static bool          s_ctorLogged     = false;
+static bool          s_worldLogged    = false;
 
-// EVENT-DRIVEN in-save signal. A HagIPC hardware write breakpoint pinned the state variable: front-end
-// root layer + 0x2c is NON-ZERO while the menu is shown and 0 once a save is loaded (SoW builds the menu
-// once and toggles visibility — there is no dtor/lifecycle event). We arm a hardware WRITE breakpoint
-// (debug register DR0) on that member, so the CPU traps the transition and our VEH refreshes g_inSave —
-// no polling, no per-frame work. InSave() is then a trivial bool read. See reference_sow-gamestate-signal.
-static void* volatile  g_frontEnd     = nullptr;   // captured front-end root layer instance
-static constexpr unsigned kActiveOff  = 0x2c;      // != 0 at the menu, 0 in a save
-static volatile LONG   g_inSave       = 0;         // 1 = in a save, 0 = at the menu
-static std::uintptr_t  g_watchAddr    = 0;         // = g_frontEnd + kActiveOff
-static PVOID           g_stateVeh     = nullptr;
-static bool            g_watchArmed   = false;
-
-// SEH-only helper (no C++ objects, so __try is legal here): read an int, fault -> fallback.
-static int SafeReadI32(std::uintptr_t addr, int fallback) {
-    __try { return *reinterpret_cast<volatile int*>(addr); }
-    __except (EXCEPTION_EXECUTE_HANDLER) { return fallback; }
-}
-
-static LONG CALLBACK StateVeh(EXCEPTION_POINTERS* ep) {
-    if (ep->ExceptionRecord->ExceptionCode == (DWORD)EXCEPTION_SINGLE_STEP &&
-        (ep->ContextRecord->Dr6 & 0x1ull) && g_watchAddr) {
-        const int v = SafeReadI32(g_watchAddr, 0);                         // read the new state value
-        ::InterlockedExchange(&g_inSave, v == 0 ? 1 : 0);
-        ep->ContextRecord->Dr6 &= ~0xFull;                                 // clear status, stay armed
-        return EXCEPTION_CONTINUE_EXECUTION;
-    }
-    return EXCEPTION_CONTINUE_SEARCH;
-}
-
-// Arm DR0 (write, 4 bytes) on every thread of this process except the caller. Runs once, from the
-// front-end ctor (game thread) — the thread that writes the flag already exists by then.
-static void ArmStateWatch(std::uintptr_t addr) {
-    if (g_watchArmed) return;
-    g_watchAddr = addr;
-    ::InterlockedExchange(&g_inSave, SafeReadI32(addr, 0) == 0 ? 1 : 0);   // seed from current value
-    if (!g_stateVeh) g_stateVeh = ::AddVectoredExceptionHandler(1, &StateVeh);
-    if (!g_stateVeh) return;
-
-    const DWORD pid = ::GetCurrentProcessId(), me = ::GetCurrentThreadId();
-    HANDLE snap = ::CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
-    if (snap == INVALID_HANDLE_VALUE) return;
-    THREADENTRY32 te{}; te.dwSize = sizeof(te);
-    int armed = 0;
-    if (::Thread32First(snap, &te)) {
-        do {
-            if (te.th32OwnerProcessID != pid || te.th32ThreadID == me) continue;
-            HANDLE h = ::OpenThread(THREAD_SUSPEND_RESUME | THREAD_GET_CONTEXT | THREAD_SET_CONTEXT,
-                                    FALSE, te.th32ThreadID);
-            if (!h) continue;
-            ::SuspendThread(h);
-            CONTEXT c{}; c.ContextFlags = CONTEXT_DEBUG_REGISTERS;
-            if (::GetThreadContext(h, &c)) {
-                c.Dr0 = addr;
-                c.Dr7 &= ~((DWORD64)0xF << 16);      // clear RW0/LEN0
-                c.Dr7 |= 0x1;                        // L0 enable
-                c.Dr7 |= ((DWORD64)0x1 << 16);       // RW0 = 01 (write)
-                c.Dr7 |= ((DWORD64)0x3 << 18);       // LEN0 = 11 (4 bytes)
-                c.ContextFlags = CONTEXT_DEBUG_REGISTERS;
-                if (::SetThreadContext(h, &c)) ++armed;
-            }
-            ::ResumeThread(h);
-            ::CloseHandle(h);
-        } while (::Thread32Next(snap, &te));
-    }
-    ::CloseHandle(snap);
-    g_watchArmed = true;
-    char l[128]; ::wsprintfA(l, "[state] in-save write bp armed @0x%p on %d thread(s) (event-driven)",
-                             (void*)addr, armed);
-    Log::Get().Line(l);
-}
+// Event-driven in-save signal. Front-end ctor clears it while the menu exists; OnWorldLoad sets it
+// once a save/world is registered; the save-to-front-end clear hook resets it when returning to menu.
+// There is no hardware breakpoint, no ticker, and no per-frame read.
+static volatile LONG g_inSave = 0;     // 1 = save/world loaded, 0 = menu/not in save
 
 static void EnsureOverlay(const char* who) {
     if (::InterlockedCompareExchange(&s_overlayClaimed, 1, 0) == 0) {
@@ -105,42 +37,92 @@ static void EnsureOverlay(const char* who) {
 }
 
 // CUIFrontEndRootLayer::CUIFrontEndRootLayer(this, ...): constructs the front-end menu root UI layer.
-// This is our start-menu trigger: install the overlay + arm the event-driven in-save breakpoint.
+// This is our start-menu trigger: install the overlay and mark menu/not-in-save.
 using RootLayerCtorFn = void* (__fastcall*)(void*, void*, void*);
 static RootLayerCtorFn oRootLayerCtor = nullptr;
 
 static void* __fastcall HookRootLayerCtor(void* self, void* a2, void* a3) {
     if (!s_ctorLogged) {
         s_ctorLogged = true;
-        Log::Get().Line("[frontend] CUIFrontEndRootLayer ctor hit — START MENU UI created");
+        Log::Get().Line("[frontend] CUIFrontEndRootLayer ctor hit - START MENU UI created");
     }
-    void* r = oRootLayerCtor(self, a2, a3);            // forward FIRST so the member is fully initialised
-    g_frontEnd = self;                                 // capture the instance
-    ArmStateWatch(reinterpret_cast<std::uintptr_t>(self) + kActiveOff);  // event-driven in-save signal
+    void* r = oRootLayerCtor(self, a2, a3);     // forward first so the object is fully initialized
+    ::InterlockedExchange(&g_inSave, 0);
     EnsureOverlay("frontend-rootlayer-ctor");
     return r;
 }
 
-// Event-driven: g_inSave is refreshed by the DR0 write-breakpoint handler the instant front-end+0x2c
-// changes, so this is a trivial bool read — no per-frame memory access, no polling.
+// OnWorldLoad(worldManager, worldInfo, faction): fires once during save load after leaving the
+// front-end flow. Live-verified to stay quiet in title/main menu/save selection.
+using OnWorldLoadFn = void (__fastcall*)(void*, void*, void*);
+static OnWorldLoadFn oOnWorldLoad = nullptr;
+
+static void __fastcall HookOnWorldLoad(void* self, void* worldInfo, void* faction) {
+    oOnWorldLoad(self, worldInfo, faction);
+    ::InterlockedExchange(&g_inSave, 1);
+    if (!s_worldLogged) {
+        s_worldLogged = true;
+        Log::Get().Line("[state] OnWorldLoad hit - save/world loaded");
+    }
+}
+
+// Save-to-front-end world reference clear. Live-verified via HagIPC 2026-07-03:
+// main-menu->save stays silent, save->main-menu hits repeatedly during teardown. This is the
+// reverse latch for OnWorldLoad; clearing is idempotent.
+using SaveToFrontEndClearFn = void (__fastcall*)(void*);
+static SaveToFrontEndClearFn oSaveToFrontEndClear = nullptr;
+
+static void __fastcall HookSaveToFrontEndClear(void* self) {
+    oSaveToFrontEndClear(self);
+    if (::InterlockedExchange(&g_inSave, 0) != 0) {
+        Log::Get().Line("[state] save-to-front-end clear hit - menu/not-in-save");
+    }
+}
+
+// Event-driven: g_inSave is written only by the state hooks, so this is a trivial bool read.
 bool GameHooks::InSave() { return g_inSave != 0; }
 
 void GameHooks::Install() {
     auto& log = Log::Get();
 
     MH_STATUS s = MH_Initialize();
-    if (s != MH_OK && s != MH_ERROR_ALREADY_INITIALIZED) { log.Line("[gamehooks] MH_Initialize failed"); return; }
+    if (s != MH_OK && s != MH_ERROR_ALREADY_INITIALIZED) {
+        log.Line("[gamehooks] MH_Initialize failed");
+        return;
+    }
 
-    // The one game hook we keep: the front-end root layer ctor (start-menu trigger; installs the overlay
-    // and arms the in-save write breakpoint). Everything else was RE scaffolding and has been removed.
-    void* target = reinterpret_cast<void*>(game::FromRVA(game::kCUIFrontEndRootLayerCtor));
-    char addr[32]{}; ::wsprintfA(addr, "0x%p", target);
-    if (MH_CreateHook(target, reinterpret_cast<void*>(&HookRootLayerCtor),
+    void* menuTarget = reinterpret_cast<void*>(game::FromRVA(game::kCUIFrontEndRootLayerCtor));
+    char menuAddr[32]{};
+    ::wsprintfA(menuAddr, "0x%p", menuTarget);
+    if (MH_CreateHook(menuTarget, reinterpret_cast<void*>(&HookRootLayerCtor),
                       reinterpret_cast<void**>(&oRootLayerCtor)) == MH_OK &&
-        MH_EnableHook(target) == MH_OK) {
-        log.Line(std::string("[gamehooks] front-end ctor hooked @ ") + addr + " — awaiting start menu");
+        MH_EnableHook(menuTarget) == MH_OK) {
+        log.Line(std::string("[gamehooks] front-end ctor hooked @ ") + menuAddr + " - awaiting start menu");
     } else {
-        log.Line(std::string("[gamehooks] front-end ctor hook FAILED @ ") + addr);
+        log.Line(std::string("[gamehooks] front-end ctor hook FAILED @ ") + menuAddr);
+    }
+
+    void* worldTarget = reinterpret_cast<void*>(game::FromRVA(game::kOnWorldLoad));
+    char worldAddr[32]{};
+    ::wsprintfA(worldAddr, "0x%p", worldTarget);
+    if (MH_CreateHook(worldTarget, reinterpret_cast<void*>(&HookOnWorldLoad),
+                      reinterpret_cast<void**>(&oOnWorldLoad)) == MH_OK &&
+        MH_EnableHook(worldTarget) == MH_OK) {
+        log.Line(std::string("[gamehooks] OnWorldLoad hooked @ ") + worldAddr + " - awaiting save/world load");
+    } else {
+        log.Line(std::string("[gamehooks] OnWorldLoad hook FAILED @ ") + worldAddr);
+    }
+
+    void* returnTarget = reinterpret_cast<void*>(game::FromRVA(game::kSaveToFrontEndClear));
+    char returnAddr[32]{};
+    ::wsprintfA(returnAddr, "0x%p", returnTarget);
+    if (MH_CreateHook(returnTarget, reinterpret_cast<void*>(&HookSaveToFrontEndClear),
+                      reinterpret_cast<void**>(&oSaveToFrontEndClear)) == MH_OK &&
+        MH_EnableHook(returnTarget) == MH_OK) {
+        log.Line(std::string("[gamehooks] save-to-front-end clear hooked @ ") + returnAddr +
+                 " - awaiting save-to-menu return");
+    } else {
+        log.Line(std::string("[gamehooks] save-to-front-end clear hook FAILED @ ") + returnAddr);
     }
 }
 

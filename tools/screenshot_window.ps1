@@ -17,15 +17,47 @@ Add-Type -AssemblyName System.Drawing
 Add-Type -Namespace Native -Name Cap -MemberDefinition @'
 [DllImport("user32.dll")] public static extern bool PrintWindow(IntPtr hWnd, IntPtr hdcBlt, uint nFlags);
 [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr hWnd, out RECT rect);
+[DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr hWnd);
+[DllImport("user32.dll")] public static extern bool EnumWindows(EnumWindowsProc callback, IntPtr lParam);
+[DllImport("user32.dll", EntryPoint="GetWindowThreadProcessId")] public static extern uint GetWindowThreadProcessIdForPid(IntPtr hWnd, out uint pid);
 [DllImport("user32.dll")] public static extern bool SetProcessDPIAware();
+public delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
 public struct RECT { public int Left, Top, Right, Bottom; }
 '@
 [Native.Cap]::SetProcessDPIAware() | Out-Null   # physical pixels, not DPI-virtualized
 
-$p = Get-Process -Name $ProcessName -ErrorAction Stop |
-     Where-Object { $_.MainWindowHandle -ne [IntPtr]::Zero } | Select-Object -First 1
-if (-not $p) { throw "process '$ProcessName' has no window" }
-$hwnd = $p.MainWindowHandle
+function Find-WindowForProcess([string]$Name) {
+    $procs = @(Get-Process -Name $Name -ErrorAction Stop)
+    $ids = @{}
+    foreach ($proc in $procs) { $ids[[uint32]$proc.Id] = $true }
+    $script:WindowSearchResult = [IntPtr]::Zero
+    $script:WindowSearchArea = 0
+    $callback = [Native.Cap+EnumWindowsProc]{
+        param([IntPtr]$hWnd, [IntPtr]$lParam)
+        $ownerPid = [uint32]0
+        [Native.Cap]::GetWindowThreadProcessIdForPid($hWnd, [ref]$ownerPid) | Out-Null
+        if ($ids.ContainsKey($ownerPid) -and [Native.Cap]::IsWindowVisible($hWnd)) {
+            $rect = New-Object Native.Cap+RECT
+            if ([Native.Cap]::GetWindowRect($hWnd, [ref]$rect)) {
+                $w = $rect.Right - $rect.Left
+                $h = $rect.Bottom - $rect.Top
+                if ($w -gt 0 -and $h -gt 0) {
+                    $area = $w * $h
+                    if ($area -gt $script:WindowSearchArea) {
+                        $script:WindowSearchResult = $hWnd
+                        $script:WindowSearchArea = $area
+                    }
+                }
+            }
+        }
+        return $true
+    }
+    [Native.Cap]::EnumWindows($callback, [IntPtr]::Zero) | Out-Null
+    if ($script:WindowSearchResult -eq [IntPtr]::Zero) { throw "process '$Name' has no visible window" }
+    return $script:WindowSearchResult
+}
+
+$hwnd = Find-WindowForProcess $ProcessName
 
 $r = New-Object Native.Cap+RECT
 if (-not [Native.Cap]::GetWindowRect($hwnd, [ref]$r)) { throw "GetWindowRect failed" }

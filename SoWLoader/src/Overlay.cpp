@@ -564,7 +564,7 @@ void Overlay::DrawWatermark() {
     dl->AddText(fSmall_, sz, ImVec2(disp.x - hSz.x - 16.0f, 12.0f + sz + 2.0f), IM_COL32(224, 179, 74, 170), hint);
 }
 
-// Save-loaded state is event-latched in GameHooks (front-end root layer ctor/dtor), not polled here.
+// Save-loaded state is event-latched in GameHooks, not polled here.
 bool Overlay::InSave() const { return GameHooks::InSave(); }
 
 void Overlay::DrawHub() {

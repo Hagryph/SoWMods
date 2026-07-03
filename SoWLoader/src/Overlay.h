@@ -65,8 +65,8 @@ private:
 
     // ---- ImGui hub (the in-frame HagUI, drawn into the game's own back buffer) ----
     static LRESULT __stdcall WndProc(HWND, UINT, WPARAM, LPARAM);  // game-window subclass for input
-    // True once a SAVE is loaded and gameplay is running. Gates save-local mod tabs in the hub.
-    // Event-latched in GameHooks (front-end root layer ctor/dtor), so it's stable — no per-frame poll.
+    // True once a SAVE/world is loaded. Gates save-local mod tabs in the hub.
+    // Event-latched in GameHooks, so there is no per-frame poll.
     bool InSave() const;
 
     void StyleHagUI();        // black + gold ImGui theme

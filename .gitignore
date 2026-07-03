@@ -13,3 +13,7 @@ ghidra/*.lock
 
 # Local logs
 *.log
+
+# Local reverse-engineering/test captures
+_*.png
+_*.txt

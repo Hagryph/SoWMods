@@ -26,11 +26,17 @@ Add-Type -Namespace Win -Name Key -MemberDefinition @'
 [DllImport("user32.dll")] public static extern bool BringWindowToTop(IntPtr h);
 [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
 [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr h, IntPtr pid);
+[DllImport("user32.dll", EntryPoint="GetWindowThreadProcessId")] public static extern uint GetWindowThreadProcessIdForPid(IntPtr h, out uint pid);
+[DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr h);
+[DllImport("user32.dll")] public static extern bool EnumWindows(EnumWindowsProc callback, IntPtr lParam);
+[DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr h, out RECT rect);
 [DllImport("kernel32.dll")] public static extern uint GetCurrentThreadId();
 [DllImport("user32.dll")] public static extern bool AttachThreadInput(uint from, uint to, bool attach);
 [DllImport("user32.dll")] public static extern short VkKeyScanW(char c);
 [DllImport("user32.dll")] public static extern uint MapVirtualKeyW(uint code, uint mapType);
 [DllImport("user32.dll")] public static extern void keybd_event(byte vk, byte scan, uint flags, UIntPtr extra);
+public delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
+public struct RECT { public int Left, Top, Right, Bottom; }
 '@
 
 # Reliably foreground a window despite Windows' foreground lock: attach our input thread to both the
@@ -65,10 +71,38 @@ function Resolve-Vk([string]$k) {
     throw "unknown key '$k'"
 }
 
-$p = Get-Process -Name $ProcessName -ErrorAction Stop |
-     Where-Object { $_.MainWindowHandle -ne [IntPtr]::Zero } | Select-Object -First 1
-if (-not $p) { throw "process '$ProcessName' has no window" }
-$h = $p.MainWindowHandle
+function Find-WindowForProcess([string]$Name) {
+    $procs = @(Get-Process -Name $Name -ErrorAction Stop)
+    $ids = @{}
+    foreach ($proc in $procs) { $ids[[uint32]$proc.Id] = $true }
+    $script:WindowSearchResult = [IntPtr]::Zero
+    $script:WindowSearchArea = 0
+    $callback = [Win.Key+EnumWindowsProc]{
+        param([IntPtr]$hWnd, [IntPtr]$lParam)
+        $ownerPid = [uint32]0
+        [Win.Key]::GetWindowThreadProcessIdForPid($hWnd, [ref]$ownerPid) | Out-Null
+        if ($ids.ContainsKey($ownerPid) -and [Win.Key]::IsWindowVisible($hWnd)) {
+            $rect = New-Object Win.Key+RECT
+            if ([Win.Key]::GetWindowRect($hWnd, [ref]$rect)) {
+                $w = $rect.Right - $rect.Left
+                $h = $rect.Bottom - $rect.Top
+                if ($w -gt 0 -and $h -gt 0) {
+                    $area = $w * $h
+                    if ($area -gt $script:WindowSearchArea) {
+                        $script:WindowSearchResult = $hWnd
+                        $script:WindowSearchArea = $area
+                    }
+                }
+            }
+        }
+        return $true
+    }
+    [Win.Key]::EnumWindows($callback, [IntPtr]::Zero) | Out-Null
+    if ($script:WindowSearchResult -eq [IntPtr]::Zero) { throw "process '$Name' has no visible window" }
+    return $script:WindowSearchResult
+}
+
+$h = Find-WindowForProcess $ProcessName
 
 if ($Foreground) { Force-Foreground $h; Start-Sleep -Milliseconds 250 }
 
