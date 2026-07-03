@@ -47,6 +47,12 @@ inline constexpr std::uintptr_t kPostWindowInit  = 0x1411798ac; // first call AF
 inline constexpr std::uintptr_t kMainWindowHwnd  = 0x142702640; // global HWND of the game main window
 inline constexpr std::uintptr_t kMainWindowHwnd2 = 0x142c88000; // second copy the engine keeps
 
+// "Suspend for UI" flag (RE'd 2026-07-03 via cursor-API hooks + a live write test). Every cursor
+// clamp/hide/recenter routine begins with `if (DAT_1427030c8 == 0)`, and setting it to 1 in gameplay
+// FREEZES the world AND frees the cursor in one shot. The game only ever writes 0 (never 1), so it's a
+// safe lever: write 1 to pause+unlock, 0 to resume+relock. Driven by the HagUI hub (F8).
+inline constexpr std::uintptr_t kUiSuspend       = 0x1427030c8; // int: 1 = pause + free cursor, 0 = normal
+
 // --- Front-end / start menu (LithTech "Kraken" ClientShell) ---
 // CUIFrontEndRootLayer::CUIFrontEndRootLayer — constructor of the front-end menu's ROOT UI layer.
 // Runs when the start-menu UI is built/shown, so this is our "start menu displayed" init trigger.
