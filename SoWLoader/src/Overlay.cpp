@@ -269,17 +269,29 @@ long __stdcall Overlay::HookPresent(IDXGISwapChain* swap, unsigned sync, unsigne
 // menu = the game's real sim-freeze + cursor. We track our own toggle and flip it only on change, so the
 // pause opens/closes exactly with the hub. MUST run on the game message thread (this is WndProc). SEH-only
 // helper (no C++ objects) so __try is legal; a bad/early state just no-ops.
+static std::uintptr_t PauseUiCtx() {   // SEH-only: resolve uiCtx = *(*(engine) + 0xe38); 0 on fault
+    __try {
+        const std::uintptr_t eng = *reinterpret_cast<std::uintptr_t*>(game::FromRVA(game::kEngineSingleton));
+        if (!eng) return 0;
+        return *reinterpret_cast<std::uintptr_t*>(eng + game::kUiCtxOff);
+    } __except (EXCEPTION_EXECUTE_HANDLER) { return 0; }
+}
+static bool CallPauseToggle(std::uintptr_t uiCtx) {   // SEH-only: call FUN_1406cdf0c(uiCtx); false on fault
+    __try {
+        reinterpret_cast<void(__fastcall*)(void*)>(game::FromRVA(game::kPauseToggle))(
+            reinterpret_cast<void*>(uiCtx));
+        return true;
+    } __except (EXCEPTION_EXECUTE_HANDLER) { return false; }
+}
 static void SyncGamePause(bool wantPaused) {
     static bool s_paused = false;
     if (wantPaused == s_paused) return;
-    __try {
-        const std::uintptr_t eng = *reinterpret_cast<std::uintptr_t*>(game::FromRVA(game::kEngineSingleton));
-        if (!eng) return;
-        void* uiCtx = *reinterpret_cast<void**>(eng + game::kUiCtxOff);
-        if (!uiCtx) return;
-        reinterpret_cast<void(__fastcall*)(void*)>(game::FromRVA(game::kPauseToggle))(uiCtx);
-        s_paused = wantPaused;
-    } __except (EXCEPTION_EXECUTE_HANDLER) {}
+    const std::uintptr_t uiCtx = PauseUiCtx();
+    { char b[128]; ::wsprintfA(b, "[pause] want=%d uiCtx=0x%p (toggling the game pause)", (int)wantPaused, (void*)uiCtx);
+      Log::Get().Line(b); }
+    if (!uiCtx) return;
+    if (CallPauseToggle(uiCtx)) s_paused = wantPaused;
+    else Log::Get().Line("[pause] toggle FAULTED");
 }
 
 // Subclassed onto the GAME window: ImGui reads input from the game's own message stream (no separate
@@ -288,7 +300,11 @@ static void SyncGamePause(bool wantPaused) {
 LRESULT __stdcall Overlay::WndProc(HWND h, UINT msg, WPARAM w, LPARAM l) {
     Overlay& o = Get();
     // F8 toggles the hub (ignore auto-repeat: bit 30 of lParam set == key was already down).
-    if (msg == WM_KEYDOWN && w == VK_F8 && (l & 0x40000000) == 0) o.menuOpen_ = !o.menuOpen_;
+    if (msg == WM_KEYDOWN && w == VK_F8 && (l & 0x40000000) == 0) {
+        o.menuOpen_ = !o.menuOpen_;
+        char b[96]; ::wsprintfA(b, "[F8] hub=%d inSave=%d", (int)o.menuOpen_, (int)GameHooks::InSave());
+        Log::Get().Line(b);
+    }
     // ESC closes the hub while it's open (cursor visibility is reconciled in DrawFrame).
     if (msg == WM_KEYDOWN && w == VK_ESCAPE && o.menuOpen_) o.menuOpen_ = false;
 
@@ -538,9 +554,8 @@ void Overlay::DrawHub() {
     ImGuiIO& io = ImGui::GetIO();
     const ImVec2 disp = io.DisplaySize;
 
-    // dim + block the game behind the modal card. In a save the game's own pause menu is open behind us
-    // (that's how we freeze), so make the backdrop OPAQUE there to hide it — at the menu, keep it a dim.
-    ImGui::GetBackgroundDrawList()->AddRectFilled(ImVec2(0, 0), disp, IM_COL32(6, 6, 10, InSave() ? 255 : 190));
+    // dim + block the game behind the modal card
+    ImGui::GetBackgroundDrawList()->AddRectFilled(ImVec2(0, 0), disp, IM_COL32(6, 6, 10, 190));
 
     // The Skyrim card is 820x462; our card keeps that ~1.78 aspect, so one scale maps every AS
     // coordinate to screen (sx for x, sy for y, s for radii/sizes/fonts).
