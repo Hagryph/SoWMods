@@ -5,9 +5,11 @@
 #include "GameOffsets.h"   // ../shared : game::FromRVA + the hand-found RVAs
 
 #include <MinHook.h>
+#include <tlhelp32.h>   // thread enumeration for arming the hardware breakpoint on every thread
 #include <string>
 #include <string.h>   // _strnicmp
 #include <intrin.h>   // _ReturnAddress
+#include <cstdint>
 
 namespace sow {
 
@@ -36,6 +38,75 @@ static bool          g_menuLive       = false;   // set when the front-end root 
 // ctor — a definitive menu-vs-in-save state, no heartbeat, no polling of a timing signal.
 static void* volatile  g_frontEnd     = nullptr;   // captured front-end root layer instance
 static constexpr unsigned kActiveOff  = 0x2c;      // front-end member: != 0 at menu, 0 in a save
+
+// EVENT-DRIVEN state: a hardware WRITE breakpoint (debug register DR0) on front-end + 0x2c. The CPU
+// traps the moment that member is written, so we are NOTIFIED of the menu<->save change instead of
+// polling it — the handler runs only on the (rare) transition, never per frame. It refreshes g_inSave
+// from the new value; InSave() just returns that bool. (Variable + writer were pinned with a HagIPC
+// hardware write breakpoint; see reference_sow-gamestate-signal.)
+static volatile LONG   g_inSave       = 0;         // 1 = in a save, 0 = at the menu
+static std::uintptr_t  g_watchAddr    = 0;         // = g_frontEnd + kActiveOff
+static PVOID           g_stateVeh     = nullptr;
+static bool            g_watchArmed   = false;
+
+// SEH-only helper (no C++ objects, so __try is legal here): read an int, fault -> fallback.
+static int SafeReadI32(std::uintptr_t addr, int fallback) {
+    __try { return *reinterpret_cast<volatile int*>(addr); }
+    __except (EXCEPTION_EXECUTE_HANDLER) { return fallback; }
+}
+
+static LONG CALLBACK StateVeh(EXCEPTION_POINTERS* ep) {
+    if (ep->ExceptionRecord->ExceptionCode == (DWORD)EXCEPTION_SINGLE_STEP &&
+        (ep->ContextRecord->Dr6 & 0x1ull) && g_watchAddr) {
+        const int v = SafeReadI32(g_watchAddr, 0);                         // read the new state value
+        ::InterlockedExchange(&g_inSave, v == 0 ? 1 : 0);
+        ep->ContextRecord->Dr6 &= ~0xFull;                                 // clear status, stay armed
+        return EXCEPTION_CONTINUE_EXECUTION;
+    }
+    return EXCEPTION_CONTINUE_SEARCH;
+}
+
+// Arm DR0 (write, 4 bytes) on every thread of this process except the caller. Runs once, from the
+// front-end ctor (game thread) — the thread that writes the flag already exists by then.
+static void ArmStateWatch(std::uintptr_t addr) {
+    if (g_watchArmed) return;
+    g_watchAddr = addr;
+    ::InterlockedExchange(&g_inSave, SafeReadI32(addr, 0) == 0 ? 1 : 0);   // seed from current value
+    if (!g_stateVeh) g_stateVeh = ::AddVectoredExceptionHandler(1, &StateVeh);
+    if (!g_stateVeh) return;
+
+    const DWORD pid = ::GetCurrentProcessId(), me = ::GetCurrentThreadId();
+    HANDLE snap = ::CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
+    if (snap == INVALID_HANDLE_VALUE) return;
+    THREADENTRY32 te{}; te.dwSize = sizeof(te);
+    int armed = 0;
+    if (::Thread32First(snap, &te)) {
+        do {
+            if (te.th32OwnerProcessID != pid || te.th32ThreadID == me) continue;
+            HANDLE h = ::OpenThread(THREAD_SUSPEND_RESUME | THREAD_GET_CONTEXT | THREAD_SET_CONTEXT,
+                                    FALSE, te.th32ThreadID);
+            if (!h) continue;
+            ::SuspendThread(h);
+            CONTEXT c{}; c.ContextFlags = CONTEXT_DEBUG_REGISTERS;
+            if (::GetThreadContext(h, &c)) {
+                c.Dr0 = addr;
+                c.Dr7 &= ~((DWORD64)0xF << 16);      // clear RW0/LEN0
+                c.Dr7 |= 0x1;                        // L0 enable
+                c.Dr7 |= ((DWORD64)0x1 << 16);       // RW0 = 01 (write)
+                c.Dr7 |= ((DWORD64)0x3 << 18);       // LEN0 = 11 (4 bytes)
+                c.ContextFlags = CONTEXT_DEBUG_REGISTERS;
+                if (::SetThreadContext(h, &c)) ++armed;
+            }
+            ::ResumeThread(h);
+            ::CloseHandle(h);
+        } while (::Thread32Next(snap, &te));
+    }
+    ::CloseHandle(snap);
+    g_watchArmed = true;
+    char l[128]; ::wsprintfA(l, "[state] hardware write bp armed @0x%p on %d thread(s) (event-driven in-save)",
+                             (void*)addr, armed);
+    Log::Get().Line(l);
+}
 static volatile LONG s_svCap          = 0;       // SetVariable log budget (armed at menu build)
 static volatile LONG s_locCap         = 0;       // loc-key log budget (armed at menu build)
 static volatile LONG s_facCap         = 0;       // factory-classNode log budget (armed at menu build)
@@ -58,9 +129,11 @@ static void* __fastcall HookRootLayerCtor(void* self, void* a2, void* a3) {
         Log::Get().Line("[frontend] CUIFrontEndRootLayer ctor hit — START MENU UI created");
     }
     g_menuLive = true; s_locCap = 300;                 // arm the loc-key logger for the menu-build window
-    g_frontEnd = self;                                 // capture the instance; InSave() reads self+0x2c
+    void* r = oRootLayerCtor(self, a2, a3);            // forward FIRST so the member is fully initialised
+    g_frontEnd = self;                                 // capture the instance
+    ArmStateWatch(reinterpret_cast<std::uintptr_t>(self) + kActiveOff);  // event-driven in-save signal
     EnsureOverlay("frontend-rootlayer-ctor");
-    return oRootLayerCtor(self, a2, a3);                // forward to original (trampoline; never destructive)
+    return r;
 }
 
 // Scaleform SetVariable(movie, pathObj, value, p4, flag). pathObj's first field points to the path
@@ -516,18 +589,9 @@ static void* __fastcall HookItemRefresh(void* self) {
     return oItemRefresh(self);
 }
 
-// In a save iff the front-end root layer exists AND its active member (self+0x2c) has been cleared to 0
-// (menu hidden, gameplay running). Direct state read of the variable pinned by the write breakpoint —
-// no heartbeat, no timing. Guarded: null until the menu is first built; SEH-safe on the member read.
-bool GameHooks::InSave() {
-    void* fe = g_frontEnd;
-    if (!fe) return false;
-    __try {
-        return *reinterpret_cast<volatile int*>(reinterpret_cast<char*>(fe) + kActiveOff) == 0;
-    } __except (EXCEPTION_EXECUTE_HANDLER) {
-        return false;
-    }
-}
+// Event-driven: g_inSave is refreshed by the DR0 write-breakpoint handler the instant front-end+0x2c
+// changes, so this is a trivial bool read — no per-frame memory access, no polling.
+bool GameHooks::InSave() { return g_inSave != 0; }
 
 void GameHooks::Install() {
     auto& log = Log::Get();
