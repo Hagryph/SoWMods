@@ -270,21 +270,25 @@ long __stdcall Overlay::HookPresent(IDXGISwapChain* swap, unsigned sync, unsigne
 // screen (its OnActivate pushes the SimulationTimeScale=0 request = real sim-freeze + frees the cursor), 0
 // deactivates it. We command show vs hide directly from the hub state, so there is no toggle-desync. MUST run
 // on the game message thread (this is WndProc). SEH-only helpers (no C++ objects) so __try is legal.
-static std::uintptr_t PauseUiCtx() {   // SEH-only: resolve uiCtx = *(*(engine) + 0xe38); 0 on fault
+static void SafeSetCursorFlag(unsigned v) {   // SEH-only: kCursorCtrlDisable = v (engine cursor-control gate)
+    __try { *reinterpret_cast<volatile unsigned*>(game::FromRVA(game::kCursorCtrlDisable)) = v; }
+    __except (EXCEPTION_EXECUTE_HANDLER) {}
+}
+[[maybe_unused]] static std::uintptr_t PauseUiCtx() {   // SEH-only: resolve uiCtx = *(*(engine) + 0xe38); 0 on fault
     __try {
         const std::uintptr_t eng = *reinterpret_cast<std::uintptr_t*>(game::FromRVA(game::kEngineSingleton));
         if (!eng) return 0;
         return *reinterpret_cast<std::uintptr_t*>(eng + game::kUiCtxOff);
     } __except (EXCEPTION_EXECUTE_HANDLER) { return 0; }
 }
-static bool CallPauseShow(std::uintptr_t uiCtx, bool show) {   // SEH-only: FUN_1406cdf0c(uiCtx, 0, show)
+[[maybe_unused]] static bool CallPauseShow(std::uintptr_t uiCtx, bool show) {   // SEH-only: FUN_1406cdf0c(uiCtx, 0, show)
     __try {
         reinterpret_cast<void(__fastcall*)(void*, void*, char)>(game::FromRVA(game::kPauseToggle))(
             reinterpret_cast<void*>(uiCtx), nullptr, show ? 1 : 0);
         return true;
     } __except (EXCEPTION_EXECUTE_HANDLER) { return false; }
 }
-static void SyncGamePause(bool wantPaused) {
+[[maybe_unused]] static void SyncGamePause(bool wantPaused) {
     static bool s_paused = false;
     if (wantPaused == s_paused) return;
     const std::uintptr_t uiCtx = PauseUiCtx();
@@ -305,9 +309,11 @@ LRESULT __stdcall Overlay::WndProc(HWND h, UINT msg, WPARAM w, LPARAM l) {
         o.menuOpen_ = !o.menuOpen_;
         char b[96]; ::wsprintfA(b, "[F8] hub=%d inSave=%d", (int)o.menuOpen_, (int)GameHooks::InSave());
         Log::Get().Line(b);
-        // Reconcile now (the input-swallow below returns before line 333). NOT gated on InSave(): the
-        // pause-show self-gates — FUN_1406cdf0c no-ops when the "PauseMenu" screen is absent (main menu).
-        SyncGamePause(o.menuOpen_);
+        // NOTE: game sim-freeze is NOT wired — the pause lever is unfound (the FUN_1406cdf0c uiCtx chain is
+        // garbage and SoW doesn't freeze on focus loss; see shared/GameOffsets.h "PAUSE"). Camera is still
+        // locked (we eat WM_INPUT while open) and the cursor is freed (kCursorCtrlDisable), which makes the
+        // hub usable; freezing the world is a follow-up. SyncGamePause() is left defined but intentionally
+        // not called until the real SimulationTimeScale lever is found.
     }
     // ESC closes the hub while it's open (cursor visibility is reconciled in DrawFrame).
     if (msg == WM_KEYDOWN && w == VK_ESCAPE && o.menuOpen_) o.menuOpen_ = false;
@@ -332,9 +338,7 @@ LRESULT __stdcall Overlay::WndProc(HWND h, UINT msg, WPARAM w, LPARAM l) {
             }
         }
     }
-    // Keep the game's own pause matched to the hub (freeze + cursor via the game's ESC path). Runs on every
-    // message, so a CLOSE-button close (set on the render thread) resyncs on next input. Self-gates in-save.
-    SyncGamePause(o.menuOpen_);
+    // (Game sim-freeze intentionally not wired — see the F8 handler note above and GameOffsets.h "PAUSE".)
     return ::CallWindowProcW(o.origWndProc_, h, msg, w, l);
 }
 
@@ -372,20 +376,20 @@ void Overlay::DrawFrame(IDXGISwapChain* swap) {
         Log::Get().Good("[overlay] ImGui online; WndProc subclassed on the game window (F8 opens the hub)");
     }
 
-    ImGui::GetIO().MouseDrawCursor = false;   // use the smooth OS hardware cursor, not ImGui's software one
-    // The engine hides the OS cursor via a ShowCursor() refcount it drives negative (often every frame) and
-    // ClipCursor()s the pointer to the window for mouselook. A single +1 on the open transition loses that
-    // refcount war, so every frame while the hub is open we PIN the count to exactly 0 (visible): climb up
-    // out of negative, and back down if we overshot above 0. Combined with eating WM_INPUT (camera lock),
-    // this frees the cursor to roam the UI. On close we drive it back to -1 so the game gets its hidden state.
+    // CURSOR for the hub. Fighting the OS cursor loses: the engine keeps it hidden (ShowCursor refcount it
+    // owns) and blanks the image (hCursor=0) — verified live via GetCursorInfo. So we DON'T use the OS cursor;
+    // we let ImGui draw its OWN software cursor (part of our frame → always visible over the game, and it even
+    // shows up in PrintWindow captures). The one thing we still need from the engine is to stop it recentering
+    // the pointer, or ImGui would read a wrong (re-centered) mouse position: kCursorCtrlDisable = 1 makes the
+    // engine hands-off (every clip/hide/recenter routine gates on == 0). Eating WM_INPUT locks the camera.
     if (menuOpen_) {
-        int c = ::ShowCursor(TRUE);
-        while (c < 0) c = ::ShowCursor(TRUE);    // still hidden -> keep raising
-        while (c > 0) c = ::ShowCursor(FALSE);   // overshot -> lower back to 0
-        ::ClipCursor(nullptr);                   // release the mouselook clip every frame
+        SafeSetCursorFlag(1);                              // engine: stop recenter/clip so ImGui reads true mouse
+        ImGui::GetIO().MouseDrawCursor = true;            // ImGui paints its own cursor sprite
+        ::ClipCursor(nullptr);
         cursorShown_ = true;
     } else if (cursorShown_) {
-        while (::ShowCursor(FALSE) >= 0) {}       // just closed -> restore the engine's hidden cursor
+        SafeSetCursorFlag(0);                              // engine: resume cursor control (mouselook recapture)
+        ImGui::GetIO().MouseDrawCursor = false;
         cursorShown_ = false;
     }
 

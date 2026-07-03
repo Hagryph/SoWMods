@@ -47,23 +47,34 @@ inline constexpr std::uintptr_t kPostWindowInit  = 0x1411798ac; // first call AF
 inline constexpr std::uintptr_t kMainWindowHwnd  = 0x142702640; // global HWND of the game main window
 inline constexpr std::uintptr_t kMainWindowHwnd2 = 0x142c88000; // second copy the engine keeps
 
-// NOTE: DAT_1427030c8 is a cursor-clamp-disable flag (every cursor clamp/hide/recenter routine gates on
-// `== 0`), BUT setting it to 1 in gameplay had NO observable effect — the "pause + free cursor" seen
-// while probing it was actually the game pausing on WINDOW FOCUS LOSS (our tooling stole focus), not
-// this flag. Left here only as a warning: it is NOT the pause lever.
+// CURSOR CONTROL DISABLE (RE'd + live-verified 2026-07-03). DAT_1427030c8 gates EVERY engine cursor
+// routine: hide/show (FUN_1411ac9c0), recenter-to-client-center (FUN_1411ac828, runs per frame in
+// mouselook), and the ClipCursor clamp — all bodies are wrapped in `if (DAT_1427030c8 == 0)`. Set it to 1
+// and the engine stops touching the OS cursor entirely. Live-verified via HagIPC: with the flag=1 a cursor
+// SetCursorPos(200,200) held across game frames (flag=0 is the engine's normal recenter state). This is the
+// CURSOR lever (NOT a pause lever — earlier "pause" seen while probing it was window FOCUS-LOSS). To free the
+// cursor for our overlay: set =1, raise ShowCursor to >=0 once, ClipCursor(NULL); restore =0 on close.
+inline constexpr std::uintptr_t kCursorCtrlDisable = 0x1427030c8; // ==0: engine controls cursor; ==1: hands off
 
-// PAUSE — what the ESC hotkey calls (RE'd 2026-07-03; corrected 2026-07-03: it is NOT a toggle).
-// FUN_1406cdf0c(uiCtx, unused, char show) is the pause-menu SHOW/HIDE primitive — THREE args. It looks up the
-// "PauseMenu" screen and calls FUN_1406cdfa0(uiCtx+0x40, screen, show): show!=0 activates it (its OnActivate,
-// FUN_141961068, pushes a SimulationTimeScale request via FUN_14046bdec = real sim-freeze + frees the cursor),
-// show==0 deactivates it. Earlier "it closed" was a 1-arg call where R8(show) happened to be 0. Reproduce:
-//   uiCtx = *(*(kEngineSingleton) + kUiCtxOff);
-//   ((void(__fastcall*)(void*,void*,char))kPauseToggle)(uiCtx, 0, wantPaused);   // explicit show flag
-// MUST be called on the game's message/main thread (our WndProc qualifies) — it mutates UI state.
-// (The full ESC handler FUN_1406cdd24 wraps this with input-capture setup; kPauseToggle alone drives freeze.)
-inline constexpr std::uintptr_t kPauseToggle    = 0x1406cdf0c; // FUN_1406cdf0c(uiCtx,_,show): show/hide PauseMenu
-inline constexpr std::uintptr_t kEngineSingleton = 0x1426ffa98; // DAT_1426ffa98: ptr-to the engine singleton
-inline constexpr std::uintptr_t kUiCtxOff       = 0xe38;       // engine + 0xe38 -> the pause UI context
+// PAUSE — ⚠ LEVER NOT YET FOUND (investigated 2026-07-03, live via HagIPC). Findings so far:
+//  * FUN_1406cdf0c(uiCtx, _, char show) is the pause-menu SHOW/HIDE primitive: it looks up the "PauseMenu"
+//    screen (FUN_1406ce5e0("PauseMenu") -> live returned a NON-null screen 0x54450aa8) and calls
+//    FUN_1406cdfa0(*(uiCtx+0x40), screen, show). BUT the uiCtx chain below is WRONG: live,
+//    *(*(0x1426ffa98)+0xe38) = 0x5fb70a58 and *(0x5fb70a58+0x40) = 0x100000008 (garbage, not a screen mgr).
+//    Calling FUN_1406cdf0c(uiCtx,0,1) from BOTH the IPC thread and the loader's game thread did NOTHING
+//    (screenshot mean-abs-diff stayed ~2.3 = sim still running; no pause menu shown). So this is not the lever
+//    as wired, and kEngineSingleton/kUiCtxOff are unverified.
+//  * FOCUS-LOSS does NOT freeze SoW: hooking the time-scale pusher FUN_14046bdec across a minimize/restore
+//    logged ZERO calls, and the scene keeps animating while unfocused. The "tab-out pause" premise is false.
+//  * The real sim-freeze is the SimulationTimeScale request the pause menu's OnActivate (FUN_141961068) pushes
+//    via FUN_14046bdec(reqObj, DAT_14202e5a0, 0); the pushed float comes from a "time source" object
+//    (DAT_142702588 / DAT_142702598, the source's +0x20 double). Cracking the applied effective-scale global
+//    (time-scale manager DAT_1426ffb08+0x70, a callback/request registry) is the open TODO for pause.
+// The kPauseToggle scaffolding in SoWLoader is SEH-guarded and currently a no-op; do not trust it until the
+// above is resolved. CURSOR (kCursorCtrlDisable) is the confirmed, shipped lever — see above.
+inline constexpr std::uintptr_t kPauseToggle    = 0x1406cdf0c; // FUN_1406cdf0c(uiCtx,_,show): show/hide PauseMenu (ineffective as wired)
+inline constexpr std::uintptr_t kEngineSingleton = 0x1426ffa98; // DAT_1426ffa98 (UNVERIFIED — chain yields garbage)
+inline constexpr std::uintptr_t kUiCtxOff       = 0xe38;       // engine + 0xe38 (UNVERIFIED)
 
 // --- Front-end / start menu (LithTech "Kraken" ClientShell) ---
 // CUIFrontEndRootLayer::CUIFrontEndRootLayer — constructor of the front-end menu's ROOT UI layer.
