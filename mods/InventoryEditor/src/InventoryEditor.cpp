@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <cstring>
+#include <limits>
 #include <unordered_map>
 
 #include "GameOffsets.h"
@@ -24,7 +25,40 @@ HMODULE g_self = nullptr;
 
 struct Row { std::string category, slot, set, rarity, tier, record, display; };
 
-void Log(const std::string& m) { ::OutputDebugStringA(("[InventoryEditor] " + m + "\n").c_str()); }
+std::string Hex(std::uintptr_t v) {
+    char b[32]{};
+    ::wsprintfA(b, "0x%p", reinterpret_cast<void*>(v));
+    return b;
+}
+
+void Log(const std::string& m) {
+    const std::string debugLine = "[InventoryEditor] " + m + "\n";
+    ::OutputDebugStringA(debugLine.c_str());
+
+    wchar_t base[MAX_PATH]{};
+    const DWORD n = ::GetEnvironmentVariableW(L"LOCALAPPDATA", base, MAX_PATH);
+    if (n == 0 || n >= MAX_PATH) return;
+    std::wstring root(base, n);
+    root += L"\\SoWLoader";
+    ::CreateDirectoryW(root.c_str(), nullptr);
+    std::wstring dir = root + L"\\logs";
+    ::CreateDirectoryW(dir.c_str(), nullptr);
+
+    HANDLE h = ::CreateFileW((dir + L"\\InventoryEditor.log").c_str(), FILE_APPEND_DATA,
+                             FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_ALWAYS,
+                             FILE_ATTRIBUTE_NORMAL, nullptr);
+    if (h == INVALID_HANDLE_VALUE) return;
+    SYSTEMTIME t{};
+    ::GetLocalTime(&t);
+    char stamp[32]{};
+    const int slen = ::wsprintfA(stamp, "[%02d:%02d:%02d.%03d] ",
+                                 t.wHour, t.wMinute, t.wSecond, t.wMilliseconds);
+    DWORD written = 0;
+    ::WriteFile(h, stamp, static_cast<DWORD>(slen), &written, nullptr);
+    ::WriteFile(h, m.c_str(), static_cast<DWORD>(m.size()), &written, nullptr);
+    ::WriteFile(h, "\r\n", 2, &written, nullptr);
+    ::CloseHandle(h);
+}
 
 constexpr std::uintptr_t kRowSize = 0x28;
 constexpr std::uintptr_t kInvVecBegin = 0x740;
@@ -196,15 +230,72 @@ std::uintptr_t ResolveItemRow(const std::string& record, std::string& resolvedNa
     return 0;
 }
 
-bool ValidateInventoryContainer(std::uintptr_t candidate) {
+std::string ItemRecordName(std::uintptr_t itemRow) {
+    const char* name = nullptr;
+    if (!ReadMem(itemRow + 0x20, name)) return {};
+    return SafeString(name);
+}
+
+struct InventoryProbe {
+    bool valid = false;
+    std::uintptr_t addr = 0;
+    std::uintptr_t owner = 0;
+    std::uintptr_t begin = 0;
+    std::uintptr_t end = 0;
+    std::uint32_t count = 0;
+    int score = (std::numeric_limits<int>::min)();
+};
+
+int PlayerInventoryScore(std::uintptr_t begin, std::uint32_t count) {
+    int score = static_cast<int>(std::min<std::uint32_t>(count, 200));
+    const std::uint32_t limit = std::min<std::uint32_t>(count, 160);
+    for (std::uint32_t i = 0; i < limit; ++i) {
+        std::uintptr_t entry = 0, itemRow = 0;
+        if (!ReadMem(begin + static_cast<std::uintptr_t>(i) * sizeof(std::uintptr_t), entry) ||
+            !entry || !ReadMem(entry, itemRow) || !itemRow) {
+            continue;
+        }
+        const std::string name = ItemRecordName(itemRow);
+        if (name.empty()) continue;
+
+        // Talion's inventory contains player abilities/unlocks mixed with gear. Orc/NPC inventories
+        // start with personality/tribe records and otherwise look structurally identical.
+        if (name == "PC_Glaive") score += 1000;
+        else if (name == "ScriptedUnlock_WraithVision") score += 1000;
+        else if (name == "Primary_1Sword_1Default") score += 500;
+        else if (name == "S_BasicWraith") score += 250;
+        else if (StartsWith(name, "PC_")) score += 80;
+        else if (StartsWith(name, "Personality_") || StartsWith(name, "Tribe_") ||
+                 StartsWith(name, "Orc_")) {
+            score -= 500;
+        }
+    }
+    return score;
+}
+
+InventoryProbe ProbeInventoryContainer(std::uintptr_t candidate, bool scoreItems) {
+    InventoryProbe p{};
+    p.addr = candidate;
     std::uintptr_t vtable = 0, owner = 0, ownerVtable = 0, begin = 0, end = 0;
-    if (!ReadMem(candidate, vtable) || vtable != game::FromRVA(game::kInventoryContainerVtable)) return false;
-    if (!ReadMem(candidate + 0x440, owner) || !owner) return false;
-    if (!ReadMem(owner, ownerVtable) || ownerVtable != game::FromRVA(game::kPlayerBaseVtable)) return false;
-    if (!ReadMem(candidate + kInvVecBegin, begin) || !ReadMem(candidate + kInvVecEnd, end)) return false;
-    if (end < begin || ((end - begin) & 7) != 0) return false;
+    if (!ReadMem(candidate, vtable) || vtable != game::FromRVA(game::kInventoryContainerVtable)) return p;
+    if (!ReadMem(candidate + 0x440, owner) || !owner) return p;
+    if (!ReadMem(owner, ownerVtable) || ownerVtable != game::FromRVA(game::kPlayerBaseVtable)) return p;
+    if (!ReadMem(candidate + kInvVecBegin, begin) || !ReadMem(candidate + kInvVecEnd, end)) return p;
+    if (end < begin || ((end - begin) & 7) != 0) return p;
     const std::uintptr_t count = (end - begin) / 8;
-    return count > 0 && count < 5000 && IsReadableRange(begin, static_cast<std::size_t>(end - begin));
+    if (count == 0 || count >= 5000 || !IsReadableRange(begin, static_cast<std::size_t>(end - begin))) return p;
+    p.valid = true;
+    p.owner = owner;
+    p.begin = begin;
+    p.end = end;
+    p.count = static_cast<std::uint32_t>(count);
+    p.score = scoreItems ? PlayerInventoryScore(begin, p.count) : 0;
+    return p;
+}
+
+bool ValidateInventoryContainer(std::uintptr_t candidate) {
+    const InventoryProbe p = ProbeInventoryContainer(candidate, true);
+    return p.valid && p.score > 0;
 }
 
 std::uintptr_t FindInventoryContainer() {
@@ -216,6 +307,9 @@ std::uintptr_t FindInventoryContainer() {
     ::GetSystemInfo(&si);
     std::uintptr_t p = reinterpret_cast<std::uintptr_t>(si.lpMinimumApplicationAddress);
     const std::uintptr_t max = reinterpret_cast<std::uintptr_t>(si.lpMaximumApplicationAddress);
+    InventoryProbe best{};
+    InventoryProbe fallback{};
+    fallback.score = (std::numeric_limits<int>::min)();
     while (p < max) {
         MEMORY_BASIC_INFORMATION mbi{};
         if (!::VirtualQuery(reinterpret_cast<void*>(p), &mbi, sizeof(mbi))) break;
@@ -226,14 +320,27 @@ std::uintptr_t FindInventoryContainer() {
         if (readable) {
             for (std::uintptr_t q = base; q + sizeof(std::uintptr_t) <= end; q += sizeof(std::uintptr_t)) {
                 std::uintptr_t value = 0;
-                if (ReadMem(q, value) && value == target && ValidateInventoryContainer(q)) {
-                    cached = q;
-                    Log("inventory container found @ 0x" + std::to_string(cached));
-                    return cached;
+                if (ReadMem(q, value) && value == target) {
+                    InventoryProbe probe = ProbeInventoryContainer(q, true);
+                    if (!probe.valid) continue;
+                    if (!fallback.valid || probe.count > fallback.count) fallback = probe;
+                    if (!best.valid || probe.score > best.score ||
+                        (probe.score == best.score && probe.count > best.count)) {
+                        best = probe;
+                    }
                 }
             }
         }
         p = end;
+    }
+    const InventoryProbe chosen = (best.valid && best.score > 0) ? best : fallback;
+    if (chosen.valid) {
+        cached = chosen.addr;
+        Log("inventory container selected addr=" + Hex(chosen.addr) +
+            " owner=" + Hex(chosen.owner) +
+            " count=" + std::to_string(chosen.count) +
+            " score=" + std::to_string(chosen.score));
+        return cached;
     }
     Log("inventory container not found");
     return 0;
@@ -264,6 +371,11 @@ void GrantItem(const char* id, int count) {
         Log(std::string("no Inventory.Item mapping for ") + id);
         return;
     }
+    Log(std::string("grant requested ") + id + " -> " + resolved +
+        " count=" + std::to_string(count));
+    Log("grant blocked: direct inventory insertion is unsafe for gear until level/stat instance generation is wired");
+    return;
+
     const std::uintptr_t inv = FindInventoryContainer();
     if (!inv) return;
 
