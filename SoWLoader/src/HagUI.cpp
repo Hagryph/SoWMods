@@ -36,6 +36,15 @@ inline uint32_t Pack(float r, float g, float b, float a) {
 inline float Clamp01(float v) { return v < 0 ? 0 : (v > 1 ? 1 : v); }
 inline float Lerp(float a, float b, float t) { return a + (b - a) * t; }
 
+bool CallPageOpen(void (*fn)(int), int page) {
+    __try {
+        fn(page);
+        return true;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+}
+
 // Signed distance to a rounded rect [0..w,0..h] (negative inside), point at pixel centre.
 float RRSDF(float px, float py, float w, float h, float rad) {
     float qx = std::fabs(px - w * 0.5f) - (w * 0.5f - rad);
@@ -202,6 +211,19 @@ void HagUI::AddFacetedActionList(int page, const char* const* facetNames, int fa
     }
     for (auto& f : w.facets) f.sel.assign(f.opts.size(), 0);
     pages_[page].widgets.push_back(std::move(w));
+}
+void HagUI::SetPageOnFirstOpenInSave(int page, void (*fn)(int page)) {
+    if (page >= 0 && page < (int)pages_.size()) pages_[page].onFirstOpenInSave = fn;
+}
+void HagUI::RunFirstOpenInSave() {
+    for (int p = 0; p < (int)pages_.size(); ++p) {
+        Page& page = pages_[p];
+        if (page.firstOpenInSaveDone || !page.onFirstOpenInSave) continue;
+        page.firstOpenInSaveDone = true;
+        if (!CallPageOpen(page.onFirstOpenInSave, p)) {
+            Log::Channel("HagUI").Error("first-open page callback raised SEH");
+        }
+    }
 }
 
 void HagUI::PollInput(Overlay& r) {

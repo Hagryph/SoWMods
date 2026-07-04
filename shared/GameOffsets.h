@@ -114,6 +114,7 @@ inline constexpr std::uintptr_t kInventoryItemDescriptor = 0x142700530ull;
 // pickup path (0x140411a78 -> 0x140410bc4 -> generated inventory add).
 inline constexpr std::uintptr_t kGameSystemsSingleton = 0x1426ffaa8ull; // DAT_1426ffaa8; +0x6d28 = world drop manager
 inline constexpr std::uintptr_t kLootRecordInit       = 0x1404f2320ull; // (record[0x38]) alloc/init generated-data slot
+inline constexpr std::uintptr_t kLootRecordFromItem   = 0x1405707ecull; // (record[0x38], Inventory.Item*) -> item-aware loot record
 inline constexpr std::uintptr_t kLootRecordDestroy    = 0x1404f2380ull; // (record[0x38]) releases generated-data slot
 inline constexpr std::uintptr_t kWorldDropSpawn       = 0x1407a10a0ull; // (pose, lootRecord, id, worldCtx, flag) -> object
 inline constexpr std::uintptr_t kActionDropLoot       = 0x140f14fa0ull; // Combat.Action.InventoryItemDropLoot handler (reference)

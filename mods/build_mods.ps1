@@ -40,7 +40,7 @@ foreach ($d in $dirs) {
     [System.IO.File]::Copy($dll.FullName, (Join-Path $modsOut $dll.Name), $true)
     Write-Host "deployed $($dll.Name) -> $modsOut"
 
-    # deploy any data files the mod ships beside its DLL (e.g. InventoryEditor.catalog)
+    # deploy any data files the mod ships beside its DLL
     Get-ChildItem $d.FullName -File -Filter '*.catalog' -ErrorAction SilentlyContinue | ForEach-Object {
         [System.IO.File]::Copy($_.FullName, (Join-Path $modsOut $_.Name), $true)
         Write-Host "deployed $($_.Name) -> $modsOut"

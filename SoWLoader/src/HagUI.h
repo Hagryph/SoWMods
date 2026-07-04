@@ -30,6 +30,8 @@ public:
     void AddFacetedActionList(int page, const char* const* facetNames, int facetCount,
                               const char* const* displays, const char* const* ids, int itemCount,
                               const char* const* facetValues, void (*onAdd)(const char* id, int count));
+    void SetPageOnFirstOpenInSave(int page, void (*fn)(int page));
+    void RunFirstOpenInSave();
 
     // Read access for the renderer (Overlay::DrawHub): tabs exist ONLY for registered pages.
     enum WType { WLabel = 0, WToggle = 1, WButton = 2, WList = 3 };
@@ -53,7 +55,13 @@ public:
         mutable int  actionCount = 1;
         mutable char search[64] = {};                // search box text (ImGui InputText buffer)
     };
-    struct Page   { std::string title; int scope = 0; std::vector<Widget> widgets; };  // scope: 0=global,1=local
+    struct Page {
+        std::string title;
+        int scope = 0;
+        std::vector<Widget> widgets;
+        void (*onFirstOpenInSave)(int page) = nullptr;
+        bool firstOpenInSaveDone = false;
+    };  // scope: 0=global,1=local
     const std::vector<Page>& Pages() const { return pages_; }
 
     HagUI(const HagUI&) = delete;

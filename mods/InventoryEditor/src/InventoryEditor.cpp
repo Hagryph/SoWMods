@@ -1,14 +1,10 @@
-// InventoryEditor - reads the offline-extracted SoW item catalog (tools/extract_sow_items.py ->
-// InventoryEditor.catalog, deployed next to this DLL) and surfaces it, grouped + sorted, in HagUI.
-// The catalog is the full set of item templates from game.gamedb (750 gear pieces + runes/gems/
-// weapons/armor) - see memory reference_sow-data-archives. This is the data pipeline into the editor;
-// per-item "add" wiring comes once HagUI has scrolling + the runtime grant call.
+// Item spawner - reads the live Inventory.Item descriptor and surfaces spawnable item rows in HagUI.
+// Clicking an item spawns a world pickup, which the player collects through the game's own loot path.
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 
 #include <string>
 #include <vector>
-#include <fstream>
 #include <sstream>
 #include <algorithm>
 #include <cstdint>
@@ -16,18 +12,21 @@
 #include <cmath>
 #include <new>
 #include <unordered_map>
+#include <unordered_set>
+#include <cctype>
+#include <tuple>
 
 #include "GameOffsets.h"
 #include "HagUIAPI.h"    // ../../shared
 #include "SoWModAPI.h"   // ../../shared
 
 namespace {
-HMODULE g_self = nullptr;
+HagUIAPI* g_ui = nullptr;
 bool (*g_queueGameTask)(HagUI_GameTaskFn fn, void* ctx) = nullptr;
 
-struct Row { std::string category, slot, set, rarity, tier, record, display; };
+struct Row { std::string category, slot, set, rarity, variant, record, display; };
 
-struct GrantTask {
+struct SpawnTask {
     std::uintptr_t itemRow = 0;
     int count = 0;
     char requested[128]{};
@@ -128,61 +127,19 @@ bool StartsWith(const std::string& s, const char* prefix) {
     return s.size() >= n && s.compare(0, n, prefix) == 0;
 }
 
-const char* SlotToken(const std::string& gearType) {
-    if (gearType.find("Sword") != std::string::npos) return "1Sword";
-    if (gearType.find("Dagger") != std::string::npos) return "2Dagger";
-    if (gearType.find("Bow") != std::string::npos) return "3Bow";
-    if (gearType.find("Armor") != std::string::npos) return "4Armor";
-    if (gearType.find("Cape") != std::string::npos || gearType.find("Cloak") != std::string::npos) return "5Cape";
-    return "";
+bool EndsWith(const std::string& s, const char* suffix) {
+    const size_t n = std::strlen(suffix);
+    return s.size() >= n && s.compare(s.size() - n, n, suffix) == 0;
 }
 
-bool IsLegendaryTheme(const std::string& v) {
-    static const char* kThemes[] = {
-        "Celebrimbor", "Vendetta", "Dark", "Feral", "Machine", "Marauder", "Mystic",
-        "Outlaw", "Ringwraith", "Slaughter", "Terror", "Warmonger", "Ringcraft"
-    };
-    for (const char* t : kThemes) if (v == t) return true;
-    return false;
-}
-
-std::vector<std::string> CandidateItemRecords(const std::string& record) {
-    std::vector<std::string> out;
-    out.push_back(record);
-    if (!StartsWith(record, "GearArt_")) return out;
-
-    auto parts = Split(record.substr(8), '_');
-    if (parts.empty()) return out;
-    const std::string type = parts[0];
-    const std::string slot = SlotToken(type);
-    if (slot.empty()) return out;
-
-    std::string theme;
-    std::string tierOrRarity;
-    if (parts.size() >= 2) theme = parts[1];
-    if (parts.size() >= 3) tierOrRarity = parts[2];
-
-    auto addPrimary = [&](const std::string& suffix) {
-        out.push_back("Primary_" + slot + "_" + suffix);
-        if (type.find("BowSnipe") != std::string::npos) out.push_back("PrimSnipe_3Bow_" + suffix);
-    };
-
-    if (theme == "1Common" || theme == "2Uncommon" || theme == "3Rare" || theme == "4Epic") {
-        addPrimary(theme);
-    } else if (IsLegendaryTheme(theme)) {
-        addPrimary("5Lgnd_" + theme);
-        addPrimary("5Lgnd_" + theme + "_DebugGrant");
-    } else if (tierOrRarity == "3Rare" || tierOrRarity == "4Epic") {
-        addPrimary(tierOrRarity);
-    }
-    return out;
+bool Contains(const std::string& s, const char* needle) {
+    return s.find(needle) != std::string::npos;
 }
 
 std::unordered_map<std::string, std::uintptr_t>& ItemIndex() {
     static std::unordered_map<std::string, std::uintptr_t> index;
     static bool built = false;
     if (built) return index;
-    built = true;
 
     std::uintptr_t desc = 0;
     if (!ReadMem(game::FromRVA(game::kInventoryItemDescriptor), desc) || !desc) {
@@ -202,18 +159,187 @@ std::unordered_map<std::string, std::uintptr_t>& ItemIndex() {
         std::string key = SafeString(name);
         if (!key.empty()) index.emplace(std::move(key), row);
     }
+    built = true;
     Log("indexed " + std::to_string(index.size()) + " Inventory.Item rows");
     return index;
 }
 
+std::string StripDebugGrant(std::string name) {
+    static const char* kSuffix = "_DebugGrant";
+    if (EndsWith(name, kSuffix)) name.resize(name.size() - std::strlen(kSuffix));
+    return name;
+}
+
+bool IsRarityToken(const std::string& token) {
+    static const char* kTokens[] = {
+        "1Default", "1Common", "1Base",
+        "2Standard", "2Uncommon", "2Forged", "2Crafted",
+        "3Rare", "3Crafted", "3Forged",
+        "4Epic", "4Mighty",
+        "5Lgnd", "5Legendary", "5Wondrous", "5Marvel",
+        "6Epic", "7Lgnd"
+    };
+    for (const char* t : kTokens) if (token == t) return true;
+    return false;
+}
+
+std::string PrettyToken(const std::string& token) {
+    if (token.empty()) return {};
+    if (token == "1Sword") return "Sword";
+    if (token == "2Dagger") return "Dagger";
+    if (token == "3Bow") return "Bow";
+    if (token == "4Armor") return "Armor";
+    if (token == "5Cape") return "Cloak";
+    if (token == "6Ring") return "Ring";
+    if (token == "1Default" || token == "1Common") return "Default";
+    if (token == "1Base") return "Base";
+    if (token == "2Standard" || token == "2Uncommon") return "Standard";
+    if (token == "2Crafted" || token == "3Crafted") return "Crafted";
+    if (token == "2Forged" || token == "3Forged") return "Forged";
+    if (token == "3Rare") return "Rare";
+    if (token == "4Epic" || token == "6Epic") return "Epic";
+    if (token == "4Mighty") return "Mighty";
+    if (token == "5Lgnd" || token == "5Legendary" || token == "7Lgnd") return "Legendary";
+    if (token == "5Wondrous") return "Wondrous";
+    if (token == "5Marvel") return "Marvel";
+    if (token == "Dmg") return "Damage";
+    if (token == "SotP") return "SotP";
+
+    std::string out;
+    out.reserve(token.size() + 4);
+    for (size_t i = 0; i < token.size(); ++i) {
+        const unsigned char c = static_cast<unsigned char>(token[i]);
+        const unsigned char prev = i ? static_cast<unsigned char>(token[i - 1]) : 0;
+        if (i > 0 && std::isupper(c) && (std::islower(prev) || std::isdigit(prev))) out.push_back(' ');
+        out.push_back(static_cast<char>(c));
+    }
+    return out;
+}
+
+std::string PrettyJoin(const std::vector<std::string>& parts, size_t first, size_t last) {
+    std::string out;
+    if (last > parts.size()) last = parts.size();
+    for (size_t i = first; i < last; ++i) {
+        if (parts[i].empty()) continue;
+        if (!out.empty()) out.push_back(' ');
+        out += PrettyToken(parts[i]);
+    }
+    return out;
+}
+
+std::string RarityLabel(const std::string& name) {
+    const std::vector<std::string> parts = Split(StripDebugGrant(name), '_');
+    for (const auto& part : parts) {
+        if (IsRarityToken(part)) return PrettyToken(part);
+    }
+    return "-";
+}
+
+bool IsGearRecord(const std::string& name) {
+    return StartsWith(name, "Primary_") || StartsWith(name, "PrimHam_") ||
+           StartsWith(name, "PrimSnipe_");
+}
+
+std::string GearSlotLabel(const std::string& name) {
+    if (Contains(name, "_1Sword_")) return "Sword";
+    if (Contains(name, "_2Dagger_")) return "Dagger";
+    if (Contains(name, "_3Bow_")) return "Bow";
+    if (Contains(name, "_4Armor_")) return "Armor";
+    if (Contains(name, "_5Cape_")) return "Cloak";
+    if (Contains(name, "_6Ring_")) return "Ring";
+    return "-";
+}
+
+std::string GearVariantLabel(const std::string& name) {
+    if (StartsWith(name, "PrimHam_")) return "Hammer";
+    if (StartsWith(name, "PrimSnipe_")) return "Snipe";
+    return "-";
+}
+
+std::string GearSetLabel(const std::string& name) {
+    const std::vector<std::string> parts = Split(StripDebugGrant(name), '_');
+    for (size_t i = 0; i < parts.size(); ++i) {
+        if (IsRarityToken(parts[i]) && i + 1 < parts.size()) {
+            return PrettyJoin(parts, i + 1, parts.size());
+        }
+    }
+    return "-";
+}
+
+std::string DisplayLabel(const std::string& name) {
+    std::string clean = StripDebugGrant(name);
+    if (StartsWith(clean, "Primary_")) clean.erase(0, std::strlen("Primary_"));
+    else if (StartsWith(clean, "PrimHam_")) clean.replace(0, std::strlen("PrimHam_"), "Hammer_");
+    else if (StartsWith(clean, "PrimSnipe_")) clean.replace(0, std::strlen("PrimSnipe_"), "Snipe_");
+    const std::vector<std::string> parts = Split(clean, '_');
+    return PrettyJoin(parts, 0, parts.size());
+}
+
+bool RuntimeRowForRecord(const std::string& name, const std::unordered_set<std::string>& names, Row& out) {
+    if (name.empty() || Contains(name, "_Resell_Value")) return false;
+
+    if (IsGearRecord(name)) {
+        if (!EndsWith(name, "_DebugGrant") && names.find(name + "_DebugGrant") != names.end()) return false;
+        out = { "Gear", GearSlotLabel(name), GearSetLabel(name), RarityLabel(name),
+                GearVariantLabel(name), name, DisplayLabel(name) };
+        return out.slot != "-";
+    }
+
+    const std::vector<std::string> parts = Split(name, '_');
+    if (StartsWith(name, "Runegem_") && parts.size() >= 4 &&
+        (parts[1] == "Green" || parts[1] == "Red" || parts[1] == "White")) {
+        out = { "Gem", PrettyToken(parts[1]), PrettyToken(parts[2]), RarityLabel(name),
+                "Runegem", name, DisplayLabel(name) };
+        return true;
+    }
+    if (StartsWith(name, "Gem_") && parts.size() >= 3 &&
+        (parts[1] == "Green" || parts[1] == "Red" || parts[1] == "White") &&
+        IsRarityToken(parts[2])) {
+        out = { "Gem", PrettyToken(parts[1]), "-", PrettyToken(parts[2]),
+                "Gem", name, DisplayLabel(name) };
+        return true;
+    }
+    if (StartsWith(name, "Rune_") && parts.size() >= 2 &&
+        (IsRarityToken(parts[1]) || parts[1] == "Green" || parts[1] == "Red" || parts[1] == "White")) {
+        out = { "Rune", parts.size() > 2 ? PrettyToken(parts[1]) : "-", "-",
+                RarityLabel(name), "Rune", name, DisplayLabel(name) };
+        return true;
+    }
+    if (StartsWith(name, "Weapon_Tint_") && parts.size() >= 3) {
+        out = { "Skin", "Weapon", PrettyJoin(parts, 2, parts.size()), "-",
+                "Tint", name, DisplayLabel(name) };
+        return true;
+    }
+    return false;
+}
+
+std::vector<Row> LoadRuntimeRows() {
+    auto& index = ItemIndex();
+    std::vector<Row> rows;
+    if (index.empty()) return rows;
+
+    std::unordered_set<std::string> names;
+    names.reserve(index.size());
+    for (const auto& kv : index) names.insert(kv.first);
+
+    rows.reserve(index.size());
+    for (const auto& kv : index) {
+        Row row;
+        if (RuntimeRowForRecord(kv.first, names, row)) rows.push_back(std::move(row));
+    }
+    std::sort(rows.begin(), rows.end(), [](const Row& a, const Row& b) {
+        return std::tie(a.category, a.slot, a.rarity, a.set, a.variant, a.display, a.record) <
+               std::tie(b.category, b.slot, b.rarity, b.set, b.variant, b.display, b.record);
+    });
+    return rows;
+}
+
 std::uintptr_t ResolveItemRow(const std::string& record, std::string& resolvedName) {
     auto& index = ItemIndex();
-    for (const auto& candidate : CandidateItemRecords(record)) {
-        auto it = index.find(candidate);
-        if (it != index.end()) {
-            resolvedName = candidate;
-            return it->second;
-        }
+    auto it = index.find(record);
+    if (it != index.end()) {
+        resolvedName = record;
+        return it->second;
     }
     return 0;
 }
@@ -299,10 +425,10 @@ bool NextDropContext(std::uint32_t& id, std::uintptr_t& worldCtx) {
     return true;
 }
 
-bool CallLootRecordInit(std::uint8_t* record) {
-    using InitFn = void*(__fastcall*)(void*);
+bool CallLootRecordFromItem(std::uint8_t* record, std::uintptr_t itemRow) {
+    using FromItemFn = void*(__fastcall*)(void*, std::uintptr_t);
     __try {
-        reinterpret_cast<InitFn>(game::FromRVA(game::kLootRecordInit))(record);
+        reinterpret_cast<FromItemFn>(game::FromRVA(game::kLootRecordFromItem))(record, itemRow);
         return true;
     } __except (EXCEPTION_EXECUTE_HANDLER) {
         return false;
@@ -339,35 +465,48 @@ bool SpawnWorldDrop(std::uintptr_t itemRow) {
     bool ok = false;
     std::uintptr_t result = 0;
 
-    if (!CallLootRecordInit(record)) {
-        Log("loot record init raised SEH");
+    if (!CallLootRecordFromItem(record, itemRow)) {
+        Log("loot record from item raised SEH row=" + Hex(itemRow));
     } else {
         initialized = true;
         std::uintptr_t generatedData = 0;
         std::memcpy(&generatedData, record + 0x18, sizeof(generatedData));
         if (!generatedData) {
-            Log("loot record init produced no generated-data slot");
+            Log("loot record from item produced no generated-data slot");
         } else if (!BuildDropPose(pose)) {
             Log("world drop pose build failed");
         } else {
             std::uint32_t id = 0;
             std::uintptr_t worldCtx = 0;
             if (NextDropContext(id, worldCtx)) {
-                const std::uint32_t itemKind = 1;
-                const std::uint32_t resourceKind = 0x0c;
-                PutBytes(record, 0x20, itemRow);
-                PutBytes(record, 0x28, itemKind);
-                PutBytes(record, 0x2c, resourceKind);
-
-                if (CallWorldDropSpawn(pose, record, id, worldCtx, result)) {
-                    ok = result != 0;
-                    if (!ok) {
-                        Log("world drop spawn returned null id=" + std::to_string(id) +
-                            " ctx=" + Hex(worldCtx));
-                    }
+                std::uintptr_t resolvedRow = 0;
+                std::uint32_t itemKind = 0;
+                std::uint32_t resourceKind = 0;
+                std::memcpy(&resolvedRow, record + 0x20, sizeof(resolvedRow));
+                std::memcpy(&itemKind, record + 0x28, sizeof(itemKind));
+                std::memcpy(&resourceKind, record + 0x2c, sizeof(resourceKind));
+                if (!resolvedRow) {
+                    Log("loot record from item produced no row for row=" + Hex(itemRow));
                 } else {
-                    Log("world drop spawn raised SEH id=" + std::to_string(id) +
-                        " ctx=" + Hex(worldCtx));
+                    Log("loot record from item row=" + Hex(itemRow) + " -> row=" +
+                        Hex(resolvedRow) + " kind=" + std::to_string(itemKind) +
+                        " resource=" + std::to_string(resourceKind) +
+                        " generated=" + Hex(generatedData));
+
+                    if (CallWorldDropSpawn(pose, record, id, worldCtx, result)) {
+                        ok = result != 0;
+                        if (!ok) {
+                            Log("world drop spawn returned null id=" + std::to_string(id) +
+                                " ctx=" + Hex(worldCtx) + " row=" + Hex(resolvedRow) +
+                                " kind=" + std::to_string(itemKind) +
+                                " resource=" + std::to_string(resourceKind));
+                        }
+                    } else {
+                        Log("world drop spawn raised SEH id=" + std::to_string(id) +
+                            " ctx=" + Hex(worldCtx) + " row=" + Hex(resolvedRow) +
+                            " kind=" + std::to_string(itemKind) +
+                            " resource=" + std::to_string(resourceKind));
+                    }
                 }
             }
         }
@@ -378,8 +517,8 @@ bool SpawnWorldDrop(std::uintptr_t itemRow) {
     return ok;
 }
 
-void RunGrantTask(void* ctx) {
-    GrantTask* task = static_cast<GrantTask*>(ctx);
+void RunSpawnTask(void* ctx) {
+    SpawnTask* task = static_cast<SpawnTask*>(ctx);
     if (!task) return;
 
     int spawned = 0;
@@ -387,15 +526,15 @@ void RunGrantTask(void* ctx) {
         if (!SpawnWorldDrop(task->itemRow)) break;
         ++spawned;
     }
-    Log(std::string("grant world-drop ") + task->requested + " -> " + task->resolved +
+    Log(std::string("spawn world-drop ") + task->requested + " -> " + task->resolved +
         " spawned=" + std::to_string(spawned) + "/" + std::to_string(task->count));
     delete task;
 }
 
-void GrantItem(const char* id, int count) {
+void SpawnItem(const char* id, int count) {
     if (!id || count <= 0) return;
     if (count > kMaxWorldDropsPerClick) {
-        Log("grant count capped from " + std::to_string(count) + " to " +
+        Log("spawn count capped from " + std::to_string(count) + " to " +
             std::to_string(kMaxWorldDropsPerClick) + " world drops");
         count = kMaxWorldDropsPerClick;
     }
@@ -407,9 +546,9 @@ void GrantItem(const char* id, int count) {
         return;
     }
 
-    auto* task = new (std::nothrow) GrantTask{};
+    auto* task = new (std::nothrow) SpawnTask{};
     if (!task) {
-        Log("grant queue allocation failed");
+        Log("spawn queue allocation failed");
         return;
     }
     task->itemRow = itemRow;
@@ -417,44 +556,60 @@ void GrantItem(const char* id, int count) {
     CopyAscii(task->requested, sizeof(task->requested), id);
     CopyAscii(task->resolved, sizeof(task->resolved), resolved);
 
-    if (!g_queueGameTask || !g_queueGameTask(&RunGrantTask, task)) {
+    if (!g_queueGameTask || !g_queueGameTask(&RunSpawnTask, task)) {
         delete task;
-        Log(std::string("grant queue failed ") + id + " -> " + resolved);
+        Log(std::string("spawn queue failed ") + id + " -> " + resolved);
         return;
     }
-    Log(std::string("grant queued world-drop ") + id + " -> " + resolved +
+    Log(std::string("spawn queued world-drop ") + id + " -> " + resolved +
         " count=" + std::to_string(count));
 }
 
-std::wstring CatalogPath() {
-    wchar_t p[MAX_PATH]{};
-    ::GetModuleFileNameW(g_self, p, MAX_PATH);           // ...\mods\InventoryEditor.dll
-    std::wstring s = p;
-    const size_t dot = s.find_last_of(L'.');
-    if (dot != std::wstring::npos) s.resize(dot);
-    return s + L".catalog";                              // ...\mods\InventoryEditor.catalog
-}
-
-std::vector<Row> LoadCatalog() {
-    std::vector<Row> rows;
-    std::ifstream f(CatalogPath());
-    if (!f) { Log("catalog file not found next to the DLL"); return rows; }
-    std::string line;
-    while (std::getline(f, line)) {
-        if (line.empty() || line[0] == '#') continue;
-        std::vector<std::string> c; std::string tok; std::istringstream is(line);
-        while (std::getline(is, tok, '\t')) c.push_back(tok);
-        // category, slot, set, rarity, tier, record, display  (7 cols)
-        if (c.size() >= 7) rows.push_back({ c[0], c[1], c[2], c[3], c[4], c[5], c[6] });
+void BuildPageOnFirstOpen(int page) {
+    if (!g_ui || page < 0) return;
+    const std::vector<Row> rows = LoadRuntimeRows();
+    if (rows.empty()) {
+        g_ui->AddLabel(page, "Live Inventory.Item rows are not available.");
+        Log("live Inventory.Item list unavailable or empty");
+        return;
     }
-    return rows;
+
+    static const char* kFacets[] = { "Category", "Slot", "Set", "Rarity", "Variant" };
+    const int nf = (int)(sizeof(kFacets) / sizeof(kFacets[0]));
+
+    std::vector<std::string> displays;
+    std::vector<std::string> ids;
+    std::vector<std::string> values;
+    displays.reserve(rows.size());
+    ids.reserve(rows.size());
+    values.reserve(rows.size() * nf);
+    for (const auto& r : rows) {
+        displays.push_back(r.display);
+        ids.push_back(r.record);
+        values.push_back(r.category);
+        values.push_back(r.slot);
+        values.push_back(r.set);
+        values.push_back(r.rarity);
+        values.push_back(r.variant);
+    }
+    std::vector<const char*> dp, ip, vp;
+    dp.reserve(displays.size());
+    ip.reserve(ids.size());
+    vp.reserve(values.size());
+    for (const auto& s : displays) dp.push_back(s.c_str());
+    for (const auto& s : ids) ip.push_back(s.c_str());
+    for (const auto& s : values) vp.push_back(s.c_str());
+    g_ui->AddFacetedActionList(page, kFacets, nf, dp.data(), ip.data(),
+                               (int)displays.size(), vp.data(), &SpawnItem);
+    Log("filled tab (page " + std::to_string(page) + ") with " +
+        std::to_string(displays.size()) + " live Inventory.Item rows");
 }
 }  // namespace
 
 // This mod's single tab is auto-named after this.
-extern "C" __declspec(dllexport) const char* SoWMod_Name() { return "Inventory Editor"; }
+extern "C" __declspec(dllexport) const char* SoWMod_Name() { return "Item Spawner"; }
 
-// Save-local: an inventory editor only makes sense with a loaded save, so its tab appears in the hub
+// Save-local: an item spawner only makes sense with a loaded save, so its tab appears in the hub
 // only in-game (hidden at the main menu). See shared/SoWModAPI.h.
 extern "C" __declspec(dllexport) int SoWMod_Scope() { return SOWMOD_LOCAL; }
 
@@ -464,44 +619,13 @@ extern "C" __declspec(dllexport) void SoWMod_Init(int page) {
         ::GetProcAddress(::GetModuleHandleW(L"steam_api64.dll"), "HagUI_GetAPI"));
     HagUIAPI* ui = get ? get(HAGUI_ABI_VERSION) : nullptr;
     if (!ui) { Log("HagUI unavailable"); return; }
+    g_ui = ui;
     g_queueGameTask = ui->QueueGameTask;
-
-    const std::vector<Row> rows = LoadCatalog();
-    if (rows.empty()) { ui->AddLabel(page, "Item catalog not loaded (InventoryEditor.catalog missing)."); return; }
-    Log("loaded " + std::to_string(rows.size()) + " item records");
-
-    // One searchable, multi-facet-filtered, grouped list of every item template. Facets: Category
-    // (also the group header), Slot (sub-header), Set, Rarity, Tier. Rows are the human-readable
-    // display names. The catalog is already sorted by category then slot, so the grouping is tidy.
-    static const char* kFacets[] = { "Category", "Slot", "Set", "Rarity", "Tier" };
-    const int nf = (int)(sizeof(kFacets) / sizeof(kFacets[0]));
-
-    std::vector<std::string> displays;                 // owns the row strings
-    std::vector<std::string> ids;                      // owns stable row ids passed back on click
-    std::vector<std::string> values;                   // owns the facet-value strings (row-major)
-    displays.reserve(rows.size());
-    ids.reserve(rows.size());
-    values.reserve(rows.size() * nf);
-    for (const auto& r : rows) {
-        displays.push_back(r.display);
-        ids.push_back(r.record);
-        values.push_back(r.category);                  // facet 0
-        values.push_back(r.slot);                      // facet 1
-        values.push_back(r.set);                       // facet 2
-        values.push_back(r.rarity);                    // facet 3
-        values.push_back(r.tier);                      // facet 4
-    }
-    std::vector<const char*> dp, ip, vp;
-    dp.reserve(displays.size()); ip.reserve(ids.size()); vp.reserve(values.size());
-    for (const auto& s : displays) dp.push_back(s.c_str());
-    for (const auto& s : ids)      ip.push_back(s.c_str());
-    for (const auto& s : values)   vp.push_back(s.c_str());
-    ui->AddFacetedActionList(page, kFacets, nf, dp.data(), ip.data(), (int)displays.size(),
-                             vp.data(), &GrantItem);  // HagUI copies
-    Log("filled tab (page " + std::to_string(page) + ") with " + std::to_string(displays.size()) + " items");
+    ui->SetPageOnFirstOpenInSave(page, &BuildPageOnFirstOpen);
+    Log("registered live Inventory.Item first-open builder for page " + std::to_string(page));
 }
 
 BOOL APIENTRY DllMain(HMODULE h, DWORD reason, LPVOID) {
-    if (reason == DLL_PROCESS_ATTACH) { g_self = h; ::DisableThreadLibraryCalls(h); }
+    if (reason == DLL_PROCESS_ATTACH) { ::DisableThreadLibraryCalls(h); }
     return TRUE;
 }

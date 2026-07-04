@@ -324,6 +324,9 @@ LRESULT __stdcall Overlay::WndProc(HWND h, UINT msg, WPARAM w, LPARAM l) {
     // F8 toggles the hub (ignore auto-repeat: bit 30 of lParam set == key was already down).
     if (msg == WM_KEYDOWN && w == VK_F8 && (l & 0x40000000) == 0) {
         o.menuOpen_ = !o.menuOpen_;
+        if (o.menuOpen_ && o.appState_ == AppState::InGame) {
+            HagUI::Get().RunFirstOpenInSave();
+        }
         o.SyncCursorState();   // apply immediately; don't wait for the next Present
         char b[112]; ::wsprintfA(b, "[F8] hub=%d app=%s", (int)o.menuOpen_,
                                  o.appState_ == AppState::InGame ? "ingame" : "main-menu");
@@ -372,7 +375,9 @@ void Overlay::SyncCursorState() {
     const bool needsGameCursorUnlock = menuOpen_ && appState_ == AppState::InGame;
     if (needsGameCursorUnlock) {
         UnlockHubCursor();
-        ImGui::GetIO().MouseDrawCursor = false;
+        // The game can leave the Win32 ShowCursor counter deeply negative; draw an overlay cursor
+        // so the hub always has a visible pointer even when the hardware cursor stays hidden.
+        ImGui::GetIO().MouseDrawCursor = true;
         if (!cursorShown_) {
             cursorShowBalance_ = ForceShowCursor();
             cursorShown_ = true;
@@ -1026,9 +1031,9 @@ void Overlay::DrawHub() {
                     }
                     ImGui::EndChild();
                     if (openAddPopup) {
-                        ImGui::OpenPopup("Add item##count");
+                        ImGui::OpenPopup("Spawn item##count");
                     }
-                    if (wd.onItemAdd && ImGui::BeginPopupModal("Add item##count", nullptr,
+                    if (wd.onItemAdd && ImGui::BeginPopupModal("Spawn item##count", nullptr,
                             ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings)) {
                         const int k = wd.actionSel;
                         const char* itemName = (k >= 0 && k < (int)wd.items.size()) ? wd.items[k].c_str() : "";
@@ -1039,7 +1044,7 @@ void Overlay::DrawHub() {
                             if (wd.actionCount < 1) wd.actionCount = 1;
                             if (wd.actionCount > 9999) wd.actionCount = 9999;
                         }
-                        if (ImGui::Button("Add", ImVec2(90.0f * sx, 0.0f))) {
+                        if (ImGui::Button("Spawn", ImVec2(90.0f * sx, 0.0f))) {
                             if (k >= 0 && k < (int)wd.itemIds.size())
                                 wd.onItemAdd(wd.itemIds[k].c_str(), wd.actionCount);
                             ImGui::CloseCurrentPopup();

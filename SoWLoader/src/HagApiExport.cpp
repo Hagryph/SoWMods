@@ -21,9 +21,13 @@ void ApiAddFacetedActionList(int p, const char* const* fn, int fc, const char* c
 bool ApiQueueGameTask(HagUI_GameTaskFn fn, void* ctx) {
     return sow::QueueGameTask(fn, ctx);
 }
+void ApiSetPageOnFirstOpenInSave(int p, HagUI_PageOpenFn fn) {
+    sow::HagUI::Get().SetPageOnFirstOpenInSave(p, fn);
+}
 
 HagUIAPI g_api = { HAGUI_ABI_VERSION, &ApiRegisterPage, &ApiAddLabel, &ApiAddToggle, &ApiAddButton,
-                   &ApiAddList, &ApiAddFacetedList, &ApiAddFacetedActionList, &ApiQueueGameTask };
+                   &ApiAddList, &ApiAddFacetedList, &ApiAddFacetedActionList, &ApiQueueGameTask,
+                   &ApiSetPageOnFirstOpenInSave };
 }  // namespace
 
 // Any ABI from 1..current is served the same struct: the layout is append-only, so a v1 caller simply

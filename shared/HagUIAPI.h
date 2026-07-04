@@ -13,9 +13,10 @@
 
 extern "C" {
 
-constexpr std::uint32_t HAGUI_ABI_VERSION = 5;
+constexpr std::uint32_t HAGUI_ABI_VERSION = 6;
 
 typedef void (*HagUI_GameTaskFn)(void* ctx);
+typedef void (*HagUI_PageOpenFn)(int page);
 
 struct HagUIAPI {
     std::uint32_t abiVersion;                              // == HAGUI_ABI_VERSION
@@ -46,6 +47,9 @@ struct HagUIAPI {
     // v5: queue work that must run from a game-owned hook point, not from the Present/ImGui UI path.
     // The callback is invoked later in-process with the same ctx pointer; ownership is caller-defined.
     bool (*QueueGameTask)(HagUI_GameTaskFn fn, void* ctx);
+    // v6: lazy save-local page init. The loader calls this once for the page when F8 is first opened
+    // while a save/world is loaded, before the page's widgets are drawn.
+    void (*SetPageOnFirstOpenInSave)(int page, HagUI_PageOpenFn fn);
 };
 
 // Exported by the loader DLL. Returns null if the requested ABI version is unsupported.
