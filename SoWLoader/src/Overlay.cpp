@@ -600,12 +600,74 @@ static void DrawFieldTextClipped(ImDrawList* dl, ImFont* f, float px,
         dl->AddLine(ImVec2(cx, clip.y + 1.0f), ImVec2(cx, clip.w - 1.0f), col, 1.0f);
     }
 }
+
+static void DrawScrollArrowCaps(const char* id, ImDrawList* dl, float sx, float sy, float s, ImU32 accent) {
+    const float maxY = ImGui::GetScrollMaxY();
+    if (maxY <= 0.0f) return;
+
+    const ImVec2 wp = ImGui::GetWindowPos();
+    const ImVec2 ws = ImGui::GetWindowSize();
+    const float barW = std::max(6.0f, ImGui::GetStyle().ScrollbarSize);
+    const float capH = std::max(barW + 2.0f, 13.0f * sy);
+    const float x0 = wp.x + ws.x - barW - 1.0f;
+    const float x1 = wp.x + ws.x - 1.0f;
+    const float y0 = wp.y + 1.0f;
+    const float y1 = wp.y + ws.y - 1.0f;
+    if (y1 - y0 < capH * 2.0f + 4.0f) return;
+
+    const ImVec2 oldCursor = ImGui::GetCursorScreenPos();
+    const float lineStep = std::max(ImGui::GetTextLineHeightWithSpacing() * 3.0f, 24.0f * sy);
+    bool upHover = false, downHover = false;
+    bool upActive = false, downActive = false;
+
+    ImGui::PushID(id);
+    ImGui::SetCursorScreenPos(ImVec2(x0, y0));
+    ImGui::InvisibleButton("up", ImVec2(barW, capH));
+    upHover = ImGui::IsItemHovered();
+    upActive = ImGui::IsItemActive();
+    if (upActive && ImGui::IsMouseDown(ImGuiMouseButton_Left))
+        ImGui::SetScrollY(std::max(0.0f, ImGui::GetScrollY() - lineStep * 0.18f));
+
+    ImGui::SetCursorScreenPos(ImVec2(x0, y1 - capH));
+    ImGui::InvisibleButton("down", ImVec2(barW, capH));
+    downHover = ImGui::IsItemHovered();
+    downActive = ImGui::IsItemActive();
+    if (downActive && ImGui::IsMouseDown(ImGuiMouseButton_Left))
+        ImGui::SetScrollY(std::min(maxY, ImGui::GetScrollY() + lineStep * 0.18f));
+    ImGui::PopID();
+    ImGui::SetCursorScreenPos(oldCursor);
+
+    const auto capColor = [](bool hover, bool active) {
+        return active ? IM_COL32(0xB8, 0x86, 0x2F, 230)
+                      : (hover ? IM_COL32(0x3A, 0x30, 0x1E, 250)
+                               : IM_COL32(0x23, 0x1E, 0x16, 230));
+    };
+    const ImVec2 upA(x0, y0), upB(x1, y0 + capH);
+    const ImVec2 dnA(x0, y1 - capH), dnB(x1, y1);
+    dl->AddRectFilled(upA, upB, capColor(upHover, upActive), 3.0f * s);
+    dl->AddRectFilled(dnA, dnB, capColor(downHover, downActive), 3.0f * s);
+    dl->AddRect(upA, upB, IM_COL32(0xE0, 0xB3, 0x4A, 70), 3.0f * s, 0, 1.0f);
+    dl->AddRect(dnA, dnB, IM_COL32(0xE0, 0xB3, 0x4A, 70), 3.0f * s, 0, 1.0f);
+
+    const float cx = (x0 + x1) * 0.5f;
+    const float triW = std::max(2.0f, barW * 0.32f);
+    const float triH = std::max(3.0f, capH * 0.28f);
+    const float uy = y0 + capH * 0.55f;
+    const float dy = y1 - capH * 0.55f;
+    dl->AddTriangleFilled(ImVec2(cx, uy - triH), ImVec2(cx - triW, uy + triH * 0.45f),
+                          ImVec2(cx + triW, uy + triH * 0.45f), accent);
+    dl->AddTriangleFilled(ImVec2(cx, dy + triH), ImVec2(cx - triW, dy - triH * 0.45f),
+                          ImVec2(cx + triW, dy - triH * 0.45f), accent);
+}
+
 void Overlay::StyleHagUI() {
     ImGui::StyleColorsDark();
     ImGuiStyle& s = ImGui::GetStyle();
     s.WindowRounding = 6; s.ChildRounding = 4; s.FrameRounding = 4; s.TabRounding = 3;
     s.WindowBorderSize = 1; s.WindowPadding = ImVec2(28, 24);
     s.ItemSpacing = ImVec2(14, 12); s.FramePadding = ImVec2(16, 8);
+    s.ScrollbarSize = 7.0f;
+    s.ScrollbarRounding = 3.0f;
 
     const ImVec4 accent    = Rgb(0xE0, 0xB3, 0x4A);
     const ImVec4 accentDim = Rgb(0xB8, 0x86, 0x2F);
@@ -633,6 +695,10 @@ void Overlay::StyleHagUI() {
     c[ImGuiCol_TitleBg]         = Rgb(0x1A, 0x17, 0x12);
     c[ImGuiCol_TitleBgActive]   = Rgb(0x1A, 0x17, 0x12);
     c[ImGuiCol_PopupBg]         = Rgb(0x1A, 0x17, 0x12, 0.98f);
+    c[ImGuiCol_ScrollbarBg]          = Rgb(0x0A, 0x0A, 0x0C, 0.42f);
+    c[ImGuiCol_ScrollbarGrab]        = Rgb(0xB8, 0x86, 0x2F, 0.62f);
+    c[ImGuiCol_ScrollbarGrabHovered] = Rgb(0xE0, 0xB3, 0x4A, 0.78f);
+    c[ImGuiCol_ScrollbarGrabActive]  = Rgb(0xE0, 0xB3, 0x4A, 0.95f);
 }
 
 void Overlay::LoadFonts() {
@@ -827,7 +893,7 @@ void Overlay::DrawHub() {
                     // vertical padding must clear the glyph ascenders/descenders, or the search text
                     // pokes out the top and bottom of the field. Keep it generous relative to the font.
                     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding,   ImVec2(8.0f * sx, 7.0f * sy));
-                    ImGui::PushStyleVar(ImGuiStyleVar_ScrollbarSize,  11.0f * sx);
+                    ImGui::PushStyleVar(ImGuiStyleVar_ScrollbarSize,  7.0f);
                     // theme (black + gold): inputs, text, borders, selectable/header, buttons, scrollbar
                     ImGui::PushStyleColor(ImGuiCol_FrameBg,        IM_COL32(0x23, 0x1E, 0x16, 235));  // 1
                     ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, IM_COL32(0x2C, 0x25, 0x19, 235));  // 2
@@ -891,25 +957,52 @@ void Overlay::DrawHub() {
                         const int sc = F.selCount();
                         std::string lbl = F.name;
                         if (sc > 0) lbl += " (" + std::to_string(sc) + ")";
-                        ImGui::SetNextItemWidth(fw);
                         ImGui::PushID(fi);
                         // bound the popup: exactly the button width, capped to ~8 rows so long facets
                         // (Set, Rarity) scroll inside the card instead of spilling past its frame.
                         const float maxPopupH = 8.0f * ImGui::GetTextLineHeightWithSpacing() + 12.0f * sy;
-                        ImGui::SetNextWindowSizeConstraints(ImVec2(fw, 0.0f), ImVec2(fw, maxPopupH));
-                        ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(0, 0, 0, 0));
-                        const bool comboOpen = ImGui::BeginCombo("##facet", lbl.c_str());
-                        ImGui::PopStyleColor();
+                        const float fieldH = ImGui::GetFrameHeight();
+                        ImGui::InvisibleButton("##facet_button", ImVec2(fw, fieldH));
+                        const bool comboHovered = ImGui::IsItemHovered();
+                        if (ImGui::IsItemClicked()) ImGui::OpenPopup("##facet_popup");
+                        const bool comboOpen = ImGui::IsPopupOpen("##facet_popup");
                         {
                             const ImVec2 fa = ImGui::GetItemRectMin();
                             const ImVec2 fb = ImGui::GetItemRectMax();
-                            const float arrowReserve = ImGui::GetFrameHeight();
+                            const float rr = 5.0f * s;
+                            const float arrowReserve = std::max(fieldH, 34.0f * sx);
+                            const ImVec2 aa(std::max(fa.x, fb.x - arrowReserve), fa.y);
+                            const ImVec2 ab = fb;
+                            RoundedVGrad(dl, fa, fb,
+                                         IM_COL32(0x23, 0x1E, 0x16, comboOpen || comboHovered ? 255 : 235),
+                                         IM_COL32(0x1A, 0x16, 0x11, comboOpen || comboHovered ? 255 : 235),
+                                         rr);
+                            dl->AddRectFilled(aa, ab,
+                                comboOpen ? IM_COL32(0x3A, 0x30, 0x1E, 245)
+                                          : IM_COL32(0x31, 0x29, 0x19, 225),
+                                rr);
+                            dl->AddRect(fa, fb, IM_COL32(0xE0, 0xB3, 0x4A, comboHovered ? 135 : 90),
+                                        rr, 0, 1.0f * s);
                             DrawFieldTextClipped(dl, fBody_, 15.0f * s, fa,
-                                                 ImVec2(std::max(fa.x, fb.x - arrowReserve), fb.y),
+                                                 ImVec2(aa.x, fb.y),
                                                  lbl.c_str(), uText,
                                                  8.0f * sx, 3.0f * sy, false);
+                            const float cxA = (aa.x + ab.x) * 0.5f;
+                            const float cyA = (aa.y + ab.y) * 0.5f;
+                            const float triW = std::max(3.0f * s, 4.0f);
+                            const float triH = std::max(2.0f * s, 3.0f);
+                            const ImU32 arrowCol = comboOpen ? uAccent : IM_COL32(0xE0, 0xB3, 0x4A, 190);
+                            dl->AddTriangleFilled(ImVec2(cxA, cyA - 7.0f * sy - triH),
+                                                  ImVec2(cxA - triW, cyA - 7.0f * sy + triH * 0.45f),
+                                                  ImVec2(cxA + triW, cyA - 7.0f * sy + triH * 0.45f),
+                                                  arrowCol);
+                            dl->AddTriangleFilled(ImVec2(cxA, cyA + 7.0f * sy + triH),
+                                                  ImVec2(cxA - triW, cyA + 7.0f * sy - triH * 0.45f),
+                                                  ImVec2(cxA + triW, cyA + 7.0f * sy - triH * 0.45f),
+                                                  arrowCol);
                         }
-                        if (comboOpen) {
+                        ImGui::SetNextWindowSizeConstraints(ImVec2(fw, 0.0f), ImVec2(fw, maxPopupH));
+                        if (ImGui::BeginPopup("##facet_popup")) {
                             ImDrawList* comboDl = ImGui::GetWindowDrawList();
                             const ImVec2 popMin = ImGui::GetWindowPos();
                             const ImVec2 popMax(popMin.x + ImGui::GetWindowWidth(),
@@ -953,14 +1046,15 @@ void Overlay::DrawHub() {
                                 }
                                 DrawFieldTextClipped(comboDl, fBody_, 14.0f * s,
                                                      ImVec2(oa.x + 28.0f * sx, oa.y),
-                                                     ob, F.opts[j].c_str(),
+                                                     ImVec2(ob.x - 8.0f, ob.y), F.opts[j].c_str(),
                                                      selected ? uText : uDim,
                                                      2.0f * sx, 0.0f, false,
                                                      &popClip);
                                 ImGui::PopID();
                             }
+                            DrawScrollArrowCaps("facet_scroll", comboDl, sx, sy, s, uAccent);
                             ImGui::PopStyleVar();
-                            ImGui::EndCombo();
+                            ImGui::EndPopup();
                         }
                         ImGui::PopID();
                     }
@@ -1077,6 +1171,7 @@ void Overlay::DrawHub() {
                         }
                     }
                     listDl->PopClipRect();
+                    DrawScrollArrowCaps("item_list_scroll", listDl, sx, sy, s, uAccent);
                     ImGui::EndChild();
                     if (openAddPopup) {
                         ImGui::OpenPopup("Spawn item##count");
@@ -1104,7 +1199,8 @@ void Overlay::DrawHub() {
                         ImGui::PushStyleColor(ImGuiCol_Text,             uText);
                         if (ImGui::BeginPopupModal("Spawn item##count", nullptr,
                                 ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoResize |
-                                ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar)) {
+                                ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar |
+                                ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse)) {
                             ImDrawList* popDl = ImGui::GetWindowDrawList();
                             const ImVec2 mp = ImGui::GetWindowPos();
                             const ImVec2 ms = ImGui::GetWindowSize();
