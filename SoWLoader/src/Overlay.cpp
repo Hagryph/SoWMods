@@ -910,12 +910,56 @@ void Overlay::DrawHub() {
                                                  8.0f * sx, 3.0f * sy, false);
                         }
                         if (comboOpen) {
+                            ImDrawList* comboDl = ImGui::GetWindowDrawList();
+                            const ImVec2 popMin = ImGui::GetWindowPos();
+                            const ImVec2 popMax(popMin.x + ImGui::GetWindowWidth(),
+                                                popMin.y + ImGui::GetWindowHeight());
+                            const ImVec4 popClip(popMin.x + 2.0f, popMin.y + 2.0f,
+                                                 popMax.x - 2.0f, popMax.y - 2.0f);
+                            ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 2.0f * sy));
                             for (int j = 0; j < (int)F.opts.size(); ++j) {
-                                bool b = F.sel[j] != 0;
+                                const bool selected = F.sel[j] != 0;
                                 ImGui::PushID(j);
-                                if (ImGui::Checkbox(F.opts[j].c_str(), &b)) F.sel[j] = b ? 1 : 0;
+                                const float optW = ImGui::GetContentRegionAvail().x;
+                                const float optH = std::max(ImGui::GetTextLineHeightWithSpacing(),
+                                                            24.0f * sy);
+                                ImGui::InvisibleButton("##opt", ImVec2(optW, optH));
+                                const bool hov = ImGui::IsItemHovered();
+                                if (ImGui::IsItemClicked()) F.sel[j] = selected ? 0 : 1;
+                                const ImVec2 oa = ImGui::GetItemRectMin();
+                                const ImVec2 ob = ImGui::GetItemRectMax();
+                                if (selected || hov) {
+                                    comboDl->AddRectFilled(oa, ob,
+                                        selected ? IM_COL32(0xE0, 0xB3, 0x4A, hov ? 58 : 42)
+                                                 : IM_COL32(0xE0, 0xB3, 0x4A, 24),
+                                        4.0f * s);
+                                }
+                                const float box = std::max(10.0f * s, std::min(14.0f * s, optH - 6.0f * sy));
+                                const ImVec2 ca(oa.x + 7.0f * sx, oa.y + (optH - box) * 0.5f);
+                                const ImVec2 cb(ca.x + box, ca.y + box);
+                                comboDl->AddRectFilled(ca, cb,
+                                    IM_COL32(0xE0, 0xB3, 0x4A, selected ? 50 : 12),
+                                    3.0f * s);
+                                comboDl->AddRect(ca, cb,
+                                    IM_COL32(0xE0, 0xB3, 0x4A, hov ? 180 : 95),
+                                    3.0f * s, 0, 1.0f * s);
+                                if (selected) {
+                                    const ImVec2 pts[3] = {
+                                        ImVec2(ca.x + box * 0.24f, ca.y + box * 0.54f),
+                                        ImVec2(ca.x + box * 0.43f, ca.y + box * 0.74f),
+                                        ImVec2(ca.x + box * 0.78f, ca.y + box * 0.28f)
+                                    };
+                                    comboDl->AddPolyline(pts, 3, uAccent, 0, 2.0f * s);
+                                }
+                                DrawFieldTextClipped(comboDl, fBody_, 14.0f * s,
+                                                     ImVec2(oa.x + 28.0f * sx, oa.y),
+                                                     ob, F.opts[j].c_str(),
+                                                     selected ? uText : uDim,
+                                                     2.0f * sx, 0.0f, false,
+                                                     &popClip);
                                 ImGui::PopID();
                             }
+                            ImGui::PopStyleVar();
                             ImGui::EndCombo();
                         }
                         ImGui::PopID();
@@ -950,6 +994,9 @@ void Overlay::DrawHub() {
                     const ImVec4 listClip(childMin.x + 1.0f, childMin.y + 1.0f,
                                           childMin.x + childSize.x - 1.0f,
                                           childMin.y + childSize.y - 1.0f);
+                    ImDrawList* listDl = ImGui::GetWindowDrawList();
+                    listDl->PushClipRect(ImVec2(listClip.x, listClip.y),
+                                         ImVec2(listClip.z, listClip.w), true);
                     if (vis.empty()) {
                         ImGui::TextDisabled("no items match the current filters");
                     } else {
@@ -1005,7 +1052,7 @@ void Overlay::DrawHub() {
                                 if (wd.listSel == k || rowHovered) {
                                     const ImU32 bg = wd.listSel == k ? IM_COL32(0xE0, 0xB3, 0x4A, 42)
                                                                      : IM_COL32(0xE0, 0xB3, 0x4A, 24);
-                                    dl->AddRectFilled(ra, rb, bg, 4.0f * s);
+                                    listDl->AddRectFilled(ra, rb, bg, 4.0f * s);
                                 }
                                 const float rowW = rb.x - ra.x;
                                 const float tagGap = 10.0f * sx;
@@ -1017,11 +1064,11 @@ void Overlay::DrawHub() {
                                 }
                                 const float tagLeft = rb.x - tagW;
                                 const float itemRight = tag.empty() ? rb.x : std::max(ra.x, tagLeft - tagGap);
-                                DrawFieldTextClipped(dl, fBody_, 15.0f * s, ra, ImVec2(itemRight, rb.y),
+                                DrawFieldTextClipped(listDl, fBody_, 15.0f * s, ra, ImVec2(itemRight, rb.y),
                                                      wd.items[k].c_str(), uText, 6.0f * sx, 1.0f * sy, false,
                                                      &listClip);
                                 if (!tag.empty()) {
-                                    DrawFieldTextClipped(dl, fBody_, 15.0f * s, ImVec2(tagLeft, ra.y), rb,
+                                    DrawFieldTextClipped(listDl, fBody_, 15.0f * s, ImVec2(tagLeft, ra.y), rb,
                                                          tag.c_str(), uFaint, 4.0f * sx, 1.0f * sy, false,
                                                          &listClip);
                                 }
@@ -1029,31 +1076,93 @@ void Overlay::DrawHub() {
                             ImGui::PopID();
                         }
                     }
+                    listDl->PopClipRect();
                     ImGui::EndChild();
                     if (openAddPopup) {
                         ImGui::OpenPopup("Spawn item##count");
                     }
-                    if (wd.onItemAdd && ImGui::BeginPopupModal("Spawn item##count", nullptr,
-                            ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings)) {
-                        const int k = wd.actionSel;
-                        const char* itemName = (k >= 0 && k < (int)wd.items.size()) ? wd.items[k].c_str() : "";
-                        ImGui::TextUnformatted(itemName);
-                        ImGui::Separator();
-                        ImGui::SetNextItemWidth(150.0f * sx);
-                        if (ImGui::InputInt("Count", &wd.actionCount, 1, 10)) {
+                    if (wd.onItemAdd) {
+                        const float modalW = std::max(330.0f * sx, 300.0f);
+                        const float modalH = std::max(186.0f * sy, 160.0f);
+                        ImGui::SetNextWindowPos(ImVec2(disp.x * 0.5f, disp.y * 0.5f),
+                                                ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+                        ImGui::SetNextWindowSize(ImVec2(modalW, modalH), ImGuiCond_Appearing);
+                        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(18.0f * sx, 16.0f * sy));
+                        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f * s);
+                        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.0f);
+                        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 5.0f * s);
+                        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(8.0f * sx, 6.0f * sy));
+                        ImGui::PushStyleColor(ImGuiCol_ModalWindowDimBg, IM_COL32(0x03, 0x03, 0x05, 165));
+                        ImGui::PushStyleColor(ImGuiCol_WindowBg,         IM_COL32(0x14, 0x12, 0x10, 252));
+                        ImGui::PushStyleColor(ImGuiCol_Border,           IM_COL32(0xE0, 0xB3, 0x4A, 125));
+                        ImGui::PushStyleColor(ImGuiCol_FrameBg,          IM_COL32(0x23, 0x1E, 0x16, 245));
+                        ImGui::PushStyleColor(ImGuiCol_FrameBgHovered,   IM_COL32(0x2C, 0x25, 0x19, 255));
+                        ImGui::PushStyleColor(ImGuiCol_FrameBgActive,    IM_COL32(0x32, 0x2A, 0x1C, 255));
+                        ImGui::PushStyleColor(ImGuiCol_Button,           IM_COL32(0x25, 0x20, 0x17, 245));
+                        ImGui::PushStyleColor(ImGuiCol_ButtonHovered,    IM_COL32(0x3A, 0x30, 0x1E, 255));
+                        ImGui::PushStyleColor(ImGuiCol_ButtonActive,     IM_COL32(0xB8, 0x86, 0x2F, 210));
+                        ImGui::PushStyleColor(ImGuiCol_Text,             uText);
+                        if (ImGui::BeginPopupModal("Spawn item##count", nullptr,
+                                ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoResize |
+                                ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar)) {
+                            ImDrawList* popDl = ImGui::GetWindowDrawList();
+                            const ImVec2 mp = ImGui::GetWindowPos();
+                            const ImVec2 ms = ImGui::GetWindowSize();
+                            const int k = wd.actionSel;
+                            const char* itemName = (k >= 0 && k < (int)wd.items.size()) ? wd.items[k].c_str() : "";
+                            AddTextCX(popDl, fTab_, 15.0f * s,
+                                      ImVec2(mp.x + 18.0f * sx, mp.y + 15.0f * sy),
+                                      uAccent, "SPAWN ITEM", XS);
+                            popDl->AddLine(ImVec2(mp.x + 18.0f * sx, mp.y + 40.0f * sy),
+                                           ImVec2(mp.x + ms.x - 18.0f * sx, mp.y + 40.0f * sy),
+                                           IM_COL32(0xE0, 0xB3, 0x4A, 60), 1.0f * s);
+
+                            const ImVec2 ia(mp.x + 18.0f * sx, mp.y + 50.0f * sy);
+                            const ImVec2 ib(mp.x + ms.x - 18.0f * sx, ia.y + 34.0f * sy);
+                            RoundedVGrad(popDl, ia, ib, IM_COL32(0xE0, 0xB3, 0x4A, 30),
+                                                     IM_COL32(0xE0, 0xB3, 0x4A, 12), 5.0f * s);
+                            popDl->AddRect(ia, ib, IM_COL32(0xE0, 0xB3, 0x4A, 75), 5.0f * s, 0, 1.0f * s);
+                            DrawFieldTextClipped(popDl, fBody_, 15.0f * s, ia, ib, itemName,
+                                                 uText, 9.0f * sx, 3.0f * sy, false);
+
+                            ImGui::SetCursorScreenPos(ImVec2(mp.x + 18.0f * sx, mp.y + 96.0f * sy));
+                            ImGui::TextColored(Rgb(0x9C, 0x94, 0x86), "Count");
+                            ImGui::SameLine(0.0f, 12.0f * sx);
+                            const float stepH = std::max(28.0f * sy, 24.0f);
+                            const float stepW = std::max(30.0f * sx, 28.0f);
+                            const float inputW = std::max(92.0f * sx, 78.0f);
+                            if (ImGui::Button("-", ImVec2(stepW, stepH)) && wd.actionCount > 1)
+                                --wd.actionCount;
+                            ImGui::SameLine(0.0f, 6.0f * sx);
+                            ImGui::SetNextItemWidth(inputW);
+                            if (ImGui::InputInt("##count", &wd.actionCount, 0, 0,
+                                                ImGuiInputTextFlags_CharsDecimal)) {
+                                if (wd.actionCount < 1) wd.actionCount = 1;
+                                if (wd.actionCount > 9999) wd.actionCount = 9999;
+                            }
+                            ImGui::SameLine(0.0f, 6.0f * sx);
+                            if (ImGui::Button("+", ImVec2(stepW, stepH)) && wd.actionCount < 9999)
+                                ++wd.actionCount;
+
                             if (wd.actionCount < 1) wd.actionCount = 1;
                             if (wd.actionCount > 9999) wd.actionCount = 9999;
+
+                            const float btnW = (ms.x - 46.0f * sx) * 0.5f;
+                            const float btnH = std::max(30.0f * sy, 26.0f);
+                            ImGui::SetCursorScreenPos(ImVec2(mp.x + 18.0f * sx, mp.y + ms.y - 42.0f * sy));
+                            if (ImGui::Button("SPAWN", ImVec2(btnW, btnH))) {
+                                if (k >= 0 && k < (int)wd.itemIds.size())
+                                    wd.onItemAdd(wd.itemIds[k].c_str(), wd.actionCount);
+                                ImGui::CloseCurrentPopup();
+                            }
+                            ImGui::SameLine(0.0f, 10.0f * sx);
+                            if (ImGui::Button("CANCEL", ImVec2(btnW, btnH))) {
+                                ImGui::CloseCurrentPopup();
+                            }
+                            ImGui::EndPopup();
                         }
-                        if (ImGui::Button("Spawn", ImVec2(90.0f * sx, 0.0f))) {
-                            if (k >= 0 && k < (int)wd.itemIds.size())
-                                wd.onItemAdd(wd.itemIds[k].c_str(), wd.actionCount);
-                            ImGui::CloseCurrentPopup();
-                        }
-                        ImGui::SameLine();
-                        if (ImGui::Button("Cancel", ImVec2(90.0f * sx, 0.0f))) {
-                            ImGui::CloseCurrentPopup();
-                        }
-                        ImGui::EndPopup();
+                        ImGui::PopStyleColor(10);
+                        ImGui::PopStyleVar(5);
                     }
                     ImGui::PopStyleVar();       // list child WindowPadding
                     ImGui::PopStyleVar(4);      // FrameRounding, PopupRounding, FramePadding, ScrollbarSize
