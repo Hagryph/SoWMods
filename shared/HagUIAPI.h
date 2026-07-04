@@ -13,7 +13,9 @@
 
 extern "C" {
 
-constexpr std::uint32_t HAGUI_ABI_VERSION = 4;
+constexpr std::uint32_t HAGUI_ABI_VERSION = 5;
+
+typedef void (*HagUI_GameTaskFn)(void* ctx);
 
 struct HagUIAPI {
     std::uint32_t abiVersion;                              // == HAGUI_ABI_VERSION
@@ -41,6 +43,9 @@ struct HagUIAPI {
                                  const char* const* displays, const char* const* ids, int itemCount,
                                  const char* const* facetValues,
                                  void (*onAdd)(const char* id, int count));
+    // v5: queue work that must run from a game-owned hook point, not from the Present/ImGui UI path.
+    // The callback is invoked later in-process with the same ctx pointer; ownership is caller-defined.
+    bool (*QueueGameTask)(HagUI_GameTaskFn fn, void* ctx);
 };
 
 // Exported by the loader DLL. Returns null if the requested ABI version is unsupported.

@@ -55,6 +55,7 @@ inline constexpr std::uintptr_t kMainWindowHwnd2 = 0x142c88000; // second copy t
 // CURSOR lever (NOT a pause lever — earlier "pause" seen while probing it was window FOCUS-LOSS). To free the
 // cursor for our overlay: set =1, raise ShowCursor to >=0 once, ClipCursor(NULL); restore =0 on close.
 inline constexpr std::uintptr_t kCursorCtrlDisable = 0x1427030c8; // ==0: engine controls cursor; ==1: hands off
+inline constexpr std::uintptr_t kCursorRecenter    = 0x1411ac828; // per-frame cursor recenter/clamp helper; returns 0
 
 // PAUSE — ⚠ LEVER NOT YET FOUND (investigated 2026-07-03, live via HagIPC). Findings so far:
 //  * FUN_1406cdf0c(uiCtx, _, char show) is the pause-menu SHOW/HIDE primitive: it looks up the "PauseMenu"
@@ -101,16 +102,21 @@ inline constexpr std::uintptr_t kFrontEndRootLayerDtor     = 0x14197694cull; // 
 inline constexpr std::uintptr_t kFrontEndRootLayerDelDtor  = 0x141976a24ull; // vtable slot 0: deleting dtor
 inline constexpr std::uintptr_t kPlayerBaseVtable          = 0x141f995e0ull; // shared Character base (Talion + orcs) — NOT a unique in-save anchor
 
-// --- Inventory editor live add path (RE'd + live-verified 2026-07-03) ---
-// Inventory container vtable. The current player container is found by scanning for this vtable and
-// validating owner/vector fields; do not hardcode heap addresses.
-inline constexpr std::uintptr_t kInventoryContainerVtable = 0x141fd63f0ull;
+// --- Inventory editor item lookup / world-drop grant path ---
 // DAT_142700530 -> Inventory.Item descriptor. Descriptor +0x28 = row count, +0x38 = sorted row table.
 // Rows are 0x28 bytes: +0x04 hash, +0x20 record-name char*. The row start is the Inventory.Item* used
 // by the inventory container entries.
 inline constexpr std::uintptr_t kInventoryItemDescriptor = 0x142700530ull;
-inline constexpr std::uintptr_t kInventoryAddItem        = 0x1401c01e0ull; // (container, itemRow, count)
-inline constexpr std::uintptr_t kInventorySetEntryCount  = 0x1401bfec8ull; // (entry, newCount)
+// Direct inventory calls (FUN_1401c01e0 / FUN_1401c1224) are intentionally not used for UI grants:
+// generated gear needs an owner/lifetime path, and direct mutation caused hangs/crashes. The safe route
+// mirrors Combat/Actions/InventoryItemDropLoot: build a temporary 0x38 loot record and ask the world
+// drop spawner to create a pickup object. The user can then collect it through the game's own LCtrl
+// pickup path (0x140411a78 -> 0x140410bc4 -> generated inventory add).
+inline constexpr std::uintptr_t kGameSystemsSingleton = 0x1426ffaa8ull; // DAT_1426ffaa8; +0x6d28 = world drop manager
+inline constexpr std::uintptr_t kLootRecordInit       = 0x1404f2320ull; // (record[0x38]) alloc/init generated-data slot
+inline constexpr std::uintptr_t kLootRecordDestroy    = 0x1404f2380ull; // (record[0x38]) releases generated-data slot
+inline constexpr std::uintptr_t kWorldDropSpawn       = 0x1407a10a0ull; // (pose, lootRecord, id, worldCtx, flag) -> object
+inline constexpr std::uintptr_t kActionDropLoot       = 0x140f14fa0ull; // Combat.Action.InventoryItemDropLoot handler (reference)
 
 // FrontEndLoadWorld — rejected probe. It loads the front-end 3D BACKDROP world + background images,
 // not the "menu shown" or save->menu return moment: hooking 0x141d6f0a8 installed fine but it did

@@ -2,6 +2,7 @@
 #include "Log.h"
 #include "Overlay.h"
 #include "GameOffsets.h"   // ../shared : game::FromRVA + the hand-found RVAs
+#include "GameTaskQueue.h"
 
 #include <MinHook.h>
 #include <string>
@@ -82,6 +83,15 @@ static void __fastcall HookSaveToFrontEndClear(void* self) {
     Overlay::Get().SetInGame(false);
 }
 
+using CursorRecenterFn = std::uint64_t (__fastcall*)();
+static CursorRecenterFn oCursorRecenter = nullptr;
+
+static std::uint64_t __fastcall HookCursorRecenter() {
+    const std::uint64_t r = oCursorRecenter();
+    if (g_inSave != 0) DrainGameTasks(1);
+    return r;
+}
+
 void GameHooks::Install() {
     auto& log = Log::Get();
 
@@ -123,6 +133,18 @@ void GameHooks::Install() {
                  " - awaiting save-to-menu return");
     } else {
         log.Line(std::string("[gamehooks] save-to-front-end clear hook FAILED @ ") + returnAddr);
+    }
+
+    void* cursorTarget = reinterpret_cast<void*>(game::FromRVA(game::kCursorRecenter));
+    char cursorAddr[32]{};
+    ::wsprintfA(cursorAddr, "0x%p", cursorTarget);
+    if (MH_CreateHook(cursorTarget, reinterpret_cast<void*>(&HookCursorRecenter),
+                      reinterpret_cast<void**>(&oCursorRecenter)) == MH_OK &&
+        MH_EnableHook(cursorTarget) == MH_OK) {
+        log.Line(std::string("[gamehooks] cursor recenter hooked @ ") + cursorAddr +
+                 " - queued game tasks drain here");
+    } else {
+        log.Line(std::string("[gamehooks] cursor recenter hook FAILED @ ") + cursorAddr);
     }
 }
 

@@ -13,7 +13,8 @@
 #include <algorithm>
 #include <cstdint>
 #include <cstring>
-#include <limits>
+#include <cmath>
+#include <new>
 #include <unordered_map>
 
 #include "GameOffsets.h"
@@ -22,8 +23,16 @@
 
 namespace {
 HMODULE g_self = nullptr;
+bool (*g_queueGameTask)(HagUI_GameTaskFn fn, void* ctx) = nullptr;
 
 struct Row { std::string category, slot, set, rarity, tier, record, display; };
+
+struct GrantTask {
+    std::uintptr_t itemRow = 0;
+    int count = 0;
+    char requested[128]{};
+    char resolved[128]{};
+};
 
 std::string Hex(std::uintptr_t v) {
     char b[32]{};
@@ -61,9 +70,9 @@ void Log(const std::string& m) {
 }
 
 constexpr std::uintptr_t kRowSize = 0x28;
-constexpr std::uintptr_t kInvVecBegin = 0x740;
-constexpr std::uintptr_t kInvVecEnd = 0x748;
-constexpr std::uintptr_t kInvDirty = 0x76c;
+constexpr std::size_t kLootRecordSize = 0x38;
+constexpr std::size_t kDropPoseSize = 0x30;
+constexpr int kMaxWorldDropsPerClick = 50;
 
 template <class T>
 bool ReadMem(std::uintptr_t addr, T& out) {
@@ -99,40 +108,19 @@ std::string SafeString(const char* s) {
     return n ? std::string(s, n) : std::string{};
 }
 
-bool CallSetEntryCount(std::uintptr_t entry, std::uint32_t count) {
-    using SetCountFn = void(__fastcall*)(std::uintptr_t, std::uint32_t);
-    __try {
-        reinterpret_cast<SetCountFn>(game::FromRVA(game::kInventorySetEntryCount))(entry, count);
-        return true;
-    } __except (EXCEPTION_EXECUTE_HANDLER) {
-        return false;
-    }
-}
-
-bool CallAddItem(std::uintptr_t inv, std::uintptr_t itemRow, std::uint32_t count) {
-    using AddFn = bool(__fastcall*)(std::uintptr_t, std::uintptr_t, std::uint32_t);
-    __try {
-        return reinterpret_cast<AddFn>(game::FromRVA(game::kInventoryAddItem))(inv, itemRow, count);
-    } __except (EXCEPTION_EXECUTE_HANDLER) {
-        return false;
-    }
-}
-
-bool IsReadableRange(std::uintptr_t addr, std::size_t len) {
-    MEMORY_BASIC_INFORMATION mbi{};
-    if (!addr || !::VirtualQuery(reinterpret_cast<void*>(addr), &mbi, sizeof(mbi))) return false;
-    if (mbi.State != MEM_COMMIT || (mbi.Protect & PAGE_GUARD) || (mbi.Protect & PAGE_NOACCESS)) return false;
-    const auto start = reinterpret_cast<std::uintptr_t>(mbi.BaseAddress);
-    const auto end = start + mbi.RegionSize;
-    return addr >= start && len <= end - addr;
-}
-
 std::vector<std::string> Split(const std::string& s, char sep) {
     std::vector<std::string> out;
     std::string cur;
     std::istringstream is(s);
     while (std::getline(is, cur, sep)) out.push_back(cur);
     return out;
+}
+
+void CopyAscii(char* dst, std::size_t cap, const std::string& src) {
+    if (!dst || cap == 0) return;
+    const std::size_t n = (std::min)(cap - 1, src.size());
+    std::memcpy(dst, src.data(), n);
+    dst[n] = '\0';
 }
 
 bool StartsWith(const std::string& s, const char* prefix) {
@@ -230,140 +218,187 @@ std::uintptr_t ResolveItemRow(const std::string& record, std::string& resolvedNa
     return 0;
 }
 
-std::string ItemRecordName(std::uintptr_t itemRow) {
-    const char* name = nullptr;
-    if (!ReadMem(itemRow + 0x20, name)) return {};
-    return SafeString(name);
+template <class T>
+void PutBytes(std::uint8_t* buf, std::size_t offset, const T& value) {
+    std::memcpy(buf + offset, &value, sizeof(T));
 }
 
-struct InventoryProbe {
-    bool valid = false;
-    std::uintptr_t addr = 0;
-    std::uintptr_t owner = 0;
-    std::uintptr_t begin = 0;
-    std::uintptr_t end = 0;
-    std::uint32_t count = 0;
-    int score = (std::numeric_limits<int>::min)();
-};
+bool Finite3(float x, float y, float z) {
+    return std::isfinite(x) && std::isfinite(y) && std::isfinite(z);
+}
 
-int PlayerInventoryScore(std::uintptr_t begin, std::uint32_t count) {
-    int score = static_cast<int>(std::min<std::uint32_t>(count, 200));
-    const std::uint32_t limit = std::min<std::uint32_t>(count, 160);
-    for (std::uint32_t i = 0; i < limit; ++i) {
-        std::uintptr_t entry = 0, itemRow = 0;
-        if (!ReadMem(begin + static_cast<std::uintptr_t>(i) * sizeof(std::uintptr_t), entry) ||
-            !entry || !ReadMem(entry, itemRow) || !itemRow) {
-            continue;
-        }
-        const std::string name = ItemRecordName(itemRow);
-        if (name.empty()) continue;
-
-        // Talion's inventory contains player abilities/unlocks mixed with gear. Orc/NPC inventories
-        // start with personality/tribe records and otherwise look structurally identical.
-        if (name == "PC_Glaive") score += 1000;
-        else if (name == "ScriptedUnlock_WraithVision") score += 1000;
-        else if (name == "Primary_1Sword_1Default") score += 500;
-        else if (name == "S_BasicWraith") score += 250;
-        else if (StartsWith(name, "PC_")) score += 80;
-        else if (StartsWith(name, "Personality_") || StartsWith(name, "Tribe_") ||
-                 StartsWith(name, "Orc_")) {
-            score -= 500;
-        }
+std::uintptr_t CurrentPlayer() {
+    std::uintptr_t engine = 0;
+    if (!ReadMem(game::FromRVA(game::kEngineSingleton), engine) || !engine) {
+        Log("engine singleton unavailable for world drop");
+        return 0;
     }
-    return score;
+    std::uintptr_t player = 0;
+    if (!ReadMem(engine + 0x888, player) || !player) {
+        Log("current player unavailable for world drop");
+        return 0;
+    }
+    return player;
 }
 
-InventoryProbe ProbeInventoryContainer(std::uintptr_t candidate, bool scoreItems) {
-    InventoryProbe p{};
-    p.addr = candidate;
-    std::uintptr_t vtable = 0, owner = 0, ownerVtable = 0, begin = 0, end = 0;
-    if (!ReadMem(candidate, vtable) || vtable != game::FromRVA(game::kInventoryContainerVtable)) return p;
-    if (!ReadMem(candidate + 0x440, owner) || !owner) return p;
-    if (!ReadMem(owner, ownerVtable) || ownerVtable != game::FromRVA(game::kPlayerBaseVtable)) return p;
-    if (!ReadMem(candidate + kInvVecBegin, begin) || !ReadMem(candidate + kInvVecEnd, end)) return p;
-    if (end < begin || ((end - begin) & 7) != 0) return p;
-    const std::uintptr_t count = (end - begin) / 8;
-    if (count == 0 || count >= 5000 || !IsReadableRange(begin, static_cast<std::size_t>(end - begin))) return p;
-    p.valid = true;
-    p.owner = owner;
-    p.begin = begin;
-    p.end = end;
-    p.count = static_cast<std::uint32_t>(count);
-    p.score = scoreItems ? PlayerInventoryScore(begin, p.count) : 0;
-    return p;
+bool BuildDropPose(std::uint8_t* pose) {
+    std::memset(pose, 0, kDropPoseSize);
+    const std::uintptr_t player = CurrentPlayer();
+    if (!player) return false;
+
+    float x = 0.0f, y = 0.0f, z = 0.0f;
+    if ((!ReadMem(player + 0x2180, x) || !ReadMem(player + 0x2184, y) ||
+         !ReadMem(player + 0x2188, z) || !Finite3(x, y, z))) {
+        Log("player transform unavailable for world drop");
+        return false;
+    }
+
+    // Matches the fallback pose used by ActionInventoryItemDropLoot: position + identity rotation.
+    PutBytes(pose, 0x00, x);
+    PutBytes(pose, 0x04, y);
+    PutBytes(pose, 0x08, z);
+    const float zero = 0.0f;
+    const float one = 1.0f;
+    PutBytes(pose, 0x0c, zero);
+    PutBytes(pose, 0x10, zero);
+    PutBytes(pose, 0x14, zero);
+    PutBytes(pose, 0x18, one);
+    return true;
 }
 
-bool ValidateInventoryContainer(std::uintptr_t candidate) {
-    const InventoryProbe p = ProbeInventoryContainer(candidate, true);
-    return p.valid && p.score > 0;
+bool NextDropContext(std::uint32_t& id, std::uintptr_t& worldCtx) {
+    std::uintptr_t systems = 0;
+    if (!ReadMem(game::FromRVA(game::kGameSystemsSingleton), systems) || !systems) {
+        Log("game systems singleton unavailable for world drop");
+        return false;
+    }
+    std::uintptr_t manager = 0;
+    if (!ReadMem(systems + 0x6d28, manager) || !manager) {
+        Log("world drop manager unavailable");
+        return false;
+    }
+    if (!ReadMem(manager + 0x20, worldCtx) || !worldCtx) {
+        Log("world drop context unavailable");
+        return false;
+    }
+    std::uint32_t cur = 0;
+    if (!ReadMem(manager + 0x40, cur)) {
+        Log("world drop id counter unavailable");
+        return false;
+    }
+    id = cur;
+    std::uint32_t next = cur + 1;
+    if (next == 0) {
+        next = 1;
+        id = 1;
+    }
+    if (!WriteMem(manager + 0x40, next)) {
+        Log("world drop id counter write failed");
+        return false;
+    }
+    return true;
 }
 
-std::uintptr_t FindInventoryContainer() {
-    static std::uintptr_t cached = 0;
-    if (cached && ValidateInventoryContainer(cached)) return cached;
+bool CallLootRecordInit(std::uint8_t* record) {
+    using InitFn = void*(__fastcall*)(void*);
+    __try {
+        reinterpret_cast<InitFn>(game::FromRVA(game::kLootRecordInit))(record);
+        return true;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+}
 
-    const std::uintptr_t target = game::FromRVA(game::kInventoryContainerVtable);
-    SYSTEM_INFO si{};
-    ::GetSystemInfo(&si);
-    std::uintptr_t p = reinterpret_cast<std::uintptr_t>(si.lpMinimumApplicationAddress);
-    const std::uintptr_t max = reinterpret_cast<std::uintptr_t>(si.lpMaximumApplicationAddress);
-    InventoryProbe best{};
-    InventoryProbe fallback{};
-    fallback.score = (std::numeric_limits<int>::min)();
-    while (p < max) {
-        MEMORY_BASIC_INFORMATION mbi{};
-        if (!::VirtualQuery(reinterpret_cast<void*>(p), &mbi, sizeof(mbi))) break;
-        const std::uintptr_t base = reinterpret_cast<std::uintptr_t>(mbi.BaseAddress);
-        const std::uintptr_t end = base + mbi.RegionSize;
-        const bool readable = mbi.State == MEM_COMMIT && !(mbi.Protect & PAGE_GUARD) &&
-                              !(mbi.Protect & PAGE_NOACCESS);
-        if (readable) {
-            for (std::uintptr_t q = base; q + sizeof(std::uintptr_t) <= end; q += sizeof(std::uintptr_t)) {
-                std::uintptr_t value = 0;
-                if (ReadMem(q, value) && value == target) {
-                    InventoryProbe probe = ProbeInventoryContainer(q, true);
-                    if (!probe.valid) continue;
-                    if (!fallback.valid || probe.count > fallback.count) fallback = probe;
-                    if (!best.valid || probe.score > best.score ||
-                        (probe.score == best.score && probe.count > best.count)) {
-                        best = probe;
+bool CallLootRecordDestroy(std::uint8_t* record) {
+    using DestroyFn = void(__fastcall*)(void*);
+    __try {
+        reinterpret_cast<DestroyFn>(game::FromRVA(game::kLootRecordDestroy))(record);
+        return true;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+}
+
+bool CallWorldDropSpawn(std::uint8_t* pose, std::uint8_t* record, std::uint32_t id,
+                        std::uintptr_t worldCtx, std::uintptr_t& result) {
+    using SpawnFn = std::uintptr_t(__fastcall*)(void*, void*, std::uint32_t, std::uintptr_t, std::uint8_t);
+    __try {
+        result = reinterpret_cast<SpawnFn>(game::FromRVA(game::kWorldDropSpawn))(
+            pose, record, id, worldCtx, 0);
+        return true;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        result = 0;
+        return false;
+    }
+}
+
+bool SpawnWorldDrop(std::uintptr_t itemRow) {
+    alignas(8) std::uint8_t record[kLootRecordSize]{};
+    alignas(8) std::uint8_t pose[kDropPoseSize]{};
+    bool initialized = false;
+    bool ok = false;
+    std::uintptr_t result = 0;
+
+    if (!CallLootRecordInit(record)) {
+        Log("loot record init raised SEH");
+    } else {
+        initialized = true;
+        std::uintptr_t generatedData = 0;
+        std::memcpy(&generatedData, record + 0x18, sizeof(generatedData));
+        if (!generatedData) {
+            Log("loot record init produced no generated-data slot");
+        } else if (!BuildDropPose(pose)) {
+            Log("world drop pose build failed");
+        } else {
+            std::uint32_t id = 0;
+            std::uintptr_t worldCtx = 0;
+            if (NextDropContext(id, worldCtx)) {
+                const std::uint32_t itemKind = 1;
+                const std::uint32_t resourceKind = 0x0c;
+                PutBytes(record, 0x20, itemRow);
+                PutBytes(record, 0x28, itemKind);
+                PutBytes(record, 0x2c, resourceKind);
+
+                if (CallWorldDropSpawn(pose, record, id, worldCtx, result)) {
+                    ok = result != 0;
+                    if (!ok) {
+                        Log("world drop spawn returned null id=" + std::to_string(id) +
+                            " ctx=" + Hex(worldCtx));
                     }
+                } else {
+                    Log("world drop spawn raised SEH id=" + std::to_string(id) +
+                        " ctx=" + Hex(worldCtx));
                 }
             }
         }
-        p = end;
     }
-    const InventoryProbe chosen = (best.valid && best.score > 0) ? best : fallback;
-    if (chosen.valid) {
-        cached = chosen.addr;
-        Log("inventory container selected addr=" + Hex(chosen.addr) +
-            " owner=" + Hex(chosen.owner) +
-            " count=" + std::to_string(chosen.count) +
-            " score=" + std::to_string(chosen.score));
-        return cached;
-    }
-    Log("inventory container not found");
-    return 0;
+
+    if (initialized && !CallLootRecordDestroy(record)) Log("loot record destroy raised SEH");
+    if (!ok) Log("world drop spawn failed for row=" + Hex(itemRow));
+    return ok;
 }
 
-std::uintptr_t FindEntry(std::uintptr_t container, std::uintptr_t itemRow, std::uint32_t* count = nullptr) {
-    std::uintptr_t begin = 0, end = 0;
-    if (!ReadMem(container + kInvVecBegin, begin) || !ReadMem(container + kInvVecEnd, end) || end < begin)
-        return 0;
-    for (std::uintptr_t p = begin; p < end; p += sizeof(std::uintptr_t)) {
-        std::uintptr_t entry = 0, entryItem = 0;
-        if (!ReadMem(p, entry) || !entry || !ReadMem(entry, entryItem)) continue;
-        if (entryItem == itemRow) {
-            if (count) ReadMem(entry + 0x20, *count);
-            return entry;
-        }
+void RunGrantTask(void* ctx) {
+    GrantTask* task = static_cast<GrantTask*>(ctx);
+    if (!task) return;
+
+    int spawned = 0;
+    for (int i = 0; i < task->count; ++i) {
+        if (!SpawnWorldDrop(task->itemRow)) break;
+        ++spawned;
     }
-    return 0;
+    Log(std::string("grant world-drop ") + task->requested + " -> " + task->resolved +
+        " spawned=" + std::to_string(spawned) + "/" + std::to_string(task->count));
+    delete task;
 }
 
 void GrantItem(const char* id, int count) {
     if (!id || count <= 0) return;
-    if (count > 9999) count = 9999;
+    if (count > kMaxWorldDropsPerClick) {
+        Log("grant count capped from " + std::to_string(count) + " to " +
+            std::to_string(kMaxWorldDropsPerClick) + " world drops");
+        count = kMaxWorldDropsPerClick;
+    }
 
     std::string resolved;
     const std::uintptr_t itemRow = ResolveItemRow(id, resolved);
@@ -371,33 +406,24 @@ void GrantItem(const char* id, int count) {
         Log(std::string("no Inventory.Item mapping for ") + id);
         return;
     }
-    Log(std::string("grant requested ") + id + " -> " + resolved +
-        " count=" + std::to_string(count));
-    Log("grant blocked: direct inventory insertion is unsafe for gear until level/stat instance generation is wired");
-    return;
 
-    const std::uintptr_t inv = FindInventoryContainer();
-    if (!inv) return;
-
-    std::uint32_t before = 0;
-    const std::uintptr_t existing = FindEntry(inv, itemRow, &before);
-    if (existing) {
-        const std::uint32_t afterCount = before + static_cast<std::uint32_t>(count);
-        if (!CallSetEntryCount(existing, afterCount)) {
-            WriteMem(existing + 0x20, afterCount);
-        }
-        const std::uint8_t dirty = 1;
-        WriteMem(inv + kInvDirty, dirty);
-    } else {
-        if (!CallAddItem(inv, itemRow, static_cast<std::uint32_t>(count))) {
-            Log("add wrapper raised SEH after call; verifying memory anyway");
-        }
+    auto* task = new (std::nothrow) GrantTask{};
+    if (!task) {
+        Log("grant queue allocation failed");
+        return;
     }
+    task->itemRow = itemRow;
+    task->count = count;
+    CopyAscii(task->requested, sizeof(task->requested), id);
+    CopyAscii(task->resolved, sizeof(task->resolved), resolved);
 
-    std::uint32_t after = 0;
-    const std::uintptr_t entry = FindEntry(inv, itemRow, &after);
-    Log(std::string("grant ") + id + " -> " + resolved +
-        (entry ? (" count " + std::to_string(before) + " -> " + std::to_string(after)) : " failed"));
+    if (!g_queueGameTask || !g_queueGameTask(&RunGrantTask, task)) {
+        delete task;
+        Log(std::string("grant queue failed ") + id + " -> " + resolved);
+        return;
+    }
+    Log(std::string("grant queued world-drop ") + id + " -> " + resolved +
+        " count=" + std::to_string(count));
 }
 
 std::wstring CatalogPath() {
@@ -438,6 +464,7 @@ extern "C" __declspec(dllexport) void SoWMod_Init(int page) {
         ::GetProcAddress(::GetModuleHandleW(L"steam_api64.dll"), "HagUI_GetAPI"));
     HagUIAPI* ui = get ? get(HAGUI_ABI_VERSION) : nullptr;
     if (!ui) { Log("HagUI unavailable"); return; }
+    g_queueGameTask = ui->QueueGameTask;
 
     const std::vector<Row> rows = LoadCatalog();
     if (rows.empty()) { ui->AddLabel(page, "Item catalog not loaded (InventoryEditor.catalog missing)."); return; }

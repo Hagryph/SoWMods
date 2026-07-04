@@ -2,6 +2,7 @@
 // GetProcAddress(GetModuleHandleW(L"steam_api64.dll"), "HagUI_GetAPI") and register their own pages
 // without linking HagUI. The C wrappers just delegate to the HagUI singleton.
 #include "HagUI.h"
+#include "GameTaskQueue.h"
 #include "HagUIAPI.h"   // ../shared (on the include path)
 
 namespace {
@@ -17,9 +18,12 @@ void ApiAddFacetedActionList(int p, const char* const* fn, int fc, const char* c
                              int ic, const char* const* fv, void (*onAdd)(const char* id, int count)) {
     sow::HagUI::Get().AddFacetedActionList(p, fn, fc, d, ids, ic, fv, onAdd);
 }
+bool ApiQueueGameTask(HagUI_GameTaskFn fn, void* ctx) {
+    return sow::QueueGameTask(fn, ctx);
+}
 
 HagUIAPI g_api = { HAGUI_ABI_VERSION, &ApiRegisterPage, &ApiAddLabel, &ApiAddToggle, &ApiAddButton,
-                   &ApiAddList, &ApiAddFacetedList, &ApiAddFacetedActionList };
+                   &ApiAddList, &ApiAddFacetedList, &ApiAddFacetedActionList, &ApiQueueGameTask };
 }  // namespace
 
 // Any ABI from 1..current is served the same struct: the layout is append-only, so a v1 caller simply
