@@ -602,6 +602,7 @@ static void DrawFieldTextClipped(ImDrawList* dl, ImFont* f, float px,
 }
 
 static void DrawScrollArrowCaps(const char* id, ImDrawList* dl, float sx, float sy, float s, ImU32 accent) {
+    (void)id;
     const float maxY = ImGui::GetScrollMaxY();
     if (maxY <= 0.0f) return;
 
@@ -615,35 +616,29 @@ static void DrawScrollArrowCaps(const char* id, ImDrawList* dl, float sx, float 
     const float y1 = wp.y + ws.y - 1.0f;
     if (y1 - y0 < capH * 2.0f + 4.0f) return;
 
-    const ImVec2 oldCursor = ImGui::GetCursorScreenPos();
     const float lineStep = std::max(ImGui::GetTextLineHeightWithSpacing() * 3.0f, 24.0f * sy);
-    bool upHover = false, downHover = false;
-    bool upActive = false, downActive = false;
-
-    ImGui::PushID(id);
-    ImGui::SetCursorScreenPos(ImVec2(x0, y0));
-    ImGui::InvisibleButton("up", ImVec2(barW, capH));
-    upHover = ImGui::IsItemHovered();
-    upActive = ImGui::IsItemActive();
-    if (upActive && ImGui::IsMouseDown(ImGuiMouseButton_Left))
+    const ImGuiIO& io = ImGui::GetIO();
+    const bool winHovered = ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem);
+    const ImVec2 upA(x0, y0), upB(x1, y0 + capH);
+    const ImVec2 dnA(x0, y1 - capH), dnB(x1, y1);
+    auto containsMouse = [&](ImVec2 a, ImVec2 b) {
+        return winHovered && io.MousePos.x >= a.x && io.MousePos.x < b.x &&
+               io.MousePos.y >= a.y && io.MousePos.y < b.y;
+    };
+    const bool upHover = containsMouse(upA, upB);
+    const bool downHover = containsMouse(dnA, dnB);
+    const bool upActive = upHover && ImGui::IsMouseDown(ImGuiMouseButton_Left);
+    const bool downActive = downHover && ImGui::IsMouseDown(ImGuiMouseButton_Left);
+    if (upActive)
         ImGui::SetScrollY(std::max(0.0f, ImGui::GetScrollY() - lineStep * 0.18f));
-
-    ImGui::SetCursorScreenPos(ImVec2(x0, y1 - capH));
-    ImGui::InvisibleButton("down", ImVec2(barW, capH));
-    downHover = ImGui::IsItemHovered();
-    downActive = ImGui::IsItemActive();
-    if (downActive && ImGui::IsMouseDown(ImGuiMouseButton_Left))
+    if (downActive)
         ImGui::SetScrollY(std::min(maxY, ImGui::GetScrollY() + lineStep * 0.18f));
-    ImGui::PopID();
-    ImGui::SetCursorScreenPos(oldCursor);
 
     const auto capColor = [](bool hover, bool active) {
         return active ? IM_COL32(0xB8, 0x86, 0x2F, 230)
                       : (hover ? IM_COL32(0x3A, 0x30, 0x1E, 250)
                                : IM_COL32(0x23, 0x1E, 0x16, 230));
     };
-    const ImVec2 upA(x0, y0), upB(x1, y0 + capH);
-    const ImVec2 dnA(x0, y1 - capH), dnB(x1, y1);
     dl->AddRectFilled(upA, upB, capColor(upHover, upActive), 3.0f * s);
     dl->AddRectFilled(dnA, dnB, capColor(downHover, downActive), 3.0f * s);
     dl->AddRect(upA, upB, IM_COL32(0xE0, 0xB3, 0x4A, 70), 3.0f * s, 0, 1.0f);
@@ -992,14 +987,17 @@ void Overlay::DrawHub() {
                             const float triW = std::max(3.0f * s, 4.0f);
                             const float triH = std::max(2.0f * s, 3.0f);
                             const ImU32 arrowCol = comboOpen ? uAccent : IM_COL32(0xE0, 0xB3, 0x4A, 190);
-                            dl->AddTriangleFilled(ImVec2(cxA, cyA - 7.0f * sy - triH),
-                                                  ImVec2(cxA - triW, cyA - 7.0f * sy + triH * 0.45f),
-                                                  ImVec2(cxA + triW, cyA - 7.0f * sy + triH * 0.45f),
-                                                  arrowCol);
-                            dl->AddTriangleFilled(ImVec2(cxA, cyA + 7.0f * sy + triH),
-                                                  ImVec2(cxA - triW, cyA + 7.0f * sy - triH * 0.45f),
-                                                  ImVec2(cxA + triW, cyA + 7.0f * sy - triH * 0.45f),
-                                                  arrowCol);
+                            if (comboOpen) {
+                                dl->AddTriangleFilled(ImVec2(cxA, cyA - triH),
+                                                      ImVec2(cxA - triW, cyA + triH * 0.55f),
+                                                      ImVec2(cxA + triW, cyA + triH * 0.55f),
+                                                      arrowCol);
+                            } else {
+                                dl->AddTriangleFilled(ImVec2(cxA, cyA + triH),
+                                                      ImVec2(cxA - triW, cyA - triH * 0.55f),
+                                                      ImVec2(cxA + triW, cyA - triH * 0.55f),
+                                                      arrowCol);
+                            }
                         }
                         ImGui::SetNextWindowSizeConstraints(ImVec2(fw, 0.0f), ImVec2(fw, maxPopupH));
                         if (ImGui::BeginPopup("##facet_popup")) {
