@@ -25,10 +25,44 @@ static volatile LONG s_overlayClaimed = 0;
 static bool          s_ctorLogged     = false;
 static bool          s_worldLogged    = false;
 
-// Event-driven in-save signal. Front-end ctor clears it while the menu exists; OnWorldLoad sets it
-// once a save/world is registered; the save-to-front-end clear hook resets it when returning to menu.
+// Event-driven in-save signal. Front-end ctor clears it for the initial menu; OnWorldLoad sets it
+// once a save/world is registered. The old save-to-front-end clear hook is only a candidate signal:
+// death/respawn can hit it too, so the actual save->menu clear waits for the front-end menu refresh.
 // There is no hardware breakpoint, no ticker, and no per-frame read.
 static volatile LONG g_inSave = 0;     // 1 = save/world loaded, 0 = menu/not in save
+static volatile LONG g_pendingMenuClear = 0;
+static volatile LONG g_nonRootFrontEndLogged = 0;
+
+template <class T>
+static bool ReadGameMem(std::uintptr_t addr, T& out) {
+    __try {
+        out = *reinterpret_cast<T*>(addr);
+        return true;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+}
+
+static std::uintptr_t FindFrontEndItem(std::uintptr_t collection, const char* name) {
+    using FindFn = std::uintptr_t(__fastcall*)(std::uintptr_t, const char*);
+    __try {
+        return reinterpret_cast<FindFn>(game::FromRVA(game::kFrontEndFindItem))(collection, name);
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return 0;
+    }
+}
+
+static bool IsRootFrontEndMenu(void* layer) {
+    const std::uintptr_t base = reinterpret_cast<std::uintptr_t>(layer);
+    std::uintptr_t collection = 0;
+    std::uint32_t count = 0;
+    if (!base || !ReadGameMem(base + 0x53f8, collection) || !ReadGameMem(base + 0x5400, count)) {
+        return false;
+    }
+    if (!collection || count == 0) return false;
+    return FindFrontEndItem(collection, "FrontEnd_Start") != 0 &&
+           FindFrontEndItem(collection, "FrontEnd_Quit") != 0;
+}
 
 static void EnsureOverlay(const char* who) {
     if (::InterlockedCompareExchange(&s_overlayClaimed, 1, 0) == 0) {
@@ -62,6 +96,8 @@ static OnWorldLoadFn oOnWorldLoad = nullptr;
 static void __fastcall HookOnWorldLoad(void* self, void* worldInfo, void* faction) {
     oOnWorldLoad(self, worldInfo, faction);
     ::InterlockedExchange(&g_inSave, 1);
+    ::InterlockedExchange(&g_pendingMenuClear, 0);
+    ::InterlockedExchange(&g_nonRootFrontEndLogged, 0);
     Overlay::Get().SetInGame(true);
     if (!s_worldLogged) {
         s_worldLogged = true;
@@ -69,18 +105,33 @@ static void __fastcall HookOnWorldLoad(void* self, void* worldInfo, void* factio
     }
 }
 
-// Save-to-front-end world reference clear. Live-verified via HagIPC 2026-07-03:
-// main-menu->save stays silent, save->main-menu hits repeatedly during teardown. This is the
-// reverse latch for OnWorldLoad; clearing is idempotent.
+using FrontEndItemRefreshFn = std::uint64_t (__fastcall*)(void*);
+static FrontEndItemRefreshFn oFrontEndItemRefresh = nullptr;
+
+static std::uint64_t __fastcall HookFrontEndItemRefresh(void* self) {
+    const std::uint64_t r = oFrontEndItemRefresh(self);
+    if (IsRootFrontEndMenu(self)) {
+        if (::InterlockedExchange(&g_inSave, 0) != 0 ||
+            ::InterlockedExchange(&g_pendingMenuClear, 0) != 0) {
+            Log::Get().Line("[state] root front-end refresh hit - menu/not-in-save");
+        }
+        Overlay::Get().SetInGame(false);
+    } else if (g_pendingMenuClear != 0 &&
+               ::InterlockedCompareExchange(&g_nonRootFrontEndLogged, 1, 0) == 0) {
+        Log::Get().Line("[state] non-root front-end refresh hit - keeping in-save");
+    }
+    return r;
+}
+
+// Character/faction relationship clear. This was the old reverse latch, but it also fires during
+// death/respawn, so it only records that a menu clear may be coming. The front-end refresh hook above
+// is the confirmation that the game is actually back in the menu.
 using SaveToFrontEndClearFn = void (__fastcall*)(void*);
 static SaveToFrontEndClearFn oSaveToFrontEndClear = nullptr;
 
 static void __fastcall HookSaveToFrontEndClear(void* self) {
     oSaveToFrontEndClear(self);
-    if (::InterlockedExchange(&g_inSave, 0) != 0) {
-        Log::Get().Line("[state] save-to-front-end clear hit - menu/not-in-save");
-    }
-    Overlay::Get().SetInGame(false);
+    if (g_inSave != 0) ::InterlockedExchange(&g_pendingMenuClear, 1);
 }
 
 using CursorRecenterFn = std::uint64_t (__fastcall*)();
@@ -130,9 +181,21 @@ void GameHooks::Install() {
                       reinterpret_cast<void**>(&oSaveToFrontEndClear)) == MH_OK &&
         MH_EnableHook(returnTarget) == MH_OK) {
         log.Line(std::string("[gamehooks] save-to-front-end clear hooked @ ") + returnAddr +
-                 " - awaiting save-to-menu return");
+                 " - menu-clear candidate only");
     } else {
         log.Line(std::string("[gamehooks] save-to-front-end clear hook FAILED @ ") + returnAddr);
+    }
+
+    void* frontEndRefreshTarget = reinterpret_cast<void*>(game::FromRVA(game::kFrontEndItemRefresh));
+    char frontEndRefreshAddr[32]{};
+    ::wsprintfA(frontEndRefreshAddr, "0x%p", frontEndRefreshTarget);
+    if (MH_CreateHook(frontEndRefreshTarget, reinterpret_cast<void*>(&HookFrontEndItemRefresh),
+                      reinterpret_cast<void**>(&oFrontEndItemRefresh)) == MH_OK &&
+        MH_EnableHook(frontEndRefreshTarget) == MH_OK) {
+        log.Line(std::string("[gamehooks] front-end item refresh hooked @ ") +
+                 frontEndRefreshAddr + " - confirms menu state");
+    } else {
+        log.Line(std::string("[gamehooks] front-end item refresh hook FAILED @ ") + frontEndRefreshAddr);
     }
 
     void* cursorTarget = reinterpret_cast<void*>(game::FromRVA(game::kCursorRecenter));

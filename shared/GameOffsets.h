@@ -90,9 +90,9 @@ inline constexpr std::uintptr_t kCUIFrontEndRootLayerCtor = 0x141976838ull;
 // GameHooks uses this as the event-only "outside main menu / world loaded" signal.
 inline constexpr std::uintptr_t kOnWorldLoad = 0x141c3d7fcull;
 
-// Save/world -> front-end/menu reverse latch. Live-verified 2026-07-03 with HagIPC:
-// main-menu->save produced zero hits across load + 25s in-game; save->main-menu hit during teardown.
-// This clears GameHooks::InSave() when quitting a save back to the main menu.
+// Character/faction relationship clear. It often fires during save->menu teardown, but death/respawn
+// can hit it too. GameHooks treats it only as a menu-clear candidate and waits for a front-end refresh
+// hit before clearing the in-save latch.
 inline constexpr std::uintptr_t kSaveToFrontEndClear = 0x141bb8e30ull;
 
 // Front-end root layer internals. Earlier notes treated this lifecycle as the menu-vs-save signal;
