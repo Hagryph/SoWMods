@@ -187,6 +187,12 @@ void HagUI::AddPropertyEditor(int page, void* context, const HagUI_PropertySourc
     if (popup && popup->state && popup->generate && popup->save && popup->discard) widget.popup = *popup;
     pages_[page].widgets.push_back(std::move(widget));
 }
+void HagUI::SetEditorFooterGenerator(int page,const char* label,std::uint64_t (*query)(void*)) {
+    if (page<0 || page>=int(pages_.size()) || pages_[page].parent<0 || !label || !query) return;
+    for (auto& w:pages_[page].widgets) if (w.type==WProperties && w.popup.generate) {
+        w.footerLabel=label; w.footerGenerator=query; return;
+    }
+}
 int HagUI::ResolvePage(int root) {
     if (!history_.empty() && history_.front() != root) ResetNavigation();
     return history_.empty() ? root : history_.back();

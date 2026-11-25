@@ -13,7 +13,7 @@
 
 extern "C" {
 
-constexpr std::uint32_t HAGUI_ABI_VERSION = 13;
+constexpr std::uint32_t HAGUI_ABI_VERSION = 14;
 
 typedef void (*HagUI_GameTaskFn)(void* ctx);
 typedef void (*HagUI_PageOpenFn)(int page);
@@ -113,6 +113,8 @@ struct HagUIAPI {
     void (*AddPopupEditor)(int page, void* context, const HagUI_PropertySource*, const HagUI_PopupActions*);
     void (*AddSceneEditor)(int page, void* context, const HagUI_PropertySource*, const HagUI_PopupActions*, HagUI_SceneFn);
     void (*AddSetEditor)(int,void*,const HagUI_PropertySource*,const HagUI_PopupActions*,HagUI_SceneFn,const HagUI_SetEditor*);
+    // v14: promotes a generator to the submenu footer; query returns its ID or zero if disabled.
+    void (*SetEditorFooterGenerator)(int page,const char* label,std::uint64_t (*query)(void*));
 };
 
 // Exported by the loader DLL. Returns null if the requested ABI version is unsupported.

@@ -223,16 +223,28 @@ int main() {
         auto immunity=make(Kind::Immunities,"Immunities",{{20,"I"}});
         auto bonus=make(Kind::Bonuses,"Bonuses",{{22,"Epic trait"}});
         auto regen=make(Kind::Regenerate,"Replacement",{});
-        Check(Apply(nullptr,spec,1) && Apply(nullptr,rare,1));
-        Check(!ReadChoice(nullptr,base,1,&choice) && !Apply(nullptr,base,2));
-        Check(!Enabled(field(Kind::Regenerate)) && Apply(nullptr,base,1) && Apply(nullptr,tribe,1));
+        api.abiVersion=14;
+        api.SetEditorFooterGenerator=[](int,const char*,std::uint64_t(*)(void*)){};
+        Check(!PageField(&recipePage,field(Kind::Regenerate)) && !FooterGenerator(nullptr));
+        Check(!Enabled(field(Kind::Class)) && !ReadChoice(nullptr,spec,0,&choice) && !Apply(nullptr,spec,1));
+        Check(Apply(nullptr,tribe,1) && Apply(nullptr,base,2));
+        Check(!ReadChoice(nullptr,spec,0,&choice) && !Apply(nullptr,spec,1) && Apply(nullptr,spec,2));
+        Check(Apply(nullptr,base,1) && !g_draft.edits.contains(Kind::Class) && g_draft.edits.contains(Kind::Tribe));
+        Check(ReadChoice(nullptr,spec,0,&choice) && !ReadChoice(nullptr,spec,1,&choice));
+        Check(!Enabled(field(Kind::Regenerate)) && Apply(nullptr,spec,1) && Apply(nullptr,rare,1));
         auto supplyProfile=[&](){
             auto job=std::unique_ptr<Task>(static_cast<Task*>(queuedContext)); queuedContext=nullptr;
             Check(job && job->op==Op::Profile && !g_draft.profile);
             auto profile=std::make_shared<engine::GenerationPlan>();
             profile->eligible={{20,{41}},{22,{43}}};
             profile->singles={20,22};
-            g_draft.profile=profile;g_pending=false;
+            Close(nullptr,rare); // Loader closes the selector immediately after successful Apply.
+            auto stale=*job; ++stale.session;
+            PublishProfile(stale,profile,{});Check(!g_draft.profile);
+            PublishProfile(*job,nullptr,"Native kit rejected");g_pending=false;
+            Check(!g_draft.profile && FooterGenerator(nullptr)==regen && g_snapshot.status=="Native kit rejected");
+            PublishProfile(*job,profile,{});
+            Check(g_draft.profile==profile && Enabled(field(Kind::Immunities)) && FooterGenerator(nullptr)==regen);
         };
         supplyProfile();
         uint64_t first[]{1};

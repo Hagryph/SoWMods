@@ -30,6 +30,7 @@ public:
     void AddHeaderButton(int page, const char* label, void (*onClick)(), bool (*visible)());
     int RegisterSubPage(int parent, const char* title);
     void AddSubPageButton(int page, const char* label, int child);
+    void SetEditorFooterGenerator(int page,const char* label,std::uint64_t (*query)(void*));
     void AddPropertyEditor(int page, void* context, const HagUI_PropertySource* source, const HagUI_PopupActions* popup = nullptr, HagUI_SceneFn scene = nullptr,const HagUI_SetEditor* set=nullptr);
     int ResolvePage(int root);
     void OpenSubPage(int page);
@@ -79,6 +80,8 @@ public:
         HagUI_PopupActions popup{};
         HagUI_SceneFn scene{};
         HagUI_SetEditor set{};
+        std::string footerLabel;
+        std::uint64_t (*footerGenerator)(void*) = nullptr;
         mutable std::vector<std::uint64_t> picks;
         mutable bool largePreview{};
         mutable std::uint64_t selectedChoice = 0;

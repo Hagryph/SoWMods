@@ -48,6 +48,12 @@ struct Recipe {
     bool operator==(const Recipe&) const = default;
 };
 struct Slot { Id picker{}, definition{}; };
+inline bool fitsClass(const Catalog& db,Id base,Id specialization) {
+    auto type=db.types.find(base);
+    auto kits=db.kits.find(specialization);
+    return type!=db.types.end() && type->second && kits!=db.kits.end() &&
+        std::ranges::any_of(kits->second,[&](const ClassKit& kit){return kit.fits(type->second);});
+}
 
 // A dormant slot is engine-managed too. Never erase it just because one of its
 // possible outputs appears on the Army screen at a different level.
@@ -69,11 +75,7 @@ bool resolve(const Catalog& db,const Recipe& recipe,Accept accept,Extend extend,
         (recipe.rarity && !db.rarities.contains(recipe.rarity)) ||
         (recipe.base && !db.trees.contains(recipe.base)) ||
         (recipe.tribe && !db.tribes.contains(recipe.tribe))) return false;
-    if (recipe.base && recipe.specialization) {
-        auto k=db.kits.find(recipe.specialization);
-        if (k==db.kits.end() || !db.types.contains(recipe.base) ||
-            !std::ranges::any_of(k->second,[&](const ClassKit& kit){return kit.fits(db.types.at(recipe.base));})) return false;
-    }
+    if (recipe.base && recipe.specialization && !fitsClass(db,recipe.base,recipe.specialization)) return false;
     std::vector<std::pair<Id,const std::vector<Picker>*>> rows;
     std::set<Id> distinct;
     unsigned epics=automaticEpics;

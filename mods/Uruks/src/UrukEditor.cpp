@@ -691,6 +691,14 @@ bool Commit(Ptr m,const Task& task,const Catalog& catalog,std::string& status) {
     return !name || engine::SetName(m,unsigned(name->value));
 }
 bool Current();
+// Kit preparation belongs to the draft, not to the selector popup that started it.
+void PublishProfile(const Task& task,std::shared_ptr<const engine::GenerationPlan> plan,const std::string& error) {
+    if (!Current() || g_snapshot.session!=task.session || g_snapshot.selected!=task.selected ||
+        g_snapshot.baseline!=task.baseline || BuildRecipe(g_draft)!=BuildRecipe(task.draft)) return;
+    g_draft.profile=std::move(plan);
+    g_snapshot.status=g_draft.profile?"Automatic kit ready.":error.empty()?"Could not prepare this kit. Press Generate to retry.":error;
+    if (!g_draft.profile) Log(g_snapshot.status.c_str());
+}
 void RunTask(Task* task) {
     if (!g_ui || !task->session || g_ui->SaveSession()!=task->session) return;
     try {
@@ -717,10 +725,7 @@ void RunTask(Task* task) {
                     engine::PlanGeneration(m,CellHash(Read<Ptr>(m+0x268),0x40c579dc,0),db,BuildRecipe(task->draft),*plan,snapshot.status,task->draft.profile.get());
                 if (task->op==Op::Profile) {
                     std::lock_guard lock(g_mutex);
-                    if (task->request==g_generationRequest && Current() && g_snapshot.session==task->session) {
-                        g_draft.profile=ok?plan:nullptr;
-                        g_snapshot.status=ok?"Automatic kit ready.":snapshot.status.empty()?"Could not prepare this kit. Reapply a selector to retry.":snapshot.status;
-                    }
+                    PublishProfile(*task,ok?plan:nullptr,snapshot.status);
                     return;
                 }
                 if (ok) {
@@ -741,7 +746,11 @@ void RunTask(Task* task) {
             if (task->request!=g_generationRequest || g_snapshot.session!=g_ui->SaveSession() || g_snapshot.session!=task->session) return;
             for (auto& f:g_snapshot.fields) if (f.id==task->field) {
                 f.choices.clear();
-                if (ok) f.choices.push_back(std::move(candidate));
+                if (ok) {
+                    if (task->kind==Kind::Regenerate && !task->draft.profile)
+                        PublishProfile(*task,candidate.generation,{});
+                    f.choices.push_back(std::move(candidate));
+                }
                 g_snapshot.status=ok?"Apply to draft or cancel.":snapshot.status.empty()?"No compatible profile. Try generating again.":snapshot.status;
             }
             return;
@@ -798,15 +807,17 @@ bool Current() { return g_snapshot.session != 0 && g_snapshot.session == g_ui->S
 bool Enabled(const Field& f) {
     if (g_pending || !g_draft.permits(f.kind,f.id)) return false;
     if (f.kind==Kind::Traits) return true;
-    if (Selector(f.kind)) return g_snapshot.mayGenerate && !f.choices.empty();
+    if (Selector(f.kind)) return g_snapshot.mayGenerate && !f.choices.empty() &&
+        (f.kind!=Kind::Class || g_draft.edits.contains(Kind::Base));
     if (Bucket(f.kind)) return f.kind!=Kind::Classes && bool(g_draft.profile);
-    if (f.kind==Kind::Regenerate) return g_snapshot.mayGenerate && bool(g_draft.profile);
+    if (f.kind==Kind::Regenerate) return g_snapshot.mayGenerate && BuildRecipe(g_draft).complete();
     if (Generator(f.kind)) return g_snapshot.mayGenerate &&
         (f.kind!=Kind::Advance || g_snapshot.mayAdvance);
     return !f.choices.empty();
 }
 int recipePage;
 bool PageField(void* page,const Field& f) {
+    if (f.kind==Kind::Regenerate && g_ui->abiVersion>=14 && g_ui->SetEditorFooterGenerator) return false;
     return f.kind!=Kind::Traits && (f.kind==Kind::Target || f.kind==Kind::View || (RecipeField(f.kind)==(page==&recipePage)));
 }
 int Count(void* page) { std::lock_guard lock(g_mutex); return Current() ? int(std::ranges::count_if(g_snapshot.fields,[&](const Field& f){return PageField(page,f);})) : 1; }
@@ -835,6 +846,9 @@ bool ReadField(void* page, int index, HagUI_Property* property) {
     if (!property->editable) strncpy_s(property->readOnlyReason, g_pending.load() ? "Pending game-thread operation" :
         !g_draft.permits(field.kind,field.id) ? "Save or discard the current draft first" :
         field.kind == Kind::Picker ? "Part of a generated set. Use Trait generator." :
+        field.kind==Kind::Class && !g_draft.edits.contains(Kind::Base) ? "Select a base class first." :
+        Bucket(field.kind) && BuildRecipe(g_draft).complete() && !g_draft.profile ?
+            (g_snapshot.status.empty()?"Kit unavailable. Press Generate to retry.":g_snapshot.status.c_str()) :
         field.kind==Kind::Regenerate || Bucket(field.kind) ? "Select class, advanced class, tribe and rarity to prepare the automatic kit." :
         Generator(field.kind) ? "Requires a supported, living, unspawned procedural captain" :
         field.kind == Kind::View ? "Engine-managed field" :
@@ -849,12 +863,13 @@ const Field* Find(uint64_t id) {
 }
 int ChoiceCount(void*, uint64_t id) { std::lock_guard lock(g_mutex); auto field = Find(id); return field ? static_cast<int>(field->choices.size()) : 0; }
 bool FitsSelector(const Field& f,const Choice& c) {
-    auto r=BuildRecipe(g_draft);
-    if (f.kind==Kind::Base) r.base=c.value;
-    if (f.kind==Kind::Class) r.specialization=c.value;
-    if (f.kind==Kind::Tribe) r.tribe=c.value;
-    if (f.kind==Kind::Rarity) r.rarity=c.value;
-    return recipe::resolve(g_snapshot.recipeCatalog,r,[](const auto&){return true;});
+    const auto& db=g_snapshot.recipeCatalog;
+    if (f.kind==Kind::Base) return db.trees.contains(c.value);
+    if (f.kind==Kind::Tribe) return db.tribes.contains(c.value);
+    if (f.kind==Kind::Rarity) return db.rarities.contains(c.value);
+    auto base=g_draft.edits.find(Kind::Base);
+    return f.kind==Kind::Class && base!=g_draft.edits.end() &&
+        db.classes.contains(c.value) && recipe::fitsClass(db,base->second.second.value,c.value);
 }
 bool ReadChoice(void*, uint64_t id, int index, HagUI_Choice* out) {
     std::lock_guard lock(g_mutex);
@@ -888,7 +903,7 @@ bool Apply(void*,uint64_t id,uint64_t choiceId) {
     if (!c || c->disabled) return false;
     if (f->kind==Kind::Traits || Bucket(f->kind)) return false;
     if (Selector(f->kind) && !FitsSelector(*f,*c)) return false;
-    if (RecipeField(f->kind)) {
+    if (RecipeField(f->kind) && !Selector(f->kind)) {
         Draft next=g_draft;
         next.stage(*f,*c);
         if (!recipe::resolve(g_snapshot.recipeCatalog,BuildRecipe(next),[](const auto&){return true;})) return false;
@@ -903,9 +918,13 @@ bool Apply(void*,uint64_t id,uint64_t choiceId) {
     if (Selector(f->kind)) {
         g_draft.profile.reset();
         std::erase_if(g_draft.edits,[](const auto& e){return Bucket(e.first);});
+        auto spec=g_draft.edits.find(Kind::Class);
+        if (f->kind==Kind::Base && spec!=g_draft.edits.end() &&
+            !recipe::fitsClass(g_snapshot.recipeCatalog,c->value,spec->second.second.value)) g_draft.edits.erase(spec);
+        g_snapshot.status.clear();
         if (BuildRecipe(g_draft).complete()) {
-            auto t=DraftTask(Op::Profile); t->kind=Kind::Regenerate; t->request=++g_generationRequest;
-            if (!Queue(std::move(t))) g_snapshot.status="Kit preparation could not start. Reapply a selector to retry.";
+            auto t=DraftTask(Op::Profile); t->kind=Kind::Regenerate;
+            if (!Queue(std::move(t))) g_snapshot.status="Kit preparation could not start. Press Generate to retry.";
         }
     }
     if (RecipeField(f->kind) && f->kind!=Kind::Regenerate)
@@ -954,6 +973,11 @@ bool Generate(void*,uint64_t id) {
     if (!f || !Generator(f->kind) || !Enabled(*f)) return false;
     auto t=DraftTask(Op::Generate); t->kind=f->kind; t->field=id; t->request=++g_generationRequest;
     return Queue(std::move(t));
+}
+std::uint64_t FooterGenerator(void*) {
+    std::lock_guard lock(g_mutex);
+    if (Current()) for (auto& f:g_snapshot.fields) if (f.kind==Kind::Regenerate && Enabled(f)) return f.id;
+    return 0;
 }
 void Save(void* page) {
     std::lock_guard lock(g_mutex);
@@ -1177,6 +1201,7 @@ void AddUrukEditor(int parent, HagUIAPI* ui) {
         const int regen=ui->RegisterSubPage(parent,"Regenerate Captain");
         if (regen>=0) {
             ui->AddSetEditor(regen,&recipePage,&source,&popup,Scene,&set);
+            if (ui->abiVersion>=14 && ui->SetEditorFooterGenerator) ui->SetEditorFooterGenerator(regen,"Generate",FooterGenerator);
             ui->AddSubPageButton(parent,"Regenerate Captain",regen);
         }
     }

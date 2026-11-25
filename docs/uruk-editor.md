@@ -5,15 +5,19 @@ The inspector shows editable properties, not engine-managed state or individual
 members of generated equipment/trait sets. Presets, player characters and online pools are not targets.
 Spawned, dead and temporary captains cannot be edited.
 
-## Regenerate Captain (HagUI ABI 13)
+## Regenerate Captain (HagUI ABI 14)
 
 Open **Uruks > Regenerate Captain**, select the captain to replace, then choose
 the base class, advanced class, tribe and rarity. The last selector prepares
-a private profile at the selected captain's level. Core, class and tribal
+a private profile at the selected captain's level. Pick the base class before
+the advanced class. Changing base clears an incompatible advanced class. Tribe
+membership does not depend on class; individual tribal attacks can be restricted.
+Core, class and tribal
 grants are automatic; there is no Class Traits checklist. The seven optional
 checklists start empty. Empty means **no extra picks**, not an empty class kit.
 Changing a selector clears optional picks and prepares a new kit.
-Select **Replacement > Generate** to check the assembled profile. Apply
+Select **Generate** at the bottom left to check the assembled profile or retry
+kit preparation. Apply
 accepts that preview; editing the recipe invalidates it. Only **Save Uruk**
 requests an in-place replacement. No second Army slot or custom save file is used.
 

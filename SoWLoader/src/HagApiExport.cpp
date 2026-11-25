@@ -43,10 +43,13 @@ void ApiAddSceneEditor(int p, void* c, const HagUI_PropertySource* s, const HagU
 void ApiAddSetEditor(int p,void* c,const HagUI_PropertySource* s,const HagUI_PopupActions* a,HagUI_SceneFn scene,const HagUI_SetEditor* set) {
     sow::HagUI::Get().AddPropertyEditor(p,c,s,a,scene,set);
 }
+void ApiSetEditorFooterGenerator(int p,const char* label,std::uint64_t (*query)(void*)) {
+    sow::HagUI::Get().SetEditorFooterGenerator(p,label,query);
+}
 HagUIAPI g_api = { HAGUI_ABI_VERSION, &ApiRegisterPage, &ApiAddLabel, &ApiAddToggle, &ApiAddButton,
                    &ApiAddList, &ApiAddFacetedList, &ApiAddFacetedActionList, &ApiQueueGameTask,
                    &ApiSetPageOnFirstOpenInSave, &ApiAddConditionalButton, &sow::CurrentSaveSession,
-                   &ApiAddHeaderButton, &ApiAddSettingToggle, &ApiRegisterSubPage, &ApiAddSubPageButton, &ApiAddPropertyEditor, &ApiAddPopupEditor, &ApiAddSceneEditor, &ApiAddSetEditor };
+                   &ApiAddHeaderButton, &ApiAddSettingToggle, &ApiRegisterSubPage, &ApiAddSubPageButton, &ApiAddPropertyEditor, &ApiAddPopupEditor, &ApiAddSceneEditor, &ApiAddSetEditor, &ApiSetEditorFooterGenerator };
 }  // namespace
 
 // Any ABI from 1..current is served the same struct: the layout is append-only, so a v1 caller simply

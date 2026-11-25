@@ -29,6 +29,19 @@ void EndPropertyFrame() {
     if (!sceneUsed) StopScene();
     captureContext=nullptr; captureScene=nullptr;
 }
+void DrawGeneratorFooter(const HagUI::Widget& w,ImVec2 position,ImVec2 size) {
+    if (!w.footerGenerator) return;
+    const auto field=w.footerGenerator(w.context);
+    ImGui::SetCursorScreenPos(position);
+    ImGui::BeginDisabled(!field);
+    if (ImGui::Button(w.footerLabel.c_str(),size) && w.popup.generate(w.context,field)) {
+        w.actionField=w.editingField=field;
+        w.popupTitle=w.footerLabel+"###property-value";
+        w.selectedChoice=0; w.applyFailed=false; w.largePreview=false;
+        w.choices.clear(); w.picks.clear();
+    }
+    ImGui::EndDisabled();
+}
 void DrawPropertyEditor(const HagUI::Widget& widget, ImVec2 position, ImVec2 size,
                         float sx, float sy, ImFont* font) {
     const auto& source = widget.properties;

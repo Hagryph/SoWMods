@@ -50,6 +50,24 @@ int main() {
                 }
             }
         }
+        uint64_t available=0;
+        widget.context=&available;
+        widget.footerLabel="Generate";
+        widget.footerGenerator=[](void* p){return *static_cast<uint64_t*>(p);};
+        widget.popup.generate=[](void* ctx,uint64_t id){return id && id==*static_cast<uint64_t*>(ctx);};
+        auto footerFrame=[&](bool down) {
+            io.AddMousePosEvent(32,320);io.AddMouseButtonEvent(0,down);
+            ImGui::NewFrame(); ImGui::SetNextWindowPos(ImVec2(0,0));
+            ImGui::SetNextWindowSize(io.DisplaySize);
+            ImGui::Begin("Test",nullptr,ImGuiWindowFlags_NoTitleBar);
+            sow::DrawGeneratorFooter(widget,ImVec2(20,310),ImVec2(72,28));
+            ImGui::End(); ImGui::Render();
+        };
+        footerFrame(false);footerFrame(true);footerFrame(false);
+        if (widget.editingField) throw std::runtime_error("Disabled footer opened a preview");
+        available=410;footerFrame(true);footerFrame(false);
+        if (widget.editingField!=410 || widget.actionField!=410 || widget.popupTitle!="Generate###property-value")
+            throw std::runtime_error("Generate did not open its preview");
         ImGui::DestroyContext();
         std::cout << "Property editor rendered nonblank across four desktop viewports\n";
         return 0;

@@ -881,9 +881,11 @@ void Overlay::DrawHub() {
             const HagUI::Page& pg = pages[currentPage];
             const float titleY = pg.parent>=0 ? 32.f : 86.f;
             const float bottom = pg.parent>=0 ? 394.f : 434.f;
+            const float footerY=Y(406);
+            const ImVec2 footerButton(72*sx,28*sy);
             if (pg.parent >= 0) {
-                ImGui::SetCursorScreenPos(ImVec2(X(700), Y(406)));
-                if (ImGui::Button("Back",ImVec2(72*sx,28*sy))) hub.Back();
+                ImGui::SetCursorScreenPos(ImVec2(X(700), footerY));
+                if (ImGui::Button("Back",footerButton)) hub.Back();
             }
             AddTextCX(dl, fTab_, 21.0f * s, ImVec2(X(60), Y(titleY)), uText, pg.title.c_str(), XS);
             float headerRight = X(772);
@@ -893,6 +895,7 @@ void Overlay::DrawHub() {
                 if (!HagUI::WidgetVisible(wd)) continue;
                 ImGui::PushID(i);
                 if (wd.type == HagUI::WProperties) {
+                    DrawGeneratorFooter(wd,ImVec2(X(60),footerY),footerButton);
                     DrawPropertyEditor(wd, ImVec2(X(60), Y(ry)), ImVec2(712 * sx, (bottom - ry) * sy), sx, sy, fBody_);
                     ry = bottom;
                 } else if (wd.type == HagUI::WToggle) {
