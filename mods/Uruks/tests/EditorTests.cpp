@@ -29,6 +29,12 @@ struct FakeRecord {
 };
 uint64_t session = 1;
 uint64_t Session() { return session; }
+HagUI_GameTaskFn queuedFn{};
+void* queuedContext{};
+bool CaptureTask(HagUI_GameTaskFn fn,void* context) {
+    if (queuedContext) return false;
+    queuedFn=fn; queuedContext=context; return true;
+}
 int main() {
     try {
         using namespace uruk;
@@ -41,12 +47,6 @@ int main() {
         Check(Cell(picker.header.at(), "ExclusiveGroup") == 123);
         Check(Cell(picker.header.at(), "ExclusiveGroup", 1) == 0);
         Check(Cell(picker.header.at(), "ExclusiveGroup", 0, 3, 77) == 77);
-        FakeRecord weapon("Weapon_Look"), builder("Weapon_Builder"), item("Weapon_Item");
-        weapon.Field("ItemSlot", 2, 3);
-        builder.Field("WeaponData", weapon.header.at());
-        item.Field("ItemBuilder", builder.header.at());
-        Check(ItemFits(item.header.at(), 2));
-        Check(!ItemFits(item.header.at(), 0));
         Memory database(0x88), category(0x58);
         const char* categoryName = "Faction/Traits/Picker";
         Put<uint32_t>(database.at(0x48), 1);
@@ -67,15 +67,6 @@ int main() {
         Put(slots.at(8), trait.header.at());
         Put<uint32_t>(member.at(0x4b8), 10);
         Check(VectorSize(member.at(0x1e0), 0x20) == 1);
-        Check(!PickerAllowed(member.at(), picker.header.at(), 0));
-        Check(PickerAllowed(member.at(), picker.header.at(), picker.header.at()));
-        FakeRecord conflicting("Picker_Conflicting");
-        conflicting.Field("ExclusiveGroup", 123);
-        Check(!PickerAllowed(member.at(), conflicting.header.at(), 0));
-        Check(PickerAllowed(member.at(), conflicting.header.at(), picker.header.at()));
-        Put<uint64_t>(member.at(0x508), 1ull << 38);
-        Check(!PickerAllowed(member.at(), picker.header.at(), picker.header.at()));
-        Put<uint64_t>(member.at(0x508), 0);
         Snapshot snapshot;
         snapshot.session = 1;
         snapshot.selected = {army.header.at(), 0, 42};
@@ -85,13 +76,14 @@ int main() {
         Capture(snapshot, catalog);
         Check(snapshot.fields.size() > 75);
         auto level = std::find_if(snapshot.fields.begin(), snapshot.fields.end(), [](const auto& f) { return f.kind == Kind::Level; });
-        Check(level != snapshot.fields.end() && level->value == "11" && level->choices.size() == 85);
+        Check(level != snapshot.fields.end() && level->value == "11" && level->choices.empty());
         auto slot = std::find_if(snapshot.fields.begin(), snapshot.fields.end(), [](const auto& f) { return f.kind == Kind::Picker; });
         Check(slot != snapshot.fields.end() && slot->value.find("Test_Ability") != std::string::npos);
         Check(InCatalog(catalog, "Faction/Traits/Picker", picker.header.at()));
         Check(!InCatalog(catalog, "Faction/Personalities", picker.header.at()));
         HagUIAPI api{};
         api.SaveSession = Session;
+        api.QueueGameTask = CaptureTask;
         g_ui = &api;
         g_snapshot = snapshot;
         HagUI_Property property{};
@@ -101,6 +93,57 @@ int main() {
         HagUI_Choice choice{};
         Check(ReadChoice(nullptr, property.id, 0, &choice) && choice.id == 1);
         Check(!Apply(nullptr, property.id, 999));
+        // Supply generated candidates at the snapshot boundary; no game DLL or native setter runs here.
+        g_snapshot.mayGenerate=true;
+        auto field=[&](Kind k)->Field& {
+            return *std::find_if(g_snapshot.fields.begin(),g_snapshot.fields.end(),[&](const auto& f){return f.kind==k;});
+        };
+        auto candidate=[&](Kind k,uint64_t ticket) {
+            auto& f=field(k); f.choices={Choice{77,"Candidate"}};
+            f.choices.front().ticket=ticket;
+            return f.id;
+        };
+        auto original=Stamp(member.at());
+        uint64_t titleId=candidate(Kind::Role,10000);
+        Close(nullptr,titleId);
+        Check(!Apply(nullptr,titleId,10000) && !g_draft.dirty());
+        candidate(Kind::Role,10001);
+        Check(Apply(nullptr,titleId,10001) && !g_draft.ready());
+        HagUI_PopupState popup{};
+        State(nullptr,field(Kind::Name).id,0,&popup);
+        Check(popup.dirty && !popup.canSave && popup.needsRepair);
+        Check(!Apply(nullptr,property.id,1)); // dirty drafts cannot change targets
+        Check(Apply(nullptr,candidate(Kind::Name,10002),10002));
+        Check(!g_draft.ready());
+        Check(Apply(nullptr,candidate(Kind::Appearance,10003),10003) && g_draft.ready());
+        Check(Apply(nullptr,candidate(Kind::Role,10004),10004) && !g_draft.ready());
+        Check(field(Kind::Name).choices.empty() && field(Kind::Appearance).choices.empty());
+        Discard(nullptr);
+        Check(!g_draft.dirty() && Stamp(member.at())==original);
+        auto& xp=field(Kind::Level);
+        xp.choices={Choice{12,"13"},Choice{84,"85"}};
+        xp.choices[1].disabled="Above cap";
+        Check(!Apply(nullptr,xp.id,2));
+        Check(Apply(nullptr,xp.id,1) && g_draft.ready());
+        Check(Read<unsigned>(member.at(0x4b8))==10);
+        Check(!Enabled(field(Kind::Advance)));
+        Discard(nullptr);
+        g_snapshot.mayAdvance=true;
+        Check(Apply(nullptr,candidate(Kind::Advance,10005),10005));
+        Check(!Enabled(field(Kind::Traits)));
+        Check(!queuedContext);
+        Save(nullptr);
+        Check(queuedContext && queuedFn==Run && g_pending);
+        auto* task=static_cast<Task*>(queuedContext);
+        Check(task->op==Op::Save && task->selected==snapshot.selected && task->draft.edits.count(Kind::Advance));
+        ++session;
+        queuedFn(queuedContext); // load change before dispatch must avoid all native calls
+        Check(!g_pending && Stamp(member.at())==original);
+        --session;
+        queuedContext=nullptr;
+        Discard(nullptr);
+        Put<unsigned>(member.at(0x4b8),11);
+        Check(original!=Stamp(member.at()));
         session = 2;
         Check(ChoiceCount(nullptr, property.id) == 0);
         Check(!Apply(nullptr, property.id, 1));

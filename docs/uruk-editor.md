@@ -1,63 +1,78 @@
-# Uruk Editor
+# Uruk Editor (Steam 1.21)
 
-The Uruks tab opens a nested **Uruk Editor** screen. The title-line back arrow
-returns to the previous screen. Subpages do not become extra mod tabs. HagUI ABI
-v10 exposes RegisterSubPage, AddSubPageButton and AddPropertyEditor to all mods.
-The property widget uses two fields per row, field filtering, a scrolling grid,
-and a searchable value dialog. Its callbacks consume snapshots, not native memory.
+Open Uruks > Uruk Editor and select a seated Orc or Olog from a campaign pool.
+The two-column inspector shows the captain's stats, traits, equipment, appearance
+pieces, and palette. Presets, player characters and online pools are not targets.
+Spawned, dead and temporary captains cannot be edited.
 
-## Implemented
+## Edits and previews
 
-- Captain selection from all engine faction pools; includes unspawned and dead
-  seated captains and preset characters. Members are identified by army, pool
-  index, random seed and save-session generation, not a retained object pointer.
-- Level 1-85 through the existing native XP setter; native level locks remain.
-- Personality, role/title and tribe through their native setters.
-- Add, remove or replace trait picker slots. The engine resolves their active
-  abilities, including class bonuses, advanced classes, rarity, mounts, gangs,
-  epic perks, strengths and weaknesses. Choices come from the live Picker category;
-  duplicate and exclusive-group conflicts are filtered and rechecked before edits.
-- Weapon and armour item replacement from live Inventory/Items -> ItemBuilder
-  records, filtered by weapon/armour slot. Native item construction, character-type
-  checks and source replacement priorities remain in force.
-- Armour design replacement filtered by ArmorSlot and the captain's body type,
-  resolving its SimpleModelPiece from the live design's ModelPicker.
-- Read-only inspection of class, combat tree, army, row, location, preset, rarity,
-  purpose, scars, level remap, intel, counters, seed, flags, active abilities,
-  markers, inventory slots/looks, 23 appearance pieces, 15 designs and 17 palettes.
+HagUI ABI 11 adds AddPopupEditor without changing the ABI 10 property structs.
+Generate or select a candidate, then Apply it to the draft or Cancel. Save Uruk
+is the only operation that commits to the game; Discard abandons the draft.
+This changes the live captain, not the on-disk format or the autosave schedule.
+A draft cannot change captains. The game thread checks the world, captain key
+and a fingerprint of the original captain state before generating or saving.
 
-Equipment and design edits are disabled for spawned captains: a storage-only edit
-does not safely refresh an already loaded body's bundles and rig. The engine can
-override designs during later appearance rebuilds. Native constraints may reject
-or clamp an edit; the resulting state is recaptured and the last result appears
-in the grid and Uruks.log. No raw vector allocation, global GameDB edits, save
-footer or sidecar is used. Only one task may be pending. Stale save/member/field
-selections are rejected.
+- Name: native army/class name selection, native string localization, and a
+  final name-availability check. Never edits the derived 32-byte display buffer.
+- Title: the game's weighted role generator checks class, personality, tribe,
+  row, size and appearance. Roles with unpreviewed outfit, marker, scar or event
+  transitions are excluded. Applying a title invalidates the draft name and
+  look. Both show a red exclamation and block Save until regenerated and applied.
+- Appearance: builds separate native SimpleModel storage using member-derived
+  parameters and a local variation seed, applies the existing outfit, checks
+  body, skeleton and title compatibility, and frees the temporary on the game
+  thread. Save regenerates the look and compares the pieces, designs, palette,
+  tags and material overrides against the accepted result before copying it.
+- Weapon: candidates are items from the captain's personality, role, tribe or
+  class kit. A temporary native item build resolves the slot and actual look.
+  Both native character-type and replacement checks must pass.
+- Preview limitation: the popup displays the actual record names and colours.
+  It does **not** draw a 3D character or weapon. It never swaps the live Army
+  screen model to simulate a preview.
+- Raw designs, personalities, tribes, flags, class transitions and individual
+  picker slots are inspected, not freely writable.
 
-## Remaining Work
+## Traits and progression
 
-This is not yet a complete editable reflection of every FactionMember field.
-Name, base class/model transitions, marker mutation, raw flags, relationships,
-arbitrary resolved-trait forcing, palette editing and live-body visual refresh
-are not implemented. Their fields are read-only rather than offering unverified
-memory writes. The engine exposes no single reflected native object containing
-every member field; a GameDB category only enumerates valid records, not the
-mutation contract or compatibility requirements of the object consuming them.
+Two different engine paths apply. Initial generation is not the limit on what a
+captain can earn.
 
-Native layout/mutation paths were checked statically. Gameplay editing and
-save/reload persistence have not been tested in this change; the game was not
-restarted or modified. Automated tests cover snapshot construction, descriptor
-types, invalid reads, stale sessions, recruitment policy, configuration and
-nonblank ImGui draw data at four desktop resolutions.
+1. **Trait generator** rolls a whole set via the generic builder's picker phase
+   (0x141BB876C). It uses a private destination vector, the selected captain's
+   markers, role, tribe and army. There is no manual Epic count or arbitrary
+   append. Builder-specific captains, trait-locked captains and captains with
+   recorded reward history are excluded from whole-set rerolls.
+2. **Level-up reward** previews a one-level advancement. The native XP path
+   (0x14034F9F0) collects scheduled lists (0x1403513DC), picks a weighted reward
+   (0x140350500), tests eligibility (0x140105AEC) and applies it (0x140351AF8).
+   The preview uses these list/selection checks on the projected level and shows
+   potential individual picker gains and removals from the chosen reward.
+   At Save the normal XP setter runs. Only during that call, for that captain,
+   list and level, the mod can replay the accepted reward once, and only if the
+   engine awarded a roll and the reward is still eligible with positive weight.
+   The engine controls the reward's internal random choice and any other rolls.
+   If the expected list did not fire, the result reports the native fallback.
+   An ordinary level change remains available without selecting a reward.
 
-## Research
+**Training Order checks** are advisory, not permission to grant a trait or use
+a paid order. The editor runs the native contract failure evaluator
+(0x140FBC6D0) against a private copy of the selected captain's army summary.
+It projects the chosen name, role and level; for generated picker sets it uses
+the native slot resolver on private slots to project active traits. Other
+summary fields remain at their existing values; predicates can also consult
+the current world. An absent summary is unknown, not eligible. A rejected order
+is not necessarily an invalid captain. No contract is consumed or dispatched.
 
-- [SeiKur0's original table thread](https://fearlessrevolution.com/viewtopic.php?t=5132)
-  and table download returned access errors; no table scripts were executed.
-- [Nemesis objects and saved fields](https://sow-ce.github.io/engine/nemesis.html)
-- [Trait slots and native rebuilds](https://sow-ce.github.io/engine/captain-traits.html)
-- [Appearance and captain inventory](https://sow-ce.github.io/engine/captain-appearance.html)
-- [GameDB descriptor/category layouts](https://sow-ce.github.io/engine/gamedb.html)
+## Verification
 
-Local Ghidra evidence is under C:/dev/re/sow/uruks_editor_*.txt. Native mutation
-entry points are centralized in shared/GameOffsets.h and guarded with signatures.
+Native call shapes were checked against the local unpacked executable in Ghidra.
+Generator entry points are fingerprinted before use. Fixture tests cover draft
+isolation, title dependencies, disabled choices, stale sessions, and Save
+dispatch. These are not in-game generation, rendering or save/reload tests.
+
+Background: [Nemesis system](https://sow-ce.github.io/engine/nemesis.html),
+[traits](https://sow-ce.github.io/engine/captain-traits.html),
+[appearance](https://sow-ce.github.io/engine/captain-appearance.html),
+[Army summaries](https://sow-ce.github.io/engine/ui.html).

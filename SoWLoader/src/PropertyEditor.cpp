@@ -16,12 +16,28 @@ bool Matches(const char* text, const char* query) {
 void DrawPropertyEditor(const HagUI::Widget& widget, ImVec2 position, ImVec2 size,
                         float sx, float sy, ImFont* font) {
     const auto& source = widget.properties;
+    const auto& popup = widget.popup;
+    HagUI_PopupState state{};
+    if (popup.state) popup.state(widget.context, 0, 0, &state);
     ImGui::PushFont(font, 15.0f * (std::min)(sx, sy));
     ImGui::SetCursorScreenPos(position);
-    ImGui::SetNextItemWidth((std::max)(80.0f, size.x - 108.0f * sx));
+    ImGui::SetNextItemWidth((std::max)(32.0f, size.x - (popup.state ? 330.f : 108.f) * sx));
     ImGui::InputTextWithHint("##fields", "Filter fields...", widget.propertySearch, sizeof(widget.propertySearch));
     ImGui::SameLine();
+    ImGui::BeginDisabled(state.busy || state.dirty);
     if (ImGui::Button("Refresh", ImVec2(96 * sx, 28 * sy))) source.refresh(widget.context);
+    ImGui::EndDisabled();
+    if (popup.state) {
+        ImGui::SameLine();
+        ImGui::BeginDisabled(state.busy || !state.dirty);
+        if (ImGui::Button("Discard")) popup.discard(widget.context);
+        ImGui::EndDisabled();
+        ImGui::SameLine();
+        ImGui::BeginDisabled(state.busy || !state.canSave);
+        if (ImGui::Button(popup.saveLabel)) popup.save(widget.context);
+        ImGui::EndDisabled();
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled) && state.status[0]) ImGui::SetTooltip("%s", state.status);
+    }
     std::vector<HagUI_Property> fields;
     const int count = (std::clamp)(source.count(widget.context), 0, 4096);
     for (int i = 0; i < count; ++i) {
@@ -47,6 +63,12 @@ void DrawPropertyEditor(const HagUI::Widget& widget, ImVec2 position, ImVec2 siz
                     const float width = ImGui::GetContentRegionAvail().x;
                     auto* draw = ImGui::GetWindowDrawList();
                     draw->PushClipRect(origin, ImVec2(origin.x + width - 60 * sx, origin.y + 26 * sy), true);
+                    HagUI_PopupState detail{};
+                    if (popup.state) popup.state(widget.context, field.id, 0, &detail);
+                    if (detail.needsRepair) {
+                        ImGui::TextColored(ImVec4(1,.28f,.24f,1), "!");
+                        ImGui::SameLine();
+                    }
                     ImGui::TextUnformatted(field.label);
                     draw->PopClipRect();
                     ImGui::SetCursorScreenPos(ImVec2(origin.x + width - 52 * sx, origin.y));
@@ -54,6 +76,8 @@ void DrawPropertyEditor(const HagUI::Widget& widget, ImVec2 position, ImVec2 siz
                     if (ImGui::Button("Edit", ImVec2(48 * sx, 24 * sy))) {
                         widget.editingField = field.id;
                         widget.actionField = field.id;
+                        widget.popupTitle = std::string(field.label) + "###property-value";
+                        widget.selectedChoice = 0;
                         widget.choiceSearch[0] = 0;
                         widget.applyFailed = false;
                         widget.choices.clear();
@@ -83,29 +107,70 @@ void DrawPropertyEditor(const HagUI::Widget& widget, ImVec2 position, ImVec2 siz
     }
     ImGui::EndChild();
     if (widget.editingField) {
-        ImGui::OpenPopup("Choose value");
+        ImGui::OpenPopup(widget.popupTitle.c_str());
         widget.editingField = 0;
     }
-    ImGui::SetNextWindowSize(ImVec2((std::min)(size.x, 600 * sx), 320 * sy), ImGuiCond_Appearing);
-    if (ImGui::BeginPopupModal("Choose value", nullptr, ImGuiWindowFlags_NoResize)) {
+    ImGui::SetNextWindowSize(ImVec2((std::min)(size.x, 600 * sx), (std::min)(size.y, 405 * sy)), ImGuiCond_Appearing);
+    if (!widget.popupTitle.empty() && ImGui::BeginPopupModal(widget.popupTitle.c_str(), nullptr, ImGuiWindowFlags_NoResize)) {
+        HagUI_PopupState detail{};
+        if (popup.state) popup.state(widget.context, widget.actionField, widget.selectedChoice, &detail);
+        if (detail.generator) {
+            ImGui::BeginDisabled(detail.busy);
+            if (ImGui::Button("Generate")) { widget.selectedChoice = 0; popup.generate(widget.context, widget.actionField); }
+            ImGui::EndDisabled();
+            HagUI_Choice candidate{};
+            if (!detail.busy && source.choice(widget.context, widget.actionField, 0, &candidate))
+                widget.selectedChoice = candidate.id;
+            popup.state(widget.context, widget.actionField, widget.selectedChoice, &detail);
+        } else {
         ImGui::SetNextItemWidth(-1);
         ImGui::InputTextWithHint("##choices", "Search engine records...", widget.choiceSearch, sizeof(widget.choiceSearch));
-        if (ImGui::BeginChild("##values", ImVec2(0, -64 * sy))) {
+        if (ImGui::BeginChild("##values", ImVec2(0, detail.preview[0] ? 96 * sy : -64 * sy))) {
             for (const auto& choice : widget.choices) {
                 if (!Matches(choice.label, widget.choiceSearch)) continue;
                 ImGui::PushID(static_cast<int>(choice.id));
-                if (ImGui::Selectable(choice.label, choice.selected)) {
-                    if (source.apply(widget.context, widget.actionField, choice.id)) ImGui::CloseCurrentPopup();
-                    else widget.applyFailed = true;
-                }
-                if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", choice.label);
+                HagUI_PopupState option{};
+                if (popup.state) popup.state(widget.context,widget.actionField,choice.id,&option);
+                ImGui::BeginDisabled(option.unavailable);
+                if (ImGui::Selectable(choice.label, widget.selectedChoice ? widget.selectedChoice == choice.id : choice.selected))
+                    widget.selectedChoice = choice.id;
+                ImGui::EndDisabled();
+                if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) ImGui::SetTooltip("%s", option.unavailable?option.status:choice.label);
                 ImGui::PopID();
             }
             if (widget.choices.empty()) ImGui::TextDisabled("No compatible engine records.");
         }
         ImGui::EndChild();
+        }
+        if (detail.generator || detail.preview[0]) {
+            if (ImGui::BeginChild("Preview", ImVec2(0,-60*sy), ImGuiChildFlags_Borders)) {
+                ImGui::TextDisabled("Preview");
+                for (int i=0, shown=0; i<17; ++i) if (detail.palette[i] >> 24) {
+                    if (shown++ % 8) ImGui::SameLine();
+                    auto c=detail.palette[i];
+                    ImGui::PushID(i);
+                    ImGui::ColorButton("##colour", ImVec4(((c>>16)&255)/255.f, ((c>>8)&255)/255.f,(c&255)/255.f,1));
+                    ImGui::PopID();
+                }
+                ImGui::TextWrapped("%s", detail.busy ? "Generating..." : detail.preview[0] ? detail.preview : detail.status);
+            }
+            ImGui::EndChild();
+        }
         if (widget.applyFailed) ImGui::TextWrapped("Selection expired or another operation is pending.");
-        if (ImGui::Button("Cancel")) ImGui::CloseCurrentPopup();
+        ImGui::BeginDisabled(!widget.selectedChoice || detail.busy);
+        if (ImGui::Button("Apply")) {
+            if (source.apply(widget.context,widget.actionField,widget.selectedChoice)) {
+                if (popup.close) popup.close(widget.context,widget.actionField);
+                ImGui::CloseCurrentPopup();
+            }
+            else widget.applyFailed = true;
+        }
+        ImGui::EndDisabled();
+        ImGui::SameLine();
+        if (ImGui::Button("Cancel")) {
+            if (popup.close) popup.close(widget.context,widget.actionField);
+            ImGui::CloseCurrentPopup();
+        }
         ImGui::EndPopup();
     }
     ImGui::PopFont();

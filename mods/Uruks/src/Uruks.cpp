@@ -11,7 +11,7 @@ extern "C" __declspec(dllexport) void SoWMod_Init(int page) {
     const auto get = reinterpret_cast<HagUI_GetAPI_t>(
         ::GetProcAddress(::GetModuleHandleW(L"steam_api64.dll"), "HagUI_GetAPI"));
     auto* ui = get ? get(HAGUI_ABI_VERSION) : nullptr;
-    if (!ui) { uruk::Log("HagUI v10 unavailable"); return; }
+    if (!ui) { uruk::Log("HagUI v11 unavailable"); return; }
     if (!uruk::LoadSettings(page)) {
         uruk::Log("Cannot initialize mods/cfg/Uruks.ini");
         ui->AddLabel(page, "Uruks configuration could not be loaded.");

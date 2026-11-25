@@ -13,7 +13,7 @@
 
 extern "C" {
 
-constexpr std::uint32_t HAGUI_ABI_VERSION = 10;
+constexpr std::uint32_t HAGUI_ABI_VERSION = 11;
 
 typedef void (*HagUI_GameTaskFn)(void* ctx);
 typedef void (*HagUI_PageOpenFn)(int page);
@@ -38,6 +38,22 @@ struct HagUI_PropertySource {
     int (*choiceCount)(void* context, std::uint64_t field);
     bool (*choice)(void* context, std::uint64_t field, int index, HagUI_Choice* choice);
     bool (*apply)(void* context, std::uint64_t field, std::uint64_t choice);
+};
+
+// Optional popup/draft controls, separate from the stable v10 property structs.
+struct HagUI_PopupState {
+    bool generator, busy, dirty, canSave, needsRepair, unavailable;
+    char status[256];
+    char preview[4096];
+    std::uint32_t palette[17]; // ARGB; transparent cells are not displayed
+};
+struct HagUI_PopupActions {
+    const char* saveLabel;
+    void (*state)(void*, std::uint64_t field, std::uint64_t choice, HagUI_PopupState*);
+    bool (*generate)(void*, std::uint64_t field);
+    void (*save)(void*);
+    void (*discard)(void*);
+    void (*close)(void*, std::uint64_t field);
 };
 
 struct HagUIAPI {
@@ -86,6 +102,7 @@ struct HagUIAPI {
     int (*RegisterSubPage)(int parent, const char* title);
     void (*AddSubPageButton)(int page, const char* label, int child);
     void (*AddPropertyEditor)(int page, void* context, const HagUI_PropertySource* source);
+    void (*AddPopupEditor)(int page, void* context, const HagUI_PropertySource*, const HagUI_PopupActions*);
 };
 
 // Exported by the loader DLL. Returns null if the requested ABI version is unsupported.

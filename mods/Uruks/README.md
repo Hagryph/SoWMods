@@ -4,7 +4,8 @@ Standalone global submod. First option: **Ignore Recruitment Level**.
 
 The **Uruk Editor** sub-screen provides a two-column captain inspector and native,
 engine-record-backed editing. See [coverage and limitations](../../docs/uruk-editor.md).
-Requires matching Loader/HagUI ABI v10. Build only; do not deploy beside the old
+Requires Loader/HagUI ABI v11. Apply stages a popup choice; only Save Uruk changes the captain.
+Build only; do not deploy beside the old
 UrukEditor.dll, since both DLLs would install the same recruitment hooks.
 
 When enabled, the player's recruitment option selection ignores the captain/player
@@ -35,7 +36,7 @@ level adjustments are logged to `%LOCALAPPDATA%/SoWLoader/logs/Uruks.log`.
 ## Build
 
 Build the loader first to provide the static MinHook dependency, then run
-`mods/build_mods.ps1 -Only Uruks`. HagUI ABI v10 and Loader Config API v1 are required.
+`mods/build_mods.ps1 -Only Uruks`. HagUI ABI v11 and Loader Config API v1 are required.
 Older mods retain their append-only API layout.
 
 ## Native References
