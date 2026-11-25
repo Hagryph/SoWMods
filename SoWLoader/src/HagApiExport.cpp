@@ -3,6 +3,7 @@
 // without linking HagUI. The C wrappers just delegate to the HagUI singleton.
 #include "HagUI.h"
 #include "GameTaskQueue.h"
+#include "GameHooks.h"
 #include "HagUIAPI.h"   // ../shared (on the include path)
 
 namespace {
@@ -24,10 +25,13 @@ bool ApiQueueGameTask(HagUI_GameTaskFn fn, void* ctx) {
 void ApiSetPageOnFirstOpenInSave(int p, HagUI_PageOpenFn fn) {
     sow::HagUI::Get().SetPageOnFirstOpenInSave(p, fn);
 }
+void ApiAddConditionalButton(int p, const char* label, void (*click)(), bool (*visible)()) {
+    sow::HagUI::Get().AddConditionalButton(p, label, click, visible);
+}
 
 HagUIAPI g_api = { HAGUI_ABI_VERSION, &ApiRegisterPage, &ApiAddLabel, &ApiAddToggle, &ApiAddButton,
                    &ApiAddList, &ApiAddFacetedList, &ApiAddFacetedActionList, &ApiQueueGameTask,
-                   &ApiSetPageOnFirstOpenInSave };
+                   &ApiSetPageOnFirstOpenInSave, &ApiAddConditionalButton, &sow::CurrentSaveSession };
 }  // namespace
 
 // Any ABI from 1..current is served the same struct: the layout is append-only, so a v1 caller simply

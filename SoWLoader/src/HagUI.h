@@ -24,6 +24,9 @@ public:
     void AddLabel(int page, const char* text);
     void AddToggle(int page, const char* label, bool* value);
     void AddButton(int page, const char* label, void (*onClick)());
+    void AddConditionalButton(int page, const char* label, void (*onClick)(), bool (*visible)());
+    struct Widget;
+    static bool WidgetVisible(const Widget& widget);
     void AddList(int page, const char* const* items, const char* const* cats, int count);
     void AddFacetedList(int page, const char* const* facetNames, int facetCount,
                         const char* const* displays, int itemCount, const char* const* facetValues);
@@ -54,6 +57,7 @@ public:
         mutable int  actionSel = -1;                 // row pending in the count popup
         mutable int  actionCount = 1;
         mutable char search[64] = {};                // search box text (ImGui InputText buffer)
+        bool (*visible)() = nullptr;
     };
     struct Page {
         std::string title;

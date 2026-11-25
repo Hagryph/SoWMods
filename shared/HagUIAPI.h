@@ -13,7 +13,7 @@
 
 extern "C" {
 
-constexpr std::uint32_t HAGUI_ABI_VERSION = 6;
+constexpr std::uint32_t HAGUI_ABI_VERSION = 7;
 
 typedef void (*HagUI_GameTaskFn)(void* ctx);
 typedef void (*HagUI_PageOpenFn)(int page);
@@ -50,6 +50,12 @@ struct HagUIAPI {
     // v6: lazy save-local page init. The loader calls this once for the page when F8 is first opened
     // while a save/world is loaded, before the page's widgets are drawn.
     void (*SetPageOnFirstOpenInSave)(int page, HagUI_PageOpenFn fn);
+    // v7: evaluated on the UI thread before drawing or activating the button. Keep the
+    // predicate nonblocking; queue native queries with QueueGameTask, never call them here.
+    void (*AddConditionalButton)(int page, const char* label, void (*onClick)(), bool (*visible)());
+    // Nonzero identity for the currently loaded world; changes on each world load.
+    // Zero at the main menu. Queued tasks can reject work from an earlier save.
+    std::uint64_t (*SaveSession)();
 };
 
 // Exported by the loader DLL. Returns null if the requested ABI version is unsupported.

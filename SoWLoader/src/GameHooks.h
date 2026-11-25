@@ -3,6 +3,8 @@
 
 namespace sow {
 
+std::uint64_t CurrentSaveSession();
+
 // Game-logic hooks (as opposed to the D3D/Overlay renderer hook). The front-end root-layer ctor is
 // the menu/overlay setup trigger; OnWorldLoad sets the in-save latch; save-to-front-end teardown
 // clears it when returning to the main menu.

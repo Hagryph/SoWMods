@@ -1,6 +1,9 @@
 # Read-only inspection of the live Inventory.Item table; never calls game functions.
 [CmdletBinding()]
-param([string]$Pattern = 'Ring|ScriptedUnlock|BrandGrunts|DominateCaptains')
+param(
+    [string]$Pattern = 'Ring|ScriptedUnlock|BrandGrunts|DominateCaptains',
+    [long]$DescriptorAddress = 0
+)
 $ErrorActionPreference = 'Stop'
 Add-Type @'
 using System;
@@ -29,7 +32,10 @@ function Read-Bytes([long]$Address, [int]$Count) {
 }
 try {
     $base = $game.MainModule.BaseAddress.ToInt64()
-    $descriptor = [BitConverter]::ToInt64((Read-Bytes ($base + 0x2700530) 8), 0)
+    $descriptor = $DescriptorAddress
+    if (-not $descriptor) {
+        $descriptor = [BitConverter]::ToInt64((Read-Bytes ($base + 0x2700530) 8), 0)
+    }
     if ($descriptor -eq 0) { throw 'Inventory.Item descriptor is not loaded.' }
     $header = Read-Bytes $descriptor 0x40
     $count = [BitConverter]::ToUInt32($header, 0x28)

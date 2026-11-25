@@ -19,6 +19,7 @@
 #include "GameOffsets.h"
 #include "HagUIAPI.h"    // ../../shared
 #include "SoWModAPI.h"   // ../../shared
+#include "EarlyRingUnlock.h"
 
 namespace {
 HagUIAPI* g_ui = nullptr;
@@ -621,6 +622,7 @@ extern "C" __declspec(dllexport) void SoWMod_Init(int page) {
     if (!ui) { Log("HagUI unavailable"); return; }
     g_ui = ui;
     g_queueGameTask = ui->QueueGameTask;
+    inventory_editor::AddEarlyRingUnlock(page, ui, [](const char* message) { Log(message); });
     ui->SetPageOnFirstOpenInSave(page, &BuildPageOnFirstOpen);
     Log("registered live Inventory.Item first-open builder for page " + std::to_string(page));
 }

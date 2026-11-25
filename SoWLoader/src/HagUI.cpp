@@ -170,6 +170,23 @@ void HagUI::AddToggle(int page, const char* label, bool* value) {
 void HagUI::AddButton(int page, const char* label, void (*onClick)()) {
     if (page >= 0 && page < (int)pages_.size()) pages_[page].widgets.push_back({ WButton, label ? label : "", nullptr, onClick });
 }
+void HagUI::AddConditionalButton(int page, const char* label, void (*onClick)(), bool (*visible)()) {
+    if (page < 0 || page >= (int)pages_.size()) return;
+    Widget w{};
+    w.type = WButton;
+    w.text = label ? label : "";
+    w.onClick = onClick;
+    w.visible = visible;
+    pages_[page].widgets.push_back(std::move(w));
+}
+bool HagUI::WidgetVisible(const Widget& widget) {
+    if (!widget.visible) return true;
+    __try {
+        return widget.visible();
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+}
 void HagUI::AddList(int page, const char* const* items, const char* const* cats, int count) {
     // legacy single-facet list: one "Filter" facet built from cats
     const char* names[1] = { "Filter" };
@@ -247,8 +264,10 @@ void HagUI::PollInput(Overlay& r) {
             if (pressed(2) && n > 0) sel_ = (sel_ + 1) % n;
             if ((pressed(5) || pressed(6)) && sel_ >= 0 && sel_ < n) {
                 Widget& w = pages_[tab_ - 1].widgets[sel_];
-                if (w.type == WToggle && w.toggle)       *w.toggle = !*w.toggle;
-                else if (w.type == WButton && w.onClick)  w.onClick();
+                if (WidgetVisible(w)) {
+                    if (w.type == WToggle && w.toggle)       *w.toggle = !*w.toggle;
+                    else if (w.type == WButton && w.onClick)  w.onClick();
+                }
             }
         }
     }
@@ -355,6 +374,7 @@ void HagUI::DrawHub(Overlay& r) {
         float ry = cyTop + 6;
         for (int i = 0; i < (int)pg.widgets.size(); ++i) {
             Widget& w = pg.widgets[i];
+            if (!WidgetVisible(w)) continue;
             const bool hov = w.type != WLabel &&
                              hit(X(pxi - 14), Y(ry - 6), S(cwid + 28), S(40));
             if (hov) {

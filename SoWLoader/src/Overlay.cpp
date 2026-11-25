@@ -836,6 +836,7 @@ void Overlay::DrawHub() {
             float ry = 86 + 44;
             for (int i = 0; i < (int)pg.widgets.size(); ++i) {
                 const HagUI::Widget& wd = pg.widgets[i];
+                if (!HagUI::WidgetVisible(wd)) continue;
                 ImGui::PushID(i);
                 if (wd.type == HagUI::WToggle) {
                     // full-width clickable row (AS: invisible hit rect w x 30, flips the box)

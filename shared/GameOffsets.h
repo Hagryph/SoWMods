@@ -18,6 +18,12 @@ namespace game {
 // PE image base of ShadowOfWar.exe (x64, PE32+). Verified from the optional header.
 inline constexpr std::uintptr_t kImageBase = 0x140000000ull;
 
+// Native inventory wrappers used by CCharacter.AddInventoryItem / HasInventoryItem.
+// AddOne returns bool (added count != 0); it has no output parameters.
+inline constexpr std::uintptr_t kInventoryAddOne = 0x1401c01e0ull;
+inline constexpr std::uintptr_t kInventoryHasItem = 0x14024df7cull;
+inline constexpr std::uintptr_t kCharacterAddInventoryItem = 0x1401e6b88ull;
+
 // Live module base of the running ShadowOfWar.exe (the main image).
 inline std::uintptr_t Base() {
     static const std::uintptr_t base = reinterpret_cast<std::uintptr_t>(::GetModuleHandleW(nullptr));

@@ -6,10 +6,22 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Standalone mod DLL: reads the live Inventory.Item descriptor and surfaces spawnable rows in
 # HagUI. No external deps - Win32 + the shared/ headers (HagUI resolved at runtime).
-add_library(InventoryEditor SHARED src/InventoryEditor.cpp)
+add_library(InventoryEditor SHARED src/InventoryEditor.cpp src/EarlyRingUnlock.cpp src/RingGrantGuard.cpp)
+
+# Reuse the loader's existing static MinHook installation when not configured with a toolchain.
+list(APPEND CMAKE_PREFIX_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../../SoWLoader/build/vcpkg_installed/x64-windows-static-md")
+find_package(minhook CONFIG REQUIRED)
+target_link_libraries(InventoryEditor PRIVATE minhook::minhook)
 
 target_include_directories(InventoryEditor PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../../shared")
 target_compile_definitions(InventoryEditor PRIVATE UNICODE _UNICODE)
 target_compile_options(InventoryEditor PRIVATE /utf-8)
 
 set_target_properties(InventoryEditor PROPERTIES PREFIX "")   # InventoryEditor.dll
+
+include(CTest)
+if(BUILD_TESTING)
+    add_executable(RingUnlockTests tests/RingUnlockTests.cpp)
+    target_include_directories(RingUnlockTests PRIVATE src)
+    add_test(NAME RingUnlockPolicy COMMAND RingUnlockTests)
+endif()

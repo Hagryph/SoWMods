@@ -32,6 +32,12 @@ static bool          s_worldLogged    = false;
 static volatile LONG g_inSave = 0;     // 1 = save/world loaded, 0 = menu/not in save
 static volatile LONG g_pendingMenuClear = 0;
 static volatile LONG g_nonRootFrontEndLogged = 0;
+static volatile LONG64 g_sessionCounter = 0;
+static volatile LONG64 g_activeSession = 0;
+
+std::uint64_t CurrentSaveSession() {
+    return static_cast<std::uint64_t>(::InterlockedCompareExchange64(&g_activeSession, 0, 0));
+}
 
 template <class T>
 static bool ReadGameMem(std::uintptr_t addr, T& out) {
@@ -83,6 +89,7 @@ static void* __fastcall HookRootLayerCtor(void* self, void* a2, void* a3) {
     }
     void* r = oRootLayerCtor(self, a2, a3);     // forward first so the object is fully initialized
     ::InterlockedExchange(&g_inSave, 0);
+    ::InterlockedExchange64(&g_activeSession, 0);
     Overlay::Get().SetInGame(false);
     EnsureOverlay("frontend-rootlayer-ctor");
     return r;
@@ -96,6 +103,7 @@ static OnWorldLoadFn oOnWorldLoad = nullptr;
 static void __fastcall HookOnWorldLoad(void* self, void* worldInfo, void* faction) {
     oOnWorldLoad(self, worldInfo, faction);
     ::InterlockedExchange(&g_inSave, 1);
+    ::InterlockedExchange64(&g_activeSession, ::InterlockedIncrement64(&g_sessionCounter));
     ::InterlockedExchange(&g_pendingMenuClear, 0);
     ::InterlockedExchange(&g_nonRootFrontEndLogged, 0);
     Overlay::Get().SetInGame(true);
@@ -111,6 +119,7 @@ static FrontEndItemRefreshFn oFrontEndItemRefresh = nullptr;
 static std::uint64_t __fastcall HookFrontEndItemRefresh(void* self) {
     const std::uint64_t r = oFrontEndItemRefresh(self);
     if (IsRootFrontEndMenu(self)) {
+        ::InterlockedExchange64(&g_activeSession, 0);
         if (::InterlockedExchange(&g_inSave, 0) != 0 ||
             ::InterlockedExchange(&g_pendingMenuClear, 0) != 0) {
             Log::Get().Line("[state] root front-end refresh hit - menu/not-in-save");
