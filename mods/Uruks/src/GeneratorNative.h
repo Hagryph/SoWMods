@@ -15,6 +15,7 @@ struct Look {
 };
 bool Supported();
 bool TribeAvailable(P tribe);
+bool ScopeClassDraws(recipe::Catalog&,const recipe::Recipe&,P army);
 bool GenerateName(P member, std::uint32_t& id, char (&label)[256]);
 P GenerateTitle(P member);
 bool Appearance(P member, P role, std::uint64_t roll, Look& result, const Look* commit);

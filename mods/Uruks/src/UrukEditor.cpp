@@ -320,6 +320,7 @@ bool LoadRecipeCatalog(const Catalog& catalog,recipe::Catalog& db,Ptr army) {
         if (!name.starts_with("AdvancedClass_")) continue;
         for (auto spec:Links(id,0x53373e4d)) if (db.classes.contains(spec)) {
             auto& kit=db.kits[spec].emplace_back();
+            kit.drawLists=Links(id,0xe4d587ea);
             auto gather=[&](auto& into,Ptr record,unsigned hash){
                 for (auto v:Links(record,hash)) into.insert(v);
             };
@@ -331,7 +332,6 @@ bool LoadRecipeCatalog(const Catalog& catalog,recipe::Catalog& db,Ptr army) {
             for (auto group:Links(id,0xa22cf1b9)) gather(kit.removed,group,0x7abf91f5);
             for (auto group:Links(id,0x5b7f9956)) {
                 auto grants=Links(group,0x7abf91f5);
-                db.managedPickers.insert(grants.begin(),grants.end());
                 if (!grants.empty()) kit.grants.push_back(std::move(grants));
             }
         }
@@ -348,10 +348,9 @@ bool LoadRecipeCatalog(const Catalog& catalog,recipe::Catalog& db,Ptr army) {
         }
         if (!hiddenOutput && !outputs.empty()) db.optionalOnly.insert(id);
         for (auto trait:outputs) db.producers[trait].push_back(route);
-        for (auto trait:outputs) if (db.categories.at(trait)==2 || db.managedPickers.contains(id))
+        for (auto trait:outputs) if (db.managedPickers.contains(id))
             db.managedTraits.insert(trait);
     }
-    for (auto trait:db.managedTraits) for (const auto& route:db.producers.at(trait)) db.managedPickers.insert(route.id);
     return !db.producers.empty() && !db.classes.empty() && db.rarities.size()==3;
 }
 void RecipeFields(Snapshot& snap,const Catalog& catalog) {
@@ -378,11 +377,10 @@ void RecipeFields(Snapshot& snap,const Catalog& catalog) {
     for (const auto& r:catalog.at("Faction/Traits/Marker"))
         if (db.rarities.contains(r.address)) rarity.choices.push_back({r.address,r.name.substr(sizeof("Marker_OrcRarity_")-1)});
     for (unsigned i=0;i<recipe::nodes.size();++i) {
-        if (i==2) continue;
         auto& field=Add(snap,recipe::labels[i],"0 selected",Kind(int(Kind::Immunities)+i));
         for (const auto& r:catalog.at("Faction/Traits/Definitions"))
             if (db.producers.contains(r.address) && !db.managedTraits.contains(r.address) && db.categories.at(r.address)==i)
-                field.choices.push_back({r.address,r.name});
+                field.choices.push_back({r.address,r.name=="Immune_Combat"?"Execution Immunity (Immune_Combat)":r.name});
     }
     Add(snap,"Replacement","Generate a captain",Kind::Regenerate);
     snap.recipeCatalog=std::move(db);
@@ -654,8 +652,10 @@ bool Commit(Ptr m,const Task& task,const Catalog& catalog,std::string& status) {
     if (RecipeField(d.edits.begin()->first)) {
         auto c=get(Kind::Regenerate);
         recipe::Catalog db;
-        if (!c || !c->generation || !LoadRecipeCatalog(catalog,db,task.selected.army)) return false;
-        auto result=engine::ReplaceCaptain(m,*c->generation,db,BuildRecipe(d),SaveTraits);
+        const auto r=BuildRecipe(d);
+        if (!c || !c->generation || !LoadRecipeCatalog(catalog,db,task.selected.army) ||
+            !engine::ScopeClassDraws(db,r,task.selected.army)) return false;
+        auto result=engine::ReplaceCaptain(m,*c->generation,db,r,SaveTraits);
         if (result==engine::ReplaceResult::ChangedUnexpectedly)
             status="Replacement ran, but the engine state did not match the preview. Inspect the captain before continuing.";
         else if (result==engine::ReplaceResult::Replaced)
@@ -717,8 +717,10 @@ void RunTask(Task* task) {
             if (task->kind==Kind::Regenerate) {
                 auto plan=std::make_shared<engine::GenerationPlan>();
                 recipe::Catalog db;
+                const auto r=BuildRecipe(task->draft);
                 ok=Writable(m) && LoadRecipeCatalog(catalog,db,task->selected.army) &&
-                    engine::PlanGeneration(m,CellHash(Read<Ptr>(m+0x268),0x40c579dc,0),db,BuildRecipe(task->draft),*plan,snapshot.status);
+                    engine::ScopeClassDraws(db,r,task->selected.army) &&
+                    engine::PlanGeneration(m,CellHash(Read<Ptr>(m+0x268),0x40c579dc,0),db,r,*plan,snapshot.status);
                 if (ok) {
                     candidate.ticket=g_nextField.fetch_add(1);
                     candidate.label="Generation settings";
@@ -798,7 +800,7 @@ bool Enabled(const Field& f) {
     if (f.kind==Kind::Traits) return true;
     if (Selector(f.kind)) return g_snapshot.mayGenerate && !f.choices.empty() &&
         (f.kind!=Kind::Class || g_draft.edits.contains(Kind::Base));
-    if (Bucket(f.kind)) return g_snapshot.mayGenerate && f.kind!=Kind::Classes && BuildRecipe(g_draft).complete();
+    if (Bucket(f.kind)) return g_snapshot.mayGenerate && BuildRecipe(g_draft).complete();
     if (f.kind==Kind::Regenerate) return g_snapshot.mayGenerate && BuildRecipe(g_draft).complete();
     if (Generator(f.kind)) return g_snapshot.mayGenerate &&
         (f.kind!=Kind::Advance || g_snapshot.mayAdvance);
@@ -1009,6 +1011,7 @@ void CheckInputs(void* arg) {
     bool valid=false;
     for (const auto& t:Targets()) if (t.key==check->target && Stamp(t.member)==check->baseline) {
         auto r=check->staged;
+        if (!engine::ScopeClassDraws(db,r,t.key.army)) break;
         auto rank=CellHash(Read<Ptr>(t.member+0x268),0x40c579dc,0);
         engine::GenerationPlan plan;
         std::string error;
@@ -1035,7 +1038,7 @@ bool Compatible(const Field& f,uint64_t candidate,const uint64_t* picks,int n) {
     if (candidate) set.push_back(f.choices[candidate-1].value);
     if (Bucket(f.kind)) {
         auto r=BuildRecipe(g_draft);
-        if (!r.complete() || f.kind==Kind::Classes) return false;
+        if (!r.complete()) return false;
         r.traits[int(f.kind)-int(Kind::Immunities)]=std::move(set);
         const auto& db=g_snapshot.recipeCatalog;
         auto fixed=recipe::coreInputs(db,r);

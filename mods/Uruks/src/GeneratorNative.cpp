@@ -324,6 +324,23 @@ int maxQuantity(P row) {
     // Native bounded RNG is [0, hi-lo); a fixed quantity does not call it.
     return hi>lo?hi-1:lo;
 }
+template<class Eligible>
+void addDrawList(P list,P markers,TraitRules& out,Eligible eligible) {
+    int cap=0;
+    eachRecord(list,0x141bb63b4,0x141156ac0,[&](P q){
+        if (call<bool>(0x141bb9e94,q,markers) && call<float>(0x141bbe34c,q)>0)
+            cap=(std::max)(cap,maxQuantity(q));
+    });
+    if (cap<=0) return;
+    TraitSource source{unsigned(cap),{}};
+    eachRecord(list,0x141bb5634,0x141bb705c,[&](P row){
+        if (!call<bool>(0x141bb9da4,row,markers) || !(call<float>(0x141bbe2f8,row)>0)) return;
+        std::set<P> entries;
+        eachRecord(row,0x141bb5ff4,0x141bb71ac,[&](P p){if (eligible(p)) entries.insert(p);});
+        if (!entries.empty()) source.tables.push_back(std::move(entries));
+    });
+    if (!source.tables.empty()) out.sources.push_back(std::move(source));
+}
 void collectRules(P m,TraitRules& out) {
     const P markers=m+0x1b0,builder=at<P>(m+0x3a0);
     P emptyGroups[65]{};
@@ -352,24 +369,53 @@ void collectRules(P m,TraitRules& out) {
     eachRecord(at<P>(m+0x318),0x141bb5e74,0x141150460,direct);
     eachRecord(at<P>(m+0x328),0x141bb5f34,0x141bb7190,direct);
     eachRecord(call<P>(0x141bbedc4,at<P>(m+0x178)),0x141bb66d4,0x141bb7318,[&](P list){
-        int cap=0;
-        eachRecord(list,0x141bb63b4,0x141156ac0,[&](P q){
-            if (call<bool>(0x141bb9e94,q,markers) && call<float>(0x141bbe34c,q)>0)
-                cap=(std::max)(cap,maxQuantity(q));
-        });
-        if (cap<=0) return;
-        TraitSource source{unsigned(cap),{}};
-        eachRecord(list,0x141bb5634,0x141bb705c,[&](P row){
-            if (!call<bool>(0x141bb9da4,row,markers) || !(call<float>(0x141bbe2f8,row)>0)) return;
-            std::set<P> entries;
-            eachRecord(row,0x141bb5ff4,0x141bb71ac,[&](P p){
-                if (!excluded.contains(p) && eligible(p)) entries.insert(p);
-            });
-            if (!entries.empty()) source.tables.push_back(std::move(entries));
-        });
-        if (!source.tables.empty()) out.sources.push_back(std::move(source));
+        addDrawList(list,markers,out,[&](P p){return !excluded.contains(p) && eligible(p);});
     });
 }
+bool scopeDraws(recipe::Catalog& db,const recipe::Recipe& r,P armyRecord) {
+    if (!Supported() || !armyRecord || !r.complete() || !recipe::fitsClass(db,r.base,r.specialization)) return false;
+    P ids[]{r.base,r.specialization,r.rarity};
+    struct {P* begin;P* end;P* capacity;} span{ids,ids+3,ids+3};
+    const P markers=reinterpret_cast<P>(&span);
+    auto has=[&](P id){return std::ranges::find(ids,id)!=std::end(ids);};
+    P groups[65]{};
+    TraitRules draws;
+    auto allowed=[&](P p){return db.routes.contains(p) && call<bool>(0x1407d4890,p,markers,groups);};
+    auto draw=[&](P p){
+        if (!allowed(p) || db.managedPickers.contains(p)) return false;
+        draws.groups.emplace(p,db.routes.at(p).groups);
+        return true;
+    };
+    std::set<P> lists,direct;
+    std::set<std::set<P>> alternatives;
+    bool first=true;
+    for (const auto& kit:db.kits.at(r.specialization)) {
+        if (!kit.fits(db.types.at(r.base))) continue;
+        std::set<P> singles;
+        for (const auto& group:kit.grants) if (group.size()==1 && allowed(group.front())) singles.insert(group.front());
+        if (first) {db.fixedClassInputs=singles;first=false;}
+        else std::erase_if(db.fixedClassInputs,[&](P id){return !singles.contains(id);});
+        if (std::ranges::any_of(kit.forbiddenMarkers,has) ||
+            !std::ranges::all_of(kit.requiredAny,[&](const auto& req){return std::ranges::any_of(req,has);})) continue;
+        direct.insert(singles.begin(),singles.end());
+        lists.insert(kit.drawLists.begin(),kit.drawLists.end());
+        for (const auto& group:kit.grants) if (group.size()>1) {
+            std::set<P> pool;
+            for (auto id:group) if (draw(id)) pool.insert(id);
+            if (!pool.empty()) alternatives.insert(std::move(pool));
+        }
+    }
+    direct.insert(db.fixedClassInputs.begin(),db.fixedClassInputs.end());
+    for (const auto& pool:alternatives) draws.sources.push_back({1,{pool}});
+    eachRecord(call<P>(0x141bbedc4,armyRecord),0x141bb66d4,0x141bb7318,[&](P list){lists.insert(list);});
+    for (auto list:lists) addDrawList(list,markers,draws,draw);
+    recipe::classifyClassDraws(db,std::move(draws),direct);
+    return true;
+}
+}
+bool ScopeClassDraws(recipe::Catalog& db,const recipe::Recipe& r,P armyRecord) {
+    __try {return scopeDraws(db,r,armyRecord);}
+    __except(EXCEPTION_EXECUTE_HANDLER) {return false;}
 }
 bool ReadTraitRules(P m,TraitRules& out) {
     __try {

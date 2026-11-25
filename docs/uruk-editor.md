@@ -8,9 +8,14 @@ Spawned, dead and temporary captains cannot be edited.
 ## Regenerate Captain (HagUI ABI 14)
 
 Open **Uruks > Regenerate Captain**, select the captain to replace, then choose
-the base class, advanced class, tribe and rarity. The seven optional lists
+the base class, advanced class, tribe and rarity. The eight optional lists
 unlock immediately. They check the requested kit, exclusive groups, previous
 picks and rarity budget; an empty list requests no extra traits.
+
+**Class Traits** lists compatible draws from the selected class and faction
+records, not fixed grants. Alternative groups and weighted tables retain
+their draw limits. **Execution Immunity (Immune_Combat)** is under Immunities;
+the picker must resolve to immunity, not just combat resistance.
 
 **Generate** resolves the selected definitions to native picker inputs at the
 retained level. **Apply** accepts those settings. Only **Save Uruk** invokes

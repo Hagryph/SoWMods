@@ -212,6 +212,24 @@ int main() {
         Check(!recipe::matches(db,request,full,4,{24}));
         request.traits[3].push_back(24); Check(!recipe::resolve(db,request,legal));
         Check(recipe::retained(db,{{49,0},{50,23}},keep) && keep==std::vector<Ptr>{50});
+        {
+            auto kit=db;
+            recipe::Recipe draft{100,201};draft.base=300;draft.tribe=400;
+            auto route=[&](Ptr trait,unsigned bucket,Ptr picker) {
+                kit.definitions.insert(trait);kit.categories[trait]=bucket;
+                kit.producers[trait].push_back({picker,{},{},{}});
+            };
+            route(81,2,71);route(82,2,72);route(83,2,73);route(84,2,74);
+            // Like the combat picker, 75 can yield either resistance or immunity.
+            route(85,7,71);route(85,7,75);route(86,0,75);
+            engine::TraitRules draws;draws.groups={{72,{}},{73,{}}};draws.sources={{1,{{72,73}}}};
+            recipe::classifyClassDraws(kit,std::move(draws),{71});
+            draft.traits[2]={81};Check(!recipe::resolve(kit,draft,legal)); // direct grant
+            draft.traits[2]={84};Check(!recipe::resolve(kit,draft,legal)); // not in selected pool
+            draft.traits[2]={82,83};Check(!recipe::resolve(kit,draft,legal)); // only one draw
+            draft.traits[2]={82};draft.traits[0]={86};Check(recipe::resolve(kit,draft,legal));
+            Check(recipe::optionalResult(kit,draft,{81,82,86}) && !recipe::optionalResult(kit,draft,{81,82,85}));
+        }
         g_snapshot.recipeCatalog=db;
         auto make=[&](Kind k,const char* label,std::vector<Choice> c){
             auto& f=Add(g_snapshot,label,"",k);f.choices=std::move(c);return f.id;

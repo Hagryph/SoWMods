@@ -5,6 +5,8 @@
 #include <map>
 #include <set>
 #include <vector>
+#include <optional>
+#include "TraitRules.h"
 
 namespace uruk::recipe {
 using Id = std::uintptr_t;
@@ -20,6 +22,7 @@ struct Picker {
 struct ClassKit {
     std::set<Id> allowedTypes, blockedTypes, forbiddenMarkers, removed;
     std::vector<std::vector<Id>> requiredAny, grants;
+    std::vector<Id> drawLists;
     bool fits(Id type) const {
         return !blockedTypes.contains(type) && (allowedTypes.empty() || allowedTypes.contains(type));
     }
@@ -41,6 +44,8 @@ struct Catalog {
     std::set<Id> managedPickers, managedTraits;
     std::set<Id> optionalOnly;
     std::map<Id,Picker> routes;
+    std::optional<engine::TraitRules> classDraws;
+    std::set<Id> fixedClassInputs;
 };
 struct Recipe {
     Id specialization{}, rarity{};
@@ -50,9 +55,24 @@ struct Recipe {
     bool operator==(const Recipe&) const = default;
 };
 struct Slot { Id picker{}, definition{}; };
+// A picker can resolve to different definitions at different levels. A fixed
+// output of one producer must never disable a different producer wholesale.
+inline void classifyClassDraws(Catalog& db,engine::TraitRules draws,const std::set<Id>& direct) {
+    db.classDraws=std::move(draws);
+    db.managedPickers.insert(direct.begin(),direct.end());
+    for (const auto& [trait,producers]:db.producers) {
+        bool fixed=std::ranges::any_of(producers,[&](const Picker& p){return direct.contains(p.id);});
+        if (fixed || (db.categories.at(trait)==2 && !std::ranges::any_of(producers,[&](const Picker& p){
+            return !db.managedPickers.contains(p.id) && db.classDraws->groups.contains(p.id);
+        }))) db.managedTraits.insert(trait);
+    }
+    for (auto trait:db.managedTraits) if (db.producers.contains(trait))
+        for (const auto& p:db.producers.at(trait)) db.optionalOnly.erase(p.id);
+}
 inline std::vector<Id> coreInputs(const Catalog& db,const Recipe& r) {
     std::vector<Id> fixed;
     for (Id marker:{r.base,r.specialization}) if (db.baseGrants.contains(marker)) fixed.push_back(db.baseGrants.at(marker));
+    for (Id id:db.fixedClassInputs) if (std::ranges::find(fixed,id)==fixed.end()) fixed.push_back(id);
     if (auto t=db.tribes.find(r.tribe);t!=db.tribes.end()) for (Id id:t->second) {
         auto route=db.routes.find(id);
         if (route!=db.routes.end() && std::ranges::any_of(route->second.forbidden,[&](Id m){
@@ -103,7 +123,7 @@ bool resolve(const Catalog& db,const Recipe& recipe,Accept accept,Extend extend,
     for (unsigned i=0;i<nodes.size();++i) for (auto trait:recipe.traits[i]) {
         auto group=db.categories.find(trait);
         auto options=db.producers.find(trait);
-        if (i==2 || db.managedTraits.contains(trait) || group==db.categories.end() || group->second!=i || options==db.producers.end() ||
+        if (db.managedTraits.contains(trait) || group==db.categories.end() || group->second!=i || options==db.producers.end() ||
             !distinct.insert(trait).second) return false;
         rows.emplace_back(trait,&options->second);
         epics+=db.epics.contains(trait);
@@ -114,7 +134,7 @@ bool resolve(const Catalog& db,const Recipe& recipe,Accept accept,Extend extend,
     if (recipe.specialization) required.insert(recipe.specialization);
     if (recipe.base) required.insert(recipe.base);
     if (recipe.rarity) required.insert(recipe.rarity);
-    std::vector<Id> picks;
+    std::vector<Id> picks,classPicks;
     auto walk=[&](auto&& self,size_t at)->bool {
         if (remaining) {
             if (!*remaining) return false;
@@ -137,7 +157,10 @@ bool resolve(const Catalog& db,const Recipe& recipe,Accept accept,Extend extend,
             auto beforeRequired=required, beforeForbidden=forbidden;
             required.insert(p.required.begin(),p.required.end()); forbidden.insert(p.forbidden.begin(),p.forbidden.end());
             used.insert(p.id); groups.insert(p.groups.begin(),p.groups.end()); picks.push_back(p.id);
-            if (extend(picks) && self(self,at+1)) return true;
+            bool classPick=db.classDraws && db.categories.at(trait)==2;
+            if (classPick) classPicks.push_back(p.id);
+            if ((!classPick || db.classDraws->permits(classPicks)) && extend(picks) && self(self,at+1)) return true;
+            if (classPick) classPicks.pop_back();
             picks.pop_back(); used.erase(p.id); for (auto g:p.groups) groups.erase(g);
             required.swap(beforeRequired); forbidden.swap(beforeForbidden);
         }
@@ -173,7 +196,7 @@ inline bool optionalResult(const Catalog& db,const Recipe& r,const std::vector<I
     std::array<std::set<Id>,nodes.size()> actual;
     for (auto id:active) {
         auto group=db.categories.find(id);
-        if (group!=db.categories.end() && group->second!=2 && !db.managedTraits.contains(id))
+        if (group!=db.categories.end() && !db.managedTraits.contains(id))
             actual[group->second].insert(id);
     }
     for (size_t i=0;i<nodes.size();++i)
