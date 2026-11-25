@@ -43,6 +43,17 @@ int main() {
         Check(FieldHash("CombatProp") == 0x9ce11687);
         Check(FieldHash("ArmorSlot") == FieldHash("armorslot"));
         FakeRecord picker("Picker_Test"), trait("Test_Ability"), army("Faction_Test");
+        FakeRecord localized("Test_MixedCase");
+        const char* displayKey="IntRes_Trait_Test";
+        localized.Field("test",reinterpret_cast<Ptr>(displayKey),4);
+        Put<uint32_t>(localized.descriptors.at(),0xf51aff36);
+        auto lookup=[](const char* key)->const wchar_t* {
+            return strcmp(key,"IntRes_Trait_Test")==0 ? L"Frostsch\u00e4den" : nullptr;
+        };
+        Check(TraitLabel(localized.header.at(),lookup)=="Frostsch\xc3\xa4" "den");
+        Check(TraitLabel(localized.header.at(),[](const char*){return L"[ERROR: StringDatabase Not Initialized]";})=="Test Mixed Case");
+        Check(TraitLabel(localized.header.at(),[](const char*){return L"IntRes_Trait_Test";})=="Test Mixed Case");
+        Check(TraitLabel(trait.header.at(),lookup)=="Test Ability");
         picker.Field("ExclusiveGroup", 123);
         Check(Cell(picker.header.at(), "ExclusiveGroup") == 123);
         Check(Cell(picker.header.at(), "ExclusiveGroup", 1) == 0);

@@ -193,6 +193,48 @@ std::vector<Ptr> Links(Ptr record,uint32_t hash) {
     }
     return links;
 }
+using LookupText=const wchar_t* (*)(const char*);
+const wchar_t* GameText(const char* key) {
+    const Ptr address=game::FromRVA(game::kLocalize);
+    if (Read<uint64_t>(address)!=0xc9158b4c28ec8348ULL) return nullptr;
+    return reinterpret_cast<LookupText>(address)(key);
+}
+bool CopyLabel(const char* key,LookupText lookup,char (&label)[1024]) {
+    __try {
+        const wchar_t* value=lookup(key);
+        return value && *value && wcsncmp(value,L"[ERROR:",7)!=0 &&
+            WideCharToMultiByte(CP_UTF8,WC_ERR_INVALID_CHARS,value,-1,label,sizeof label,nullptr,nullptr)>0;
+    } __except(EXCEPTION_EXECUTE_HANDLER) {return false;}
+}
+std::string ReadableId(const std::string& id) {
+    std::string out;
+    for (size_t i=0;i<id.size();++i) {
+        char c=id[i];
+        if (c=='_') {if (!out.empty() && out.back()!=' ') out+=' ';continue;}
+        if (i && id[i-1]>='a' && id[i-1]<='z' && c>='A' && c<='Z') out+=' ';
+        out+=c;
+    }
+    return out;
+}
+std::string TraitLabel(Ptr trait,LookupText lookup=GameText) {
+    // Type-4 Army display key, distinct from the adjacent description and hint keys.
+    auto key=Text(CellHash(trait,0xf51aff36,0,4));
+    char label[1024]{};
+    if (!key.empty() && CopyLabel(key.c_str(),lookup,label) && key!=label && ("["+key+"]")!=label)
+        return label;
+    return ReadableId(RecordName(trait));
+}
+std::string PickerLabel(Ptr picker) {
+    std::vector<std::string> labels;
+    for (auto entry:Links(picker,0x6bd57b1d)) for (auto trait:Links(entry,0xbcb47686)) {
+        auto label=TraitLabel(trait);
+        if (!label.empty() && std::ranges::find(labels,label)==labels.end()) labels.push_back(std::move(label));
+    }
+    if (labels.empty()) return ReadableId(RecordName(picker));
+    auto result=labels.front();
+    for (size_t i=1;i<labels.size();++i) result+=" / "+labels[i];
+    return result;
+}
 std::vector<Target> Targets(Ptr faction = 0) {
     std::vector<Target> result;
     const Ptr systems = Read<Ptr>(game::FromRVA(game::kGameSystemsSingleton));
@@ -380,7 +422,8 @@ void RecipeFields(Snapshot& snap,const Catalog& catalog) {
         auto& field=Add(snap,recipe::labels[i],"0 selected",Kind(int(Kind::Immunities)+i));
         for (const auto& r:catalog.at("Faction/Traits/Definitions"))
             if (db.producers.contains(r.address) && !db.managedTraits.contains(r.address) && db.categories.at(r.address)==i)
-                field.choices.push_back({r.address,r.name=="Immune_Combat"?"Execution Immunity (Immune_Combat)":r.name});
+                field.choices.push_back({r.address,TraitLabel(r.address)});
+        std::stable_sort(field.choices.begin(),field.choices.end(),[](const Choice& a,const Choice& b){return a.label<b.label;});
     }
     Add(snap,"Replacement","Generate a captain",Kind::Regenerate);
     snap.recipeCatalog=std::move(db);
@@ -442,7 +485,7 @@ void Capture(Snapshot& snapshot, const Catalog& catalog) {
     auto& traits=Add(snapshot,"Trait list","0 selected",Kind::Traits);
     if (snapshot.supported && engine::ReadTraitRules(member,snapshot.traitRules)) {
         for (const auto& [p,groups]:snapshot.traitRules.groups)
-            if (InCatalog(catalog,"Faction/Traits/Picker",p)) traits.choices.push_back({p,RecordName(p)});
+            if (InCatalog(catalog,"Faction/Traits/Picker",p)) traits.choices.push_back({p,PickerLabel(p)});
         std::sort(traits.choices.begin(),traits.choices.end(),[](const Choice& a,const Choice& b){return a.label<b.label;});
     } else {
         snapshot.traitRules={};
@@ -571,7 +614,7 @@ bool Roll(Ptr m, Kind k, Ptr role, const Catalog& catalog, Choice& c) {
         for (bool remove:{false,true}) {
             Ptr possible[128]{};
             int n=engine::RewardPickers(m,c.advance.reward,remove,possible);
-            for (int i=0;i<n;++i) c.preview+=(remove?"\nMay remove: ":"\nMay gain: ")+RecordName(possible[i]);
+            for (int i=0;i<n;++i) c.preview+=(remove?"\nMay remove: ":"\nMay gain: ")+PickerLabel(possible[i]);
         }
         c.value=c.ticket; return true;
     }
@@ -728,7 +771,7 @@ void RunTask(Task* task) {
                     for (const auto& [kind,edit]:task->draft.edits) if (Selector(kind))
                         candidate.preview+="\n"+edit.second.label;
                     for (const auto& [kind,edit]:task->draft.edits) if (Bucket(kind)) for (auto id:edit.second.pickers)
-                        candidate.preview+="\n"+RecordName(id);
+                        candidate.preview+="\n"+TraitLabel(id);
                     candidate.generation=std::move(plan);
                 }
             } else {

@@ -14,8 +14,10 @@ picks and rarity budget; an empty list requests no extra traits.
 
 **Class Traits** lists compatible draws from the selected class and faction
 records, not fixed grants. Alternative groups and weighted tables retain
-their draw limits. **Execution Immunity (Immune_Combat)** is under Immunities;
-the picker must resolve to immunity, not just combat resistance.
+their draw limits. Trait lists and previews use the Army trait record's
+display key in the current game language. Records without a localized label
+fall back to a readable version of their ID. The combat immunity picker must
+still resolve to immunity, not just resistance.
 
 **Generate** resolves the selected definitions to native picker inputs at the
 retained level. **Apply** accepts those settings. Only **Save Uruk** invokes
