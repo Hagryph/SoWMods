@@ -48,7 +48,7 @@ struct Key {
 struct Target { Key key; Ptr member; std::string label; };
 enum class Kind { View, Target, Level, Role, Picker, Equipment, Name, Appearance, Traits, Advance };
 bool Identity(Kind k) { return k==Kind::Name || k==Kind::Role || k==Kind::Appearance; }
-bool Generator(Kind k) { return Identity(k) || k==Kind::Traits || k==Kind::Advance; }
+bool Generator(Kind k) { return Identity(k) || k==Kind::Advance; }
 struct Choice {
     uint64_t value; std::string label; bool selected = false;
     std::string preview;
@@ -70,6 +70,7 @@ struct Snapshot {
     uint64_t session = 0;
     Key selected;
     std::vector<Target> targets;
+    std::vector<std::vector<Ptr>> traitFamilies;
     std::vector<Field> fields;
     bool supported=false;
     bool mayGenerate=false, mayRollTraits=false, mayAdvance=false;
@@ -256,9 +257,35 @@ void Capture(Snapshot& snapshot, const Catalog& catalog) {
     auto& title=Add(snapshot,"Title generator",RecordName(Read<Ptr>(member+0x318)),Kind::Role);
     title.expected=Read<Ptr>(member+0x318);
     Add(snapshot,"Appearance generator",RecordName(Read<Ptr>(Read<Ptr>(member+0x2d8)+0x170)),Kind::Appearance);
-    Add(snapshot,"Trait generator","Natural picker set",Kind::Traits);
+    auto& traits=Add(snapshot,"Trait list","0 selected",Kind::Traits);
+    if (snapshot.mayRollTraits) {
+        std::set<Ptr> options;
+        auto remember=[&](std::vector<Ptr> set) {
+            std::sort(set.begin(),set.end());
+            set.erase(std::unique(set.begin(),set.end()),set.end());
+            if (set.empty() || std::find(snapshot.traitFamilies.begin(),snapshot.traitFamilies.end(),set)!=snapshot.traitFamilies.end()) return;
+            options.insert(set.begin(),set.end());
+            snapshot.traitFamilies.push_back(std::move(set));
+        };
+        std::vector<Ptr> existing;
+        const Ptr slots=Read<Ptr>(member+0x1e0);
+        for (int i=0,n=VectorSize(member+0x1e0,32,512);i<n;++i) {
+            auto picker=Read<Ptr>(slots+i*32);
+            if (InCatalog(catalog,"Faction/Traits/Picker",picker)) existing.push_back(picker);
+        }
+        remember(std::move(existing));
+        for (int i=0;i<32;++i) {
+            Ptr rolled[512]{};
+            int n=engine::TraitRoll(member,rolled);
+            if (!n) break;
+            if (std::all_of(rolled,rolled+n,[&](Ptr v){return InCatalog(catalog,"Faction/Traits/Picker",v);}))
+                remember(std::vector<Ptr>(rolled,rolled+n));
+        }
+        for (Ptr picker:options) traits.choices.push_back({picker,RecordName(picker)});
+        std::sort(traits.choices.begin(),traits.choices.end(),[](const Choice& a,const Choice& b){return a.label<b.label;});
+    }
     Add(snapshot,"Level-up reward","Advance one level",Kind::Advance);
-    Add(snapshot, "State", (flags & 4) ? "Dead" : "Alive");
+
     auto& level = Add(snapshot, "Level", std::to_string(Read<uint32_t>(member + 0x4b8) + 1), Kind::Level);
     level.expected=Read<unsigned>(member+0x4b8);
     const int cap=writable?engine::LevelCap(member):-1;
@@ -268,32 +295,9 @@ void Capture(Snapshot& snapshot, const Catalog& catalog) {
         if (i>cap) c.disabled="Above this captain's native level cap";
         level.choices.push_back(std::move(c));
     }
-    RecordField(snapshot,catalog,"Personality / voice",Read<Ptr>(member+0x270),"Faction/Personalities");
-    RecordField(snapshot,catalog,"Tribe",Read<Ptr>(member+0x328),"Faction/Tribes/Definitions");
-    RecordField(snapshot, catalog, "Class model", Read<Ptr>(member + 0x278), "Character/Models");
-    RecordField(snapshot, catalog, "Combat tree", Read<Ptr>(member + 0x188), "Combat/Tree");
-    RecordField(snapshot, catalog, "Army", Read<Ptr>(member + 0x178), "Faction/Definition");
-    RecordField(snapshot, catalog, "Army row", Read<Ptr>(member + 0x268), "Faction/Rows");
-    RecordField(snapshot, catalog, "Location", Read<Ptr>(member + 0x330), "Faction/Locations");
-    RecordField(snapshot, catalog, "Rarity", Read<Ptr>(member + 0x390), "Faction/OrcRarity");
-    RecordField(snapshot, catalog, "Preset", Read<Ptr>(member + 0x190), "Faction/PresetMembers");
-    RecordField(snapshot, catalog, "Trait level remap", Read<Ptr>(member + 0x280), "Faction/Traits/PickerLevelRemap");
-    RecordField(snapshot, catalog, "Purpose", Read<Ptr>(member + 0x290), "Faction/Purpose");
-    RecordField(snapshot, catalog, "Last death type", Read<Ptr>(member + 0x2c0), "Faction/Resurrection");
-    RecordField(snapshot, catalog, "Applied scar", Read<Ptr>(member + 0x370), "Combat/Scar/Type");
-    Add(snapshot, "Live character", Read<Ptr>(member + 0x48) ? "Spawned" : "Not spawned");
-    Add(snapshot, "Follower", (flags & (1ull << 27)) ? "Yes" : "No");
-    Add(snapshot, "Intel level", std::to_string(Read<uint8_t>(member + 0x51a)));
-    Add(snapshot, "Locked XP level", std::to_string(Read<uint32_t>(member + 0x4bc)));
-    Add(snapshot, "Player kills", std::to_string(Read<uint32_t>(member + 0x4c4)));
-    Add(snapshot, "Player flee count", std::to_string(Read<uint32_t>(member + 0x4c8)));
-    Add(snapshot, "Resurrection count", std::to_string(Read<uint32_t>(member + 0x500)));
-    Add(snapshot, "Random seed", std::to_string(snapshot.selected.seed));
-    char flagText[32]; std::snprintf(flagText, sizeof(flagText), "0x%016llX", flags);
-    Add(snapshot, "Nemesis flags", flagText);
-
     static const char* weaponSlots[] = {"Melee weapon", "Secondary weapon", "Ranged weapon", "Ranged auxiliary", "Weapon slot 4", "Weapon slot 5", "Utility weapon", "Tribe weapon", "Weapon slot 8", "Offhand weapon"};
-    for (uint32_t i = 0; i < 25; ++i) {
+    for (uint32_t i = 0; i < 10; ++i) {
+        if (equipment[i].empty()) continue;
         const Ptr instance = Read<Ptr>(member + 0x50 + i * 8);
         const Ptr item = Read<Ptr>(instance + 0x38);
         auto& field = Add(snapshot, i < 10 ? weaponSlots[i] : "Armor item " + std::to_string(i - 10), RecordName(item), Kind::Equipment);
@@ -302,48 +306,6 @@ void Capture(Snapshot& snapshot, const Catalog& catalog) {
         field.category = "Inventory/Items";
         field.choices=std::move(equipment[i]);
         for (auto& c:field.choices) c.selected=c.value==item;
-        if (instance) {
-            Add(snapshot, i < 10 ? std::string(weaponSlots[i]) + " look" : "Armor item look " + std::to_string(i - 10), RecordName(Read<Ptr>(instance + 0x40)));
-        }
-    }
-
-    const int slots = VectorSize(member + 0x1e0, 0x20, 1024);
-    const Ptr start = Read<Ptr>(member + 0x1e0);
-    for (int i = 0; i < slots; ++i) {
-        const Ptr slot = start + i * 0x20;
-        const Ptr picker = Read<Ptr>(slot);
-        const Ptr resolved = Read<Ptr>(slot + 8);
-        const std::string name = RecordName(picker);
-        auto& field = Add(snapshot, "Trait / perk " + std::to_string(i + 1), name + " -> " + RecordName(resolved), Kind::Picker);
-        field.expected = picker;
-        field.slot = i;
-        field.category = "Faction/Traits/Picker";
-        // Never let a user append an arbitrary picker outside its generation budget.
-        if (name.find("Mount") != std::string::npos || name.find("Caragor") != std::string::npos)
-            Add(snapshot, "Mount ability", RecordName(resolved));
-        if (name.find("Weapon") != std::string::npos) Add(snapshot, "Weapon ability", RecordName(resolved));
-    }
-    // Only complete sets from the native picker phase can be staged.
-    for (auto [offset, label] : {std::pair{0x198, "Active ability "}, {0x1b0, "Marker "}}) {
-        const int n = VectorSize(member + offset, 8);
-        const Ptr begin = Read<Ptr>(member + offset);
-        for (int i = 0; i < n; ++i) Add(snapshot, std::string(label) + std::to_string(i + 1), RecordName(Read<Ptr>(begin + i * 8)));
-    }
-    const Ptr appearance = Read<Ptr>(member + 0x2d8);
-    if (appearance) {
-        static const char* names[] = {"Body", "Head", "Hair", "Accessory 1", "Accessory 2", "Body flair", "Body scar", "Helmet", "Shoulders", "Chest", "Arms", "Pants", "Legs", "Low LOD", "Head scar", "Head accessory", "Accessory 3", "Accessory 4", "FX 1", "FX 2", "FX 3", "FX 4", "FX 5"};
-        Add(snapshot, "Body type", std::to_string(Read<uint32_t>(appearance)));
-        RecordField(snapshot, catalog, "Base model", Read<Ptr>(appearance + 0x20), "Model");
-        RecordField(snapshot, catalog, "Head record", Read<Ptr>(appearance + 0x170), "Model/SimpleModelHeads");
-        for (uint32_t i = 0; i < 23; ++i) {
-            RecordField(snapshot, catalog, names[i], Read<Ptr>(appearance + 0x28 + i * 8), "Model/SimpleModelPieces");
-        }
-        for (uint32_t i=0;i<15;++i)
-            RecordField(snapshot,catalog,("Armor design "+std::to_string(i)).c_str(),Read<Ptr>(appearance+0xe0+i*8),"Inventory/ArmorData");
-        for (int i = 0; i < 17; ++i) {
-            char color[16]; std::snprintf(color, sizeof(color), "#%08X", Read<uint32_t>(appearance + 0x178 + i * 4));
-            Add(snapshot, "Palette " + std::to_string(i), color);
-        }
     }
 }
 
@@ -438,21 +400,6 @@ bool Roll(Ptr m, Kind k, Ptr role, const Catalog& catalog, Choice& c) {
         }
         return false;
     }
-    if (k==Kind::Traits) {
-        Ptr roll[512]{};
-        const int n=engine::TraitRoll(m,roll);
-        if (!n) return false;
-        std::set<Ptr> unique;
-        for (int i=0;i<n;++i) {
-            if (!InCatalog(catalog,"Faction/Traits/Picker",roll[i]) || !unique.insert(roll[i]).second) return false;
-            c.pickers.push_back(roll[i]);
-        }
-        c.label=std::to_string(n)+" generated pickers";
-        c.preview="Replacement set ("+std::to_string(n)+"):";
-        for (auto p:c.pickers) c.preview+="\n"+RecordName(p);
-        c.value=c.ticket;
-        return true;
-    }
     if (k==Kind::Advance) {
         if (!engine::RollAdvancement(m,c.advance)) return false;
         c.label="Level "+std::to_string(c.advance.level+1)+": "+RecordName(c.advance.reward);
@@ -467,7 +414,7 @@ bool Roll(Ptr m, Kind k, Ptr role, const Catalog& catalog, Choice& c) {
     return false;
 }
 bool SaveTraitsImpl(Ptr m,const std::vector<Ptr>& wanted) {
-    if (wanted.empty() || Read<Ptr>(m+0x3a0) || VectorSize(m+0x1c8,8) || Read<uint64_t>(m+0x508)&(1ull<<38)) return false;
+    if (Read<Ptr>(m+0x3a0) || VectorSize(m+0x1c8,8) || Read<uint64_t>(m+0x508)&(1ull<<38)) return false;
     if (!Signature(game::kFactionMemberAddPicker,"\x48\x89\x5c\x24\x08",5) ||
         !Signature(game::kFactionMemberRemovePickerSlot,"\x48\x89\x5c\x24\x08",5) ||
         !Signature(game::kFactionMemberDeactivateTrait,"\x48\x89\x5c\x24\x10",5) ||
@@ -687,6 +634,10 @@ bool ReadChoice(void*, uint64_t id, int index, HagUI_Choice* out) {
     *out = {};
     out->id = field->choices[index].ticket ? field->choices[index].ticket : index + 1;
     out->selected = field->choices[index].selected;
+    if (field->kind==Kind::Traits) if (auto it=g_draft.edits.find(Kind::Traits);it!=g_draft.edits.end()) {
+        const auto& picks=it->second.second.pickers;
+        out->selected=std::find(picks.begin(),picks.end(),field->choices[index].value)!=picks.end();
+    }
     strncpy_s(out->label, field->choices[index].label.c_str(), _TRUNCATE);
     return true;
 }
@@ -701,6 +652,7 @@ bool Apply(void*,uint64_t id,uint64_t choiceId) {
     if (!f || !Enabled(*f)) return false;
     const Choice* c=ChoiceById(*f,choiceId);
     if (!c || c->disabled) return false;
+    if (f->kind==Kind::Traits) return false;
     if (f->kind==Kind::Target) {
         if (c->value>=g_snapshot.targets.size()) return false;
         auto t=std::make_unique<Task>();
@@ -759,6 +711,35 @@ void Discard(void*) {
     g_draft={};
     for (auto& f:g_snapshot.fields) if (Generator(f.kind)) f.choices.clear();
     g_snapshot.status="Draft discarded.";
+}
+bool HandlesSet(void*,uint64_t id) {
+    std::lock_guard lock(g_mutex); auto f=Find(id); return f && f->kind==Kind::Traits;
+}
+bool Compatible(const Field& f,uint64_t candidate,const uint64_t* picks,int n) {
+    if (n<0 || n>512 || (n && !picks) || (candidate && candidate>f.choices.size())) return false;
+    for (const auto& family:g_snapshot.traitFamilies) {
+        auto has=[&](uint64_t id){return id && id<=f.choices.size() &&
+            std::binary_search(family.begin(),family.end(),f.choices[id-1].value);};
+        if (candidate && !has(candidate)) continue;
+        bool fits=true;
+        for (int i=0;i<n && fits;++i) fits=has(picks[i]);
+        if (fits) return true;
+    }
+    return false;
+}
+bool SetOption(void*,uint64_t id,uint64_t candidate,const uint64_t* picks,int n) {
+    std::lock_guard lock(g_mutex); auto f=Find(id);
+    return f && f->kind==Kind::Traits && Compatible(*f,candidate,picks,n);
+}
+bool SetApply(void*,uint64_t id,const uint64_t* picks,int n) {
+    std::lock_guard lock(g_mutex); auto f=Find(id);
+    if (!f || f->kind!=Kind::Traits || !Enabled(*f) || !Compatible(*f,0,picks,n)) return false;
+    Choice c{0,std::to_string(n)+" selected"};
+    for (int i=0;i<n;++i) {
+        if (std::find(picks,picks+i,picks[i])!=picks+i) return false;
+        c.pickers.push_back(f->choices[picks[i]-1].value);
+    }
+    g_draft.stage(*f,c); return true;
 }
 struct SceneId {
     uint64_t session{},field{},choice{};
@@ -859,7 +840,9 @@ void AddUrukEditor(int parent, HagUIAPI* ui) {
     if (page < 0) return;
     const HagUI_PropertySource source{Refresh, Count, ReadField, ChoiceCount, ReadChoice, Apply};
     const HagUI_PopupActions popup{"Save Uruk",State,Generate,Save,Discard,Close};
-    if (ui->abiVersion>=12 && ui->AddSceneEditor) ui->AddSceneEditor(page,nullptr,&source,&popup,Scene);
+    const HagUI_SetEditor set{HandlesSet,SetOption,SetApply};
+    if (ui->abiVersion>=13 && ui->AddSetEditor) ui->AddSetEditor(page,nullptr,&source,&popup,Scene,&set);
+    else if (ui->abiVersion>=12 && ui->AddSceneEditor) ui->AddSceneEditor(page,nullptr,&source,&popup,Scene);
     else ui->AddPopupEditor(page,nullptr,&source,&popup);
     ui->AddSubPageButton(parent, "Uruk Editor", page);
 }

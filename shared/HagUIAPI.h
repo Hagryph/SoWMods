@@ -13,7 +13,7 @@
 
 extern "C" {
 
-constexpr std::uint32_t HAGUI_ABI_VERSION = 12;
+constexpr std::uint32_t HAGUI_ABI_VERSION = 13;
 
 typedef void (*HagUI_GameTaskFn)(void* ctx);
 typedef void (*HagUI_PageOpenFn)(int page);
@@ -59,6 +59,11 @@ struct HagUI_PopupActions {
 // field ends the preview (including hub close); callbacks never render or block.
 using HagUI_SceneFn = int (*)(void*, std::uint64_t field, std::uint64_t choice, char (&message)[192]);
 
+struct HagUI_SetEditor {
+    bool (*handles)(void*,std::uint64_t field);
+    bool (*compatible)(void*,std::uint64_t field,std::uint64_t candidate,const std::uint64_t* selected,int count);
+    bool (*apply)(void*,std::uint64_t field,const std::uint64_t* selected,int count);
+};
 struct HagUIAPI {
     std::uint32_t abiVersion;                              // == HAGUI_ABI_VERSION
     int  (*RegisterPage)(const char* title);               // -> page handle (>=0), or -1 on failure
@@ -107,6 +112,7 @@ struct HagUIAPI {
     void (*AddPropertyEditor)(int page, void* context, const HagUI_PropertySource* source);
     void (*AddPopupEditor)(int page, void* context, const HagUI_PropertySource*, const HagUI_PopupActions*);
     void (*AddSceneEditor)(int page, void* context, const HagUI_PropertySource*, const HagUI_PopupActions*, HagUI_SceneFn);
+    void (*AddSetEditor)(int,void*,const HagUI_PropertySource*,const HagUI_PopupActions*,HagUI_SceneFn,const HagUI_SetEditor*);
 };
 
 // Exported by the loader DLL. Returns null if the requested ABI version is unsupported.

@@ -175,7 +175,7 @@ void HagUI::AddSubPageButton(int page, const char* label, int child) {
     pages_[page].widgets.back().type = WSubPage;
     pages_[page].widgets.back().child = child;
 }
-void HagUI::AddPropertyEditor(int page, void* context, const HagUI_PropertySource* source, const HagUI_PopupActions* popup, HagUI_SceneFn scene) {
+void HagUI::AddPropertyEditor(int page, void* context, const HagUI_PropertySource* source, const HagUI_PopupActions* popup, HagUI_SceneFn scene,const HagUI_SetEditor* set) {
     if (page < 0 || page >= (int)pages_.size() || !source || !source->refresh || !source->count ||
         !source->read || !source->choiceCount || !source->choice || !source->apply) return;
     Widget widget{};
@@ -183,6 +183,7 @@ void HagUI::AddPropertyEditor(int page, void* context, const HagUI_PropertySourc
     widget.context = context;
     widget.properties = *source;
     widget.scene = scene;
+    if (set && set->handles && set->compatible && set->apply) widget.set=*set;
     if (popup && popup->state && popup->generate && popup->save && popup->discard) widget.popup = *popup;
     pages_[page].widgets.push_back(std::move(widget));
 }

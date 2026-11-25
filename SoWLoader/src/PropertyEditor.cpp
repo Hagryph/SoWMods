@@ -104,10 +104,14 @@ void DrawPropertyEditor(const HagUI::Widget& widget, ImVec2 position, ImVec2 siz
                         widget.choiceSearch[0] = 0;
                         widget.applyFailed = false;
                         widget.choices.clear();
+                        widget.picks.clear();
                         const int n = (std::clamp)(source.choiceCount(widget.context, field.id), 0, 100000);
                         for (int k = 0; k < n; ++k) {
                             HagUI_Choice choice{};
-                            if (source.choice(widget.context, field.id, k, &choice)) widget.choices.push_back(choice);
+                            if (source.choice(widget.context, field.id, k, &choice)) {
+                                widget.choices.push_back(choice);
+                                if (choice.selected) widget.picks.push_back(choice.id);
+                            }
                         }
                     }
                     ImGui::EndDisabled();
@@ -144,6 +148,8 @@ void DrawPropertyEditor(const HagUI::Widget& widget, ImVec2 position, ImVec2 siz
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding,ImVec2(12*sx,5*sy));
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing,ImVec2(8*sx,8*sy));
     if (ImGui::BeginPopupModal(widget.popupTitle.c_str(), nullptr, ImGuiWindowFlags_NoResize)) {
+        const bool building=widget.set.handles && widget.set.handles(widget.context,widget.actionField);
+        if (building) ImGui::Text("Replacement list: %d selected",int(widget.picks.size()));
         const char* error="Selection expired or another operation is pending.";
         const float gap=ImGui::GetStyle().ItemSpacing.y;
         const float footer=ImGui::GetFrameHeight()+gap+(widget.applyFailed ?
@@ -166,11 +172,19 @@ void DrawPropertyEditor(const HagUI::Widget& widget, ImVec2 position, ImVec2 siz
                               ImGuiChildFlags_AlwaysUseWindowPadding)) {
             for (const auto& choice : widget.choices) {
                 if (!Matches(choice.label, widget.choiceSearch)) continue;
+                auto& picks=widget.picks;
+                auto picked=std::find(picks.begin(),picks.end(),choice.id);
+                if (building && picked==picks.end() && !widget.set.compatible(widget.context,widget.actionField,choice.id,picks.data(),int(picks.size()))) continue;
                 ImGui::PushID(static_cast<int>(choice.id));
                 HagUI_PopupState option{};
                 if (popup.state) popup.state(widget.context,widget.actionField,choice.id,&option);
                 ImGui::BeginDisabled(option.unavailable);
-                if (ImGui::Selectable(choice.label, widget.selectedChoice ? widget.selectedChoice == choice.id : choice.selected))
+                if (building) {
+                    bool on=picked!=picks.end();
+                    if (ImGui::Checkbox(choice.label,&on)) {
+                        if (on) picks.push_back(choice.id); else picks.erase(picked);
+                    }
+                } else if (ImGui::Selectable(choice.label, widget.selectedChoice ? widget.selectedChoice == choice.id : choice.selected))
                     widget.selectedChoice = choice.id;
                 ImGui::EndDisabled();
                 if ((option.unavailable || ImGui::CalcTextSize(choice.label).x>ImGui::GetItemRectSize().x) &&
@@ -217,9 +231,9 @@ void DrawPropertyEditor(const HagUI::Widget& widget, ImVec2 position, ImVec2 siz
             ImGui::EndChild();
         }
         if (widget.applyFailed) ImGui::TextWrapped("%s",error);
-        ImGui::BeginDisabled(!widget.selectedChoice || detail.busy);
+        ImGui::BeginDisabled((!building && !widget.selectedChoice) || detail.busy);
         if (ImGui::Button("Apply")) {
-            if (source.apply(widget.context,widget.actionField,widget.selectedChoice)) {
+            if (building ? widget.set.apply(widget.context,widget.actionField,widget.picks.data(),int(widget.picks.size())) : source.apply(widget.context,widget.actionField,widget.selectedChoice)) {
                 StopScene();
                 if (popup.close) popup.close(widget.context,widget.actionField);
                 ImGui::CloseCurrentPopup();

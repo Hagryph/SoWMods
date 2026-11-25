@@ -1,8 +1,8 @@
 # Uruk Editor (Steam 1.21)
 
 Open Uruks > Uruk Editor and select a seated Orc or Olog from a campaign pool.
-The two-column inspector shows the captain's stats, traits, equipment, appearance
-pieces, and palette. Presets, player characters and online pools are not targets.
+The inspector shows editable properties, not engine-managed state or individual
+members of generated equipment/trait sets. Presets, player characters and online pools are not targets.
 Spawned, dead and temporary captains cannot be edited.
 
 ## Edits and previews
@@ -37,19 +37,21 @@ and a fingerprint of the original captain state before generating or saving.
   mesh or change the camera. No preview is shown without the matching Army
   selection. Apply, Cancel, closing the hub, or changing candidates releases
   the temporary stage look. Save Uruk remains the only campaign write.
-- Raw designs, personalities, tribes, flags, class transitions and individual
-  picker slots are inspected, not freely writable.
+- Engine-managed fields and equipment slots without editable choices are hidden.
 
 ## Traits and progression
 
 Two different engine paths apply. Initial generation is not the limit on what a
 captain can earn.
 
-1. **Trait generator** rolls a whole set via the generic builder's picker phase
-   (0x141BB876C). It uses a private destination vector, the selected captain's
-   markers, role, tribe and army. There is no manual Epic count or arbitrary
-   append. Builder-specific captains, trait-locked captains and captains with
-   recorded reward history are excluded from whole-set rerolls.
+1. **Trait list** starts with zero selections (or reopens the staged list).
+   Check and uncheck individual picker records. The remaining choices must
+   coexist with every selected record in at least one observed set: the captain's
+   existing set or one of up to 32 native generic-builder rolls on private storage.
+   This is a conservative sample, not an exhaustive compatibility database.
+   Apply stages the replacement list, including an explicitly empty list;
+   Cancel preserves the previous draft. Save Uruk commits it. Builder-specific,
+   trait-locked and reward-history captains remain protected.
 2. **Level-up reward** previews a one-level advancement. The native XP path
    (0x14034F9F0) collects scheduled lists (0x1403513DC), picks a weighted reward
    (0x140350500), tests eligibility (0x140105AEC) and applies it (0x140351AF8).
