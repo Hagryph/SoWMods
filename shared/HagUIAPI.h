@@ -13,7 +13,7 @@
 
 extern "C" {
 
-constexpr std::uint32_t HAGUI_ABI_VERSION = 8;
+constexpr std::uint32_t HAGUI_ABI_VERSION = 9;
 
 typedef void (*HagUI_GameTaskFn)(void* ctx);
 typedef void (*HagUI_PageOpenFn)(int page);
@@ -58,6 +58,8 @@ struct HagUIAPI {
     std::uint64_t (*SaveSession)();
     // v8: conditional action on the title line, right-aligned; consumes no content row.
     void (*AddHeaderButton)(int page, const char* label, void (*onClick)(), bool (*visible)());
+    // v9: callback-backed toggle for atomic settings and immediate persistence on change.
+    void (*AddSettingToggle)(int page, const char* label, bool (*get)(), void (*set)(bool));
 };
 
 // Exported by the loader DLL. Returns null if the requested ABI version is unsupported.

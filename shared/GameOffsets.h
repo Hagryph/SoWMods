@@ -10,7 +10,9 @@
 // no Address-Library-style lookup (there is none for SoW anyway); trace every offset from a primitive.
 #include <cstdint>
 
+#ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
+#endif
 #include <Windows.h>
 
 namespace game {
@@ -23,6 +25,13 @@ inline constexpr std::uintptr_t kImageBase = 0x140000000ull;
 inline constexpr std::uintptr_t kInventoryAddOne = 0x1401c01e0ull;
 inline constexpr std::uintptr_t kInventoryHasItem = 0x14024df7cull;
 inline constexpr std::uintptr_t kCharacterAddInventoryItem = 0x1401e6b88ull;
+
+// Recruitment: native dialogue predicate (record, source inventory, target character),
+// zero-based player XP query, follower transition, and derived-stat-aware level setter.
+inline constexpr std::uintptr_t kRecruitmentOptionPredicate = 0x1406b8b14ull;
+inline constexpr std::uintptr_t kPlayerXPLevelIndex = 0x1406ba018ull;
+inline constexpr std::uintptr_t kFactionMemberSetBranded = 0x1407d52b0ull;
+inline constexpr std::uintptr_t kFactionMemberSetXPLevel = 0x14035188cull;
 
 // Live module base of the running ShadowOfWar.exe (the main image).
 inline std::uintptr_t Base() {

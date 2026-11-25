@@ -170,6 +170,31 @@ void HagUI::AddToggle(int page, const char* label, bool* value) {
 void HagUI::AddButton(int page, const char* label, void (*onClick)()) {
     if (page >= 0 && page < (int)pages_.size()) pages_[page].widgets.push_back({ WButton, label ? label : "", nullptr, onClick });
 }
+void HagUI::AddSettingToggle(int page, const char* label, bool (*get)(), void (*set)(bool)) {
+    if (page < 0 || page >= (int)pages_.size() || !get || !set) return;
+    Widget w{};
+    w.type = WToggle;
+    w.text = label ? label : "";
+    w.getToggle = get;
+    w.setToggle = set;
+    pages_[page].widgets.push_back(std::move(w));
+}
+bool HagUI::ToggleValue(const Widget& widget) {
+    __try { return widget.getToggle ? widget.getToggle() : widget.toggle && *widget.toggle; }
+    __except (EXCEPTION_EXECUTE_HANDLER) { return false; }
+}
+static bool FlipToggleSafe(const HagUI::Widget& widget) {
+    __try {
+        if (widget.setToggle) widget.setToggle(!HagUI::ToggleValue(widget));
+        else if (widget.toggle) *widget.toggle = !*widget.toggle;
+        return true;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+}
+void HagUI::FlipToggle(const Widget& widget) {
+    if (!FlipToggleSafe(widget)) Log::Channel("HagUI").Error("setting callback raised SEH");
+}
 void HagUI::AddConditionalButton(int page, const char* label, void (*onClick)(), bool (*visible)()) {
     if (page < 0 || page >= (int)pages_.size()) return;
     Widget w{};
@@ -270,7 +295,7 @@ void HagUI::PollInput(Overlay& r) {
             if ((pressed(5) || pressed(6)) && sel_ >= 0 && sel_ < n) {
                 Widget& w = pages_[tab_ - 1].widgets[sel_];
                 if (WidgetVisible(w)) {
-                    if (w.type == WToggle && w.toggle)       *w.toggle = !*w.toggle;
+                    if (w.type == WToggle) FlipToggle(w);
                     else if ((w.type == WButton || w.type == WHeaderButton) && w.onClick) w.onClick();
                 }
             }
@@ -396,7 +421,7 @@ void HagUI::DrawHub(Overlay& r) {
             if (hov) {
                 sel_ = i;
                 if (click_) {
-                    if (w.type == WToggle && w.toggle)       *w.toggle = !*w.toggle;
+                    if (w.type == WToggle) FlipToggle(w);
                     else if (w.type == WButton && w.onClick)  w.onClick();
                 }
             }
@@ -405,7 +430,7 @@ void HagUI::DrawHub(Overlay& r) {
                 r.DrawRect(X(pxi - 14), Y(ry - 6), S(cwid + 28), S(40), C(kAccent, hov ? 0.10f : 0.07f));
             Color txt = selrow ? C(kText) : C(kTextD);
             if (w.type == WToggle) {
-                bool on = w.toggle && *w.toggle;
+                bool on = ToggleValue(w);
                 const char* bkey = on ? "cb_on" : "cb_off";
                 EnsurePill(r, bkey, 22, 22, 5.0f,
                            on ? kAccent : kPanel2, on ? 0.92f : 0.85f, on ? 0.0f : 0.55f);

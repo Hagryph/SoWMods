@@ -23,11 +23,14 @@ public:
     void SetPageScope(int page, int scope);   // SOWMOD_GLOBAL / SOWMOD_LOCAL (see shared/SoWModAPI.h)
     void AddLabel(int page, const char* text);
     void AddToggle(int page, const char* label, bool* value);
+    void AddSettingToggle(int page, const char* label, bool (*get)(), void (*set)(bool));
     void AddButton(int page, const char* label, void (*onClick)());
     void AddConditionalButton(int page, const char* label, void (*onClick)(), bool (*visible)());
     void AddHeaderButton(int page, const char* label, void (*onClick)(), bool (*visible)());
     struct Widget;
     static bool WidgetVisible(const Widget& widget);
+    static bool ToggleValue(const Widget& widget);
+    static void FlipToggle(const Widget& widget);
     void AddList(int page, const char* const* items, const char* const* cats, int count);
     void AddFacetedList(int page, const char* const* facetNames, int facetCount,
                         const char* const* displays, int itemCount, const char* const* facetValues);
@@ -59,6 +62,8 @@ public:
         mutable int  actionCount = 1;
         mutable char search[64] = {};                // search box text (ImGui InputText buffer)
         bool (*visible)() = nullptr;
+        bool (*getToggle)() = nullptr;
+        void (*setToggle)(bool) = nullptr;
     };
     struct Page {
         std::string title;

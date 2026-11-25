@@ -45,5 +45,17 @@ foreach ($d in $dirs) {
         [System.IO.File]::Copy($_.FullName, (Join-Path $modsOut $_.Name), $true)
         Write-Host "deployed $($_.Name) -> $modsOut"
     }
+    $cfgSource = Join-Path $d.FullName 'cfg'
+    if (Test-Path -LiteralPath $cfgSource -PathType Container) {
+        $cfgOut = Join-Path $modsOut 'cfg'
+        New-Item -ItemType Directory -Force -Path $cfgOut | Out-Null
+        Get-ChildItem -LiteralPath $cfgSource -File | ForEach-Object {
+            $target = Join-Path $cfgOut $_.Name
+            if (-not (Test-Path -LiteralPath $target)) {
+                [System.IO.File]::Copy($_.FullName, $target, $false)
+                Write-Host "deployed default config $($_.Name) -> $cfgOut"
+            }
+        }
+    }
 }
 Write-Host "`nAll mods built + deployed to $modsOut"

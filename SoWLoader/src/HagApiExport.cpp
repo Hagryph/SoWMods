@@ -31,11 +31,14 @@ void ApiAddConditionalButton(int p, const char* label, void (*click)(), bool (*v
 void ApiAddHeaderButton(int p, const char* label, void (*click)(), bool (*visible)()) {
     sow::HagUI::Get().AddHeaderButton(p, label, click, visible);
 }
+void ApiAddSettingToggle(int p, const char* label, bool (*get)(), void (*set)(bool)) {
+    sow::HagUI::Get().AddSettingToggle(p, label, get, set);
+}
 
 HagUIAPI g_api = { HAGUI_ABI_VERSION, &ApiRegisterPage, &ApiAddLabel, &ApiAddToggle, &ApiAddButton,
                    &ApiAddList, &ApiAddFacetedList, &ApiAddFacetedActionList, &ApiQueueGameTask,
                    &ApiSetPageOnFirstOpenInSave, &ApiAddConditionalButton, &sow::CurrentSaveSession,
-                   &ApiAddHeaderButton };
+                   &ApiAddHeaderButton, &ApiAddSettingToggle };
 }  // namespace
 
 // Any ABI from 1..current is served the same struct: the layout is append-only, so a v1 caller simply

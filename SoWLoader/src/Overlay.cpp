@@ -844,8 +844,8 @@ void Overlay::DrawHub() {
                     ImGui::SetCursorScreenPos(ImVec2(X(60), Y(ry)));
                     ImGui::InvisibleButton("##row", ImVec2(712.0f * sx, 30.0f * sy));
                     const bool hov = ImGui::IsItemHovered();
-                    if (ImGui::IsItemClicked() && wd.toggle) *wd.toggle = !*wd.toggle;
-                    const bool on = wd.toggle && *wd.toggle;
+                    if (ImGui::IsItemClicked()) HagUI::FlipToggle(wd);
+                    const bool on = HagUI::ToggleValue(wd);
                     // gold checkbox (AS paintCheckbox): 22x22 r5; border a42 (hover a82);
                     // fill a6 (checked a22); gold 2px check glyph (5,11)-(9,16)-(17,6) when on
                     const ImVec2 ka(X(60), Y(ry + 4)), kb(X(60) + 22.0f * sx, Y(ry + 4) + 22.0f * sy);
