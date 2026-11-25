@@ -1,7 +1,9 @@
 #pragma once
 #include <array>
 #include <cstdint>
+#include <string>
 #include "TraitRules.h"
+#include "CaptainRecipe.h"
 
 namespace uruk::engine {
 using P = std::uintptr_t;
@@ -33,6 +35,15 @@ bool RollAdvancement(P member,Advancement& out);
 int Advance(P member,const Advancement& preview);
 int RewardPickers(P member,P reward,bool remove,P (&out)[128]);
 // -1 unavailable, 0 no failure, 1 failure; never dispatches a contract.
-int ProjectTraits(P member,const P* pickers,int count,unsigned level,P rank,P (&active)[512]);
+int ProjectTraits(P member,const P* pickers,int count,unsigned level,P rank,P (&active)[512],P* byPicker=nullptr);
+struct GenerationPlan {
+    P tree{},personality{},role{},tribe{},seed{},army{},row{},originalSeed{};
+    unsigned level{},index{};
+    std::vector<P> markers,pickers,active;
+};
+bool PlanGeneration(P target,P rank,const recipe::Catalog&,const recipe::Recipe&,GenerationPlan&,std::string& error);
+enum class ReplaceResult { Rejected, Replaced, ChangedUnexpectedly };
+using WritePickers=bool(*)(P,const std::vector<P>&);
+ReplaceResult ReplaceCaptain(P target,const GenerationPlan&,const recipe::Catalog&,const recipe::Recipe&,WritePickers);
 int OrderCheck(P member,P contract,unsigned level,P title,unsigned name,const P* active,int count,P& reason);
 }

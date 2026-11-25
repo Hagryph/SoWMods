@@ -5,6 +5,34 @@ The inspector shows editable properties, not engine-managed state or individual
 members of generated equipment/trait sets. Presets, player characters and online pools are not targets.
 Spawned, dead and temporary captains cannot be edited.
 
+## Regenerate Captain (HagUI ABI 13)
+
+Open **Uruks > Regenerate Captain**, select the captain to replace, then choose
+an advanced class and rarity. The eight Army checklists start empty. An empty
+category means **none**, not random. Select **Replacement > Generate** to check
+the recipe and prepare a fresh profile at the selected captain's level. Apply
+accepts that preview; editing the recipe invalidates it. Only **Save Uruk**
+requests an in-place replacement. No second Army slot or custom save file is used.
+
+Choices are trait definitions linked to the Army menu's UI groups, not picker
+names or samples from previous rolls. The editor checks alternative picker
+routes, exclusive groups, class markers and rarity limits. Final generation
+also checks the actual profile: a picker with several possible outputs has to
+resolve to the requested definition at this seat and level. A rejected **profile**
+does not remove that trait from the catalog.
+
+The preflight constructs private member storage, generates a combat tree,
+personality, look, role, markers and natural picker list, and keeps non-Army
+slots (including dormant ones). It replays the merged list through the
+explicit-grant builder before offering Apply. The live build uses the native
+same-seat replacement path, retaining level and affiliation; catch-up XP rewards
+are suppressed only for the replacement being built. Normal later level-ups
+are unaffected. Scripted scar/event roles are not previewed.
+
+The save operation rebuilds the live captain. It verifies the resulting seat,
+level, markers, pickers and resolved traits, but is **not a rollback mechanism**.
+Test the first replacement and save/reload on a backed-up campaign.
+
 ## Edits and previews
 
 HagUI ABI 11 adds AddPopupEditor without changing the ABI 10 property structs.
