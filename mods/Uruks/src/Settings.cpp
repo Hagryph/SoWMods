@@ -11,19 +11,35 @@ sowmod::Config g_config;
 sowmod::Option<bool> g_ignoreLevel;
 }
 
-void Log(const char* message) {
-    ::OutputDebugStringA("[Uruks] ");
-    ::OutputDebugStringA(message);
-    ::OutputDebugStringA("\n");
+static HANDLE OpenLog(const wchar_t* filename) {
     wchar_t base[MAX_PATH]{};
     const DWORD n = ::GetEnvironmentVariableW(L"LOCALAPPDATA", base, MAX_PATH);
-    if (!n || n >= MAX_PATH) return;
+    if (!n || n >= MAX_PATH) return INVALID_HANDLE_VALUE;
     const std::wstring root = std::wstring(base, n) + L"\\SoWLoader";
     ::CreateDirectoryW(root.c_str(), nullptr);
     const std::wstring logs = root + L"\\logs";
     ::CreateDirectoryW(logs.c_str(), nullptr);
-    HANDLE file = ::CreateFileW((logs + L"\\Uruks.log").c_str(), FILE_APPEND_DATA,
+    return ::CreateFileW((logs + L"\\" + filename).c_str(), FILE_APPEND_DATA,
         FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+}
+bool WriteGenerationLog(const char* report) {
+    SYSTEMTIME t{};
+    ::GetLocalTime(&t);
+    char date[64]{};
+    std::snprintf(date,sizeof(date),"\r\n[%04u-%02u-%02u %02u:%02u:%02u] Save Uruk\r\n",
+        t.wYear,t.wMonth,t.wDay,t.wHour,t.wMinute,t.wSecond);
+    std::string block=std::string(date)+report;
+    HANDLE file=OpenLog(L"Uruks-generation.log");
+    if (file==INVALID_HANDLE_VALUE) return false;
+    DWORD written=0;
+    bool ok=::WriteFile(file,block.data(),DWORD(block.size()),&written,nullptr) && written==block.size();
+    ::CloseHandle(file);return ok;
+}
+void Log(const char* message) {
+    ::OutputDebugStringA("[Uruks] ");
+    ::OutputDebugStringA(message);
+    ::OutputDebugStringA("\n");
+    HANDLE file=OpenLog(L"Uruks.log");
     if (file == INVALID_HANDLE_VALUE) return;
     SYSTEMTIME time{};
     ::GetLocalTime(&time);

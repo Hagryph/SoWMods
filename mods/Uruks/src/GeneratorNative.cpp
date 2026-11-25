@@ -65,6 +65,14 @@ static bool VerifyBuild() {
     } __except(EXCEPTION_EXECUTE_HANDLER) { return false; }
 }
 bool Supported() { static const bool verified=VerifyBuild(); return verified; }
+std::optional<bool> ArmyTraitVisible(P member,P trait) {
+    __try {
+        constexpr P fn=0x141bb9cd4;
+        if (member && trait && Supported() && at<uint64_t>(game::FromRVA(fn))==0x83485708245c8948ULL)
+            return call<bool>(fn,member,trait);
+    } __except(EXCEPTION_EXECUTE_HANDLER) {}
+    return std::nullopt;
+}
 bool TribeAvailable(P tribe) {
     __try { return tribe && Supported() && call<bool>(0x141bb8bb0,tribe); }
     __except(EXCEPTION_EXECUTE_HANDLER) { return false; }

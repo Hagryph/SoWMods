@@ -57,3 +57,17 @@ Native prologues are checked before patching. All three hooks are rolled back if
 installation fails. Policy tests cover dialogue positive/negative predicates,
 disabled behavior, partial/failed transitions, existing followers, and level-one
 players. An actual above-level recruitment encounter still needs in-game testing.
+
+### Generator templates and save reports
+
+In **Regenerate Captain**, **Take Over Template** replaces the draft settings
+with the selected captain's class, advanced class, tribe, rarity, and compatible
+optional active traits. It does not copy identity, cosmetics, equipment or fixed
+kit grants, and does not modify the captain. Edit the draft, Generate, Apply,
+then Save Uruk. Changing a template selector retains compatible optional picks.
+
+Generator saves append a timestamped report to
+`%LOCALAPPDATA%\SoWLoader\logs\Uruks-generation.log`. It compares requested
+traits to the Army seat after the save attempt and lists other active traits
+separately. Display eligibility is the game's per-captain check at that moment,
+not a guarantee that a particular menu has room to render every eligible row.

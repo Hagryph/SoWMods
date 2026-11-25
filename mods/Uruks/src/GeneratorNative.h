@@ -21,6 +21,8 @@ struct Look {
     bool operator==(const Look&) const = default;
 };
 bool Supported();
+// Native per-member trait visibility, independent of whether its picker was granted.
+std::optional<bool> ArmyTraitVisible(P member,P trait);
 bool TribeAvailable(P tribe);
 bool ScopeClassDraws(recipe::Catalog&,const recipe::Recipe&,P army);
 bool GenerateName(P member, std::uint32_t& id, char (&label)[256]);

@@ -4,7 +4,7 @@
 #include <iostream>
 #include <source_location>
 
-namespace uruk { void Log(const char*) {} }
+namespace uruk { std::string lastReport; void Log(const char*) {} bool WriteGenerationLog(const char* s) {lastReport=s;return true;} }
 void Check(bool condition, std::source_location location = std::source_location::current()) {
     if (!condition) throw std::runtime_error("Editor test failed at line " + std::to_string(location.line()));
 }
@@ -352,6 +352,21 @@ int main() {
         db.optionalOnly={40,41,42,49};
         Check(recipe::exclusions(db,{41})==std::vector<Ptr>({40,42}));
         auto result=BuildRecipe(g_draft);result.traits[0]={20};
+        {
+            Draft imported;
+            Check(StageTemplate(g_snapshot,result,imported) && imported.fromTemplate &&
+                  BuildRecipe(imported)==result && !imported.ready() && !imported.edits.contains(Kind::Regenerate));
+            auto bad=result;bad.traits[0]={9999};
+            Check(!StageTemplate(g_snapshot,bad,imported) && BuildRecipe(imported)==result);
+            Task audit{};audit.draft.edits[Kind::Hates].second.pickers={trait.header.at()};
+            Check(GenerationReport(audit,{},0,"Rejected") && lastReport.find("Test_Ability] - state unavailable")!=std::string::npos);
+            Memory auditMember(0x530),active(8);
+            Put(active.at(),trait.header.at());Put(auditMember.at(0x198),active.at());Put(auditMember.at(0x1a0),active.at(8));
+            audit.draft.edits[Kind::Bonuses].second.pickers={curse.header.at()};
+            Check(GenerationReport(audit,{},auditMember.at(),"Observed") &&
+                  lastReport.find("Test_Ability] - active; hidden (no Army group)")!=std::string::npos &&
+                  lastReport.find("Immune_Curse] - NOT ACTIVE")!=std::string::npos);
+        }
         Check(recipe::optionalResult(db,result,{20,24,999}) && !recipe::optionalResult(db,result,{24,999}) &&
             !recipe::optionalResult(db,result,{20,21,24,999}));
         db.baseGrants[300]=61;db.baseGrants[100]=62;
