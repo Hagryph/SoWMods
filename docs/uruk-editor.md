@@ -47,11 +47,14 @@ captain can earn.
 1. **Trait list** starts with zero selections (or reopens the staged list).
    Check and uncheck individual picker records. The remaining choices must
    coexist with every selected record in at least one observed set: the captain's
-   existing set or one of up to 32 native generic-builder rolls on private storage.
+   existing set or one of up to 32 native picker rolls on private storage.
    This is a conservative sample, not an exhaustive compatibility database.
    Apply stages the replacement list, including an explicitly empty list;
-   Cancel preserves the previous draft. Save Uruk commits it. Builder-specific,
-   trait-locked and reward-history captains remain protected.
+   Cancel preserves the previous draft. An authored builder does not lock the
+   list: current picker records are offered unchecked and new rolls use the
+   captain's own builder parameters. The empty list never requires a compatible
+   family. Save Uruk commits the draft for writable captains; a real trait lock
+   or recorded reward history blocks saving, not opening the checklist.
 2. **Level-up reward** previews a one-level advancement. The native XP path
    (0x14034F9F0) collects scheduled lists (0x1403513DC), picks a weighted reward
    (0x140350500), tests eligibility (0x140105AEC) and applies it (0x140351AF8).

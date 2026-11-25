@@ -74,6 +74,7 @@ struct Snapshot {
     std::vector<Field> fields;
     bool supported=false;
     bool mayGenerate=false, mayRollTraits=false, mayAdvance=false;
+    const char* traitSaveBlock=nullptr;
     uint64_t baseline=0;
     std::string status;
 };
@@ -231,8 +232,10 @@ void Capture(Snapshot& snapshot, const Catalog& catalog) {
     const bool spawned = Read<Ptr>(member + 0x48) != 0;
     const bool writable = snapshot.supported && !spawned && !(flags & ((1ull<<37)|4)) && !Read<Ptr>(member+0x190);
     snapshot.mayGenerate=writable;
-    snapshot.mayRollTraits=writable && !(flags&(1ull<<38)) && !Read<Ptr>(member+0x3a0)
-        && !VectorSize(member+0x1c8,8);
+    snapshot.traitSaveBlock=!writable ? "This captain is not writable." :
+        flags&(1ull<<38) ? "The engine has locked this captain's traits." :
+        VectorSize(member+0x1c8,8) ? "Replacing traits with recorded reward history is not supported." : nullptr;
+    snapshot.mayRollTraits=!snapshot.traitSaveBlock;
     std::map<unsigned,std::vector<Choice>> equipment;
     if (writable) {
         Ptr kit[512]{};
@@ -258,7 +261,7 @@ void Capture(Snapshot& snapshot, const Catalog& catalog) {
     title.expected=Read<Ptr>(member+0x318);
     Add(snapshot,"Appearance generator",RecordName(Read<Ptr>(Read<Ptr>(member+0x2d8)+0x170)),Kind::Appearance);
     auto& traits=Add(snapshot,"Trait list","0 selected",Kind::Traits);
-    if (snapshot.mayRollTraits) {
+    {
         std::set<Ptr> options;
         auto remember=[&](std::vector<Ptr> set) {
             std::sort(set.begin(),set.end());
@@ -274,7 +277,7 @@ void Capture(Snapshot& snapshot, const Catalog& catalog) {
             if (InCatalog(catalog,"Faction/Traits/Picker",picker)) existing.push_back(picker);
         }
         remember(std::move(existing));
-        for (int i=0;i<32;++i) {
+        for (int i=0;snapshot.mayRollTraits && i<32;++i) {
             Ptr rolled[512]{};
             int n=engine::TraitRoll(member,rolled);
             if (!n) break;
@@ -414,7 +417,7 @@ bool Roll(Ptr m, Kind k, Ptr role, const Catalog& catalog, Choice& c) {
     return false;
 }
 bool SaveTraitsImpl(Ptr m,const std::vector<Ptr>& wanted) {
-    if (Read<Ptr>(m+0x3a0) || VectorSize(m+0x1c8,8) || Read<uint64_t>(m+0x508)&(1ull<<38)) return false;
+    if (VectorSize(m+0x1c8,8) || Read<uint64_t>(m+0x508)&(1ull<<38)) return false;
     if (!Signature(game::kFactionMemberAddPicker,"\x48\x89\x5c\x24\x08",5) ||
         !Signature(game::kFactionMemberRemovePickerSlot,"\x48\x89\x5c\x24\x08",5) ||
         !Signature(game::kFactionMemberDeactivateTrait,"\x48\x89\x5c\x24\x10",5) ||
@@ -586,7 +589,8 @@ void Refresh(void*) {
 bool Current() { return g_snapshot.session != 0 && g_snapshot.session == g_ui->SaveSession(); }
 bool Enabled(const Field& f) {
     if (g_pending || !g_draft.permits(f.kind,f.id)) return false;
-    if (Generator(f.kind)) return g_snapshot.mayGenerate && (f.kind!=Kind::Traits || g_snapshot.mayRollTraits) &&
+    if (f.kind==Kind::Traits) return true;
+    if (Generator(f.kind)) return g_snapshot.mayGenerate &&
         (f.kind!=Kind::Advance || g_snapshot.mayAdvance);
     return !f.choices.empty();
 }
@@ -672,6 +676,10 @@ void State(void*,uint64_t id,uint64_t choice,HagUI_PopupState* out) {
     out->dirty=g_draft.dirty(); out->busy=g_pending;
     out->canSave=g_draft.ready() && !out->busy;
     strncpy_s(out->status,g_draft.dirty()&&!g_draft.ready()?"Regenerate and apply the marked fields.":g_snapshot.status.c_str(),_TRUNCATE);
+    if (g_draft.edits.count(Kind::Traits) && g_snapshot.traitSaveBlock) {
+        out->canSave=false;
+        strncpy_s(out->status,g_snapshot.traitSaveBlock,_TRUNCATE);
+    }
     if (auto f=Find(id)) {
         out->generator=Generator(f->kind); out->needsRepair=g_draft.missing(f->kind);
         if (auto c=ChoiceById(*f,choice)) {
@@ -697,6 +705,7 @@ bool Generate(void*,uint64_t id) {
 void Save(void*) {
     std::lock_guard lock(g_mutex);
     if (!Current() || !g_draft.ready() || g_pending) return;
+    if (g_draft.edits.count(Kind::Traits) && g_snapshot.traitSaveBlock) return;
     auto t=DraftTask(Op::Save);
     if (auto e=g_draft.edits.find(Kind::Equipment); e!=g_draft.edits.end()) {
         auto f=Find(e->second.first);
@@ -717,6 +726,8 @@ bool HandlesSet(void*,uint64_t id) {
 }
 bool Compatible(const Field& f,uint64_t candidate,const uint64_t* picks,int n) {
     if (n<0 || n>512 || (n && !picks) || (candidate && candidate>f.choices.size())) return false;
+    // Options were already sourced for this captain. There are no peers to conflict with yet.
+    if (n==0) return true;
     for (const auto& family:g_snapshot.traitFamilies) {
         auto has=[&](uint64_t id){return id && id<=f.choices.size() &&
             std::binary_search(family.begin(),family.end(),f.choices[id-1].value);};

@@ -63,6 +63,7 @@ int main() {
         Put(member.at(0x1e0), slots.at());
         Put(member.at(0x1e8), slots.at(0x20));
         Put(member.at(0x2d8), appearance.at());
+        Put(member.at(0x3a0), army.header.at()); // Non-null authored builder, like Butcher_Ambush.
         Put(slots.at(), picker.header.at());
         Put(slots.at(8), trait.header.at());
         Put<uint32_t>(member.at(0x4b8), 10);
@@ -103,6 +104,17 @@ int main() {
         };
         auto original=Stamp(member.at());
         auto& list=field(Kind::Traits);
+        Check(!g_snapshot.mayRollTraits && list.choices.size()==1 && !list.choices[0].selected);
+        Check(Enabled(list) && SetOption(nullptr,list.id,1,nullptr,0));
+        Check(SetApply(nullptr,list.id,nullptr,0));
+        HagUI_PopupState blocked{};
+        State(nullptr,0,0,&blocked);
+        Check(blocked.dirty && !blocked.canSave); // fixture has no supported runtime
+        Discard(nullptr);
+        list.choices.clear();
+        g_snapshot.traitFamilies.clear();
+        Check(Enabled(list) && SetApply(nullptr,list.id,nullptr,0));
+        Discard(nullptr);
         list.choices={Choice{11,"A"},Choice{12,"B"},Choice{13,"C"}};
         g_snapshot.traitFamilies={{11,12},{12,13}};
         Check(!list.choices[0].selected && HandlesSet(nullptr,list.id));

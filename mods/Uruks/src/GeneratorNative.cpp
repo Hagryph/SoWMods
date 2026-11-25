@@ -303,13 +303,23 @@ int TraitRoll(P m,P (&pickers)[512]) {
     alignas(16) unsigned char slots[512*0x20]{};
     P p=reinterpret_cast<P>(projection);
     __try {
-        if (at<P>(m+0x190) || at<P>(m+0x3a0) || (at<std::uint64_t>(m+0x508)&(1ull<<38))) return 0;
+        if (at<P>(m+0x190) || (at<std::uint64_t>(m+0x508)&(1ull<<38))) return 0;
         for (int o : {0x178,0x188,0x1b0,0x1b8,0x270,0x318,0x328}) at<P>(p+o)=at<P>(m+o);
         at<P>(p+0x1e0)=at<P>(p+0x1e8)=reinterpret_cast<P>(slots);
         at<unsigned>(p+0x1f0)=512;
         int n=0;
         __try {
-            call<void>(0x141bb876c,p,P(0));
+            const P builder=at<P>(m+0x3a0);
+            if (builder) {
+                // Same parameter construction and teardown as the native authored-member
+                // build (0x141bbf8a8), but run only its picker phase on the projection.
+                alignas(16) unsigned char params[400]{};
+                call<void>(0x141c62054,params);
+                __try {
+                    call<void>(0x141c63920,params,P(0),builder);
+                    call<void>(0x141bb876c,p,params);
+                } __finally { call<void>(0x141c628d0,params); }
+            } else call<void>(0x141bb876c,p,P(0));
             P b=at<P>(p+0x1e0),e=at<P>(p+0x1e8);
             if (e>=b && e-b<=sizeof slots && (e-b)%32==0) {
                 n=int((e-b)/32);
