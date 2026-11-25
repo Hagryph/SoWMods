@@ -525,6 +525,49 @@ int Advance(P m,const Advancement& draw) {
         return at<unsigned>(m+0x4b8)==draw.level?(roll.used?1:2):0;
     } __except(EXCEPTION_EXECUTE_HANDLER) { return 0; }
 }
+namespace {
+struct HateGateScope {
+    const recipe::Catalog& db;
+    const recipe::Recipe& recipe;
+    P memberTraits{}, projectedTraits{};
+};
+thread_local HateGateScope* hateScope=nullptr;
+using AnyTraitFn=bool(*)(P,P);
+AnyTraitFn nativeAnyTrait=nullptr;
+bool anyTraitForRecipe(P entry,P ctx) {
+    auto* scope=hateScope;
+    if (scope && ctx) {
+        const P traits=at<P>(ctx);
+        if (traits && (traits==scope->memberTraits || traits==scope->projectedTraits) &&
+            recipe::waiveWeaknessGate(scope->db,scope->recipe,entry)) return true;
+    }
+    return nativeAnyTrait(entry,ctx);
+}
+bool beginHateScope(HateGateScope& scope) {
+    if (!std::ranges::any_of(scope.db.weaknessGatedHateEntries,[&](const auto& pair){
+        return recipe::waiveWeaknessGate(scope.db,scope.recipe,pair.first);
+    })) {hateScope=nullptr;return true;}
+    if (!Supported()) return false;
+    if (!nativeAnyTrait) {
+        const P address=game::FromRVA(0x1403532bc);
+        if (at<std::uint64_t>(address)!=0x4808588948c48b48ULL) return false;
+        void* target=reinterpret_cast<void*>(address);
+        if (MH_CreateHook(target,reinterpret_cast<void*>(&anyTraitForRecipe),reinterpret_cast<void**>(&nativeAnyTrait))!=MH_OK)
+            return false;
+        if (MH_EnableHook(target)!=MH_OK) {MH_RemoveHook(target);nativeAnyTrait=nullptr;return false;}
+    }
+    hateScope=&scope;
+    return true;
+}
+P projectSlot(P slot,unsigned short* mask,P ctx) {
+    if (!hateScope) return call<P>(0x1403528c4,slot,mask,ctx);
+    const P previous=hateScope->projectedTraits;
+    __try {
+        hateScope->projectedTraits=at<P>(ctx);
+        return call<P>(0x1403528c4,slot,mask,ctx);
+    } __finally {hateScope->projectedTraits=previous;}
+}
+}
 int ProjectTraits(P m,const P* pickers,int count,unsigned level,P rank,P (&active)[512],P* byPicker) {
     struct Slot { P picker,trait,mission; unsigned short mask; short option; unsigned pad; };
     struct Span { P* begin; P* end; } span{active,active};
@@ -547,7 +590,7 @@ int ProjectTraits(P m,const P* pickers,int count,unsigned level,P rank,P (&activ
             unsigned short mask=pass?16:1;
             for (int i=0;i<count;++i) {
                 P old=slots[i].trait;
-                P trait=call<P>(0x1403528c4,&slots[i],&mask,&ctx);
+                P trait=projectSlot(reinterpret_cast<P>(&slots[i]),&mask,reinterpret_cast<P>(&ctx));
                 if (!pass || old!=trait) {
                     if (old) {
                         auto at=std::find(span.begin,span.end,old);
@@ -689,12 +732,26 @@ ReplaceResult replace(P m,const GenerationPlan& p,const recipe::Catalog& db,cons
 }
 }
 bool PlanGeneration(P m,P rank,const recipe::Catalog& db,const recipe::Recipe& r,GenerationPlan& p,std::string& error) {
-    __try {return makePlan(m,rank,db,r,p,error);}
+    HateGateScope scope{db,r};
+    auto* previous=hateScope;
+    __try {
+        __try {
+            if (!beginHateScope(scope)) {error="Cannot apply the selected Hate's weakness exception.";return false;}
+            return makePlan(m,rank,db,r,p,error);
+        } __finally {hateScope=previous;}
+    }
     __except(EXCEPTION_EXECUTE_HANDLER) {error="Could not prepare the native generation inputs.";return false;}
 }
 ReplaceResult ReplaceCaptain(P m,const GenerationPlan& p,const recipe::Catalog& db,const recipe::Recipe& r,WritePickers write) {
     bool started=false;
-    __try {return replace(m,p,db,r,write,started);}
+    HateGateScope scope{db,r,m ? m+0x198 : 0};
+    auto* previous=hateScope;
+    __try {
+        __try {
+            if (!beginHateScope(scope)) return ReplaceResult::Rejected;
+            return replace(m,p,db,r,write,started);
+        } __finally {hateScope=previous;}
+    }
     __except(EXCEPTION_EXECUTE_HANDLER) {return started?ReplaceResult::ChangedUnexpectedly:ReplaceResult::Rejected;}
 }
 int OrderCheck(P m,P contract,unsigned level,P title,unsigned name,const P* active,int count,P& reason) {

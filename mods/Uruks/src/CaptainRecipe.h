@@ -29,6 +29,7 @@ struct ClassKit {
 };
 struct Catalog {
     std::map<Id, unsigned> categories;
+    std::map<Id,Id> weaknessGatedHateEntries; // native option row -> single Hate output
     std::map<Id, std::vector<Picker>> producers;
     std::set<Id> definitions, classes, rarities;
     std::set<Id> epics;
@@ -55,6 +56,20 @@ struct Recipe {
     bool operator==(const Recipe&) const = default;
 };
 struct Slot { Id picker{}, definition{}; };
+inline void indexWeaknessGate(Catalog& db,Id entry,const std::vector<Id>& outputs,const std::vector<Id>& anyOf) {
+    if (outputs.size()!=1) return;
+    const auto output=db.categories.find(outputs.front());
+    if (output==db.categories.end() || output->second!=1) return;
+    if (std::ranges::any_of(anyOf,[&](Id id){
+        auto it=db.categories.find(id);
+        return it!=db.categories.end() && it->second>=4 && it->second<nodes.size();
+    })) db.weaknessGatedHateEntries.emplace(entry,outputs.front());
+}
+inline bool waiveWeaknessGate(const Catalog& db,const Recipe& r,Id entry) {
+    auto it=db.weaknessGatedHateEntries.find(entry);
+    return it!=db.weaknessGatedHateEntries.end() &&
+        std::ranges::find(r.traits[1],it->second)!=r.traits[1].end();
+}
 // A picker can resolve to different definitions at different levels. A fixed
 // output of one producer must never disable a different producer wholesale.
 inline void classifyClassDraws(Catalog& db,engine::TraitRules draws,const std::set<Id>& direct) {

@@ -407,9 +407,13 @@ bool LoadRecipeCatalog(const Catalog& catalog,recipe::Catalog& db,Ptr army) {
         db.routes.emplace(id,route);
         std::set<Ptr> outputs;
         bool hiddenOutput=false;
-        for (auto e:Links(id,0x6bd57b1d)) for (auto trait:Links(e,0xbcb47686)) {
-            if (db.categories.contains(trait)) outputs.insert(trait);
-            else hiddenOutput=true;
+        for (auto e:Links(id,0x6bd57b1d)) {
+            auto traits=Links(e,0xbcb47686);
+            recipe::indexWeaknessGate(db,e,traits,Links(e,0xb05e2ca4));
+            for (auto trait:traits) {
+                if (db.categories.contains(trait)) outputs.insert(trait);
+                else hiddenOutput=true;
+            }
         }
         if (!hiddenOutput && !outputs.empty()) db.optionalOnly.insert(id);
         for (auto trait:outputs) db.producers[trait].push_back(route);

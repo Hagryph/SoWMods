@@ -211,6 +211,21 @@ int main() {
         Discard(nullptr);
         // Constrained generation is independent of the old captain's trait list.
         recipe::Catalog db;
+        {
+            recipe::Catalog gates;
+            gates.categories={{101,1},{102,1},{103,5},{104,0},{105,3}};
+            recipe::indexWeaknessGate(gates,201,{101},{103});
+            recipe::indexWeaknessGate(gates,202,{102},{104});
+            recipe::indexWeaknessGate(gates,203,{105},{103});
+            recipe::indexWeaknessGate(gates,204,{101,105},{103});
+            recipe::indexWeaknessGate(gates,205,{102},{103,104});
+            recipe::Recipe request;
+            Check(!recipe::waiveWeaknessGate(gates,request,201));
+            request.traits[1]={101,102};
+            Check(recipe::waiveWeaknessGate(gates,request,201) && recipe::waiveWeaknessGate(gates,request,205));
+            Check(!recipe::waiveWeaknessGate(gates,request,202) && !recipe::waiveWeaknessGate(gates,request,203) &&
+                  !recipe::waiveWeaknessGate(gates,request,204));
+        }
         db.classes={100,101}; db.rarities={200,201}; db.epicCaps={{200,0},{201,1}};
         db.definitions={20,21,22,23,24,25}; db.epics={22,25};
         db.categories={{20,0},{21,1},{22,3},{25,3}};
