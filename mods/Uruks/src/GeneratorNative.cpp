@@ -442,13 +442,22 @@ bool scopeDraws(recipe::Catalog& db,const recipe::Recipe& r,P armyRecord) {
                 options.insert(id);
                 draws.groups.emplace(id,db.routes.at(id).groups);
             }
+            db.roleLists.emplace(role,list);
             if (!options.empty()) {
-                db.roleLists.emplace(role,list);
                 roleSource.tables.push_back(std::move(options));
             }
         });
     });
     if (!roleSource.tables.empty()) draws.sources.push_back(std::move(roleSource));
+    TraitSource rewards{512,{}};
+    for (const auto& e:db.encounters) if (recipe::fitsEncounter(db,r,e,e.rank)) {
+        std::set<P> table;
+        for (P id:e.grants) if (db.routes.contains(id) && !db.managedPickers.contains(id)) {
+            draws.groups.emplace(id,db.routes.at(id).groups);table.insert(id);
+        }
+        if (!table.empty()) rewards.tables.push_back(std::move(table));
+    }
+    if (!rewards.tables.empty()) draws.sources.push_back(std::move(rewards));
     recipe::classifyClassDraws(db,std::move(draws),direct);
     return true;
 }
@@ -724,22 +733,6 @@ bool permitsGrants(P m,const std::vector<P>& picks) {
     }
     return true;
 }
-bool planWeapons(const recipe::Catalog& db,const P* active,int count,P role,P m,recipe::Loadout& result) {
-    recipe::WeaponSlots clauses;
-    auto require=[&](const std::vector<P>& items,bool mandatory){
-        recipe::WeaponSlots source;
-        for (P item:items) {
-            auto slots=db.weaponSlots.find(item);
-            if (slots!=db.weaponSlots.end() && slots->second.size()==1 && WeaponAllowed(m,item))
-                source[*slots->second.begin()].insert(item);
-        }
-        return (!mandatory || !source.empty()) && recipe::requireWeapons(clauses,source);
-    };
-    if (role && !require(db.roles.at(role).weapons,false)) return false;
-    for (int i=0;i<count;++i)
-        if (auto it=db.traitWeapons.find(active[i]);it!=db.traitWeapons.end() && !require(it->second,true)) return false;
-    return recipe::lockWeapons(db,clauses,[&](P id){return WeaponAllowed(m,id);},result);
-}
 P equippedRecord(P inv,unsigned slot) {
     const P instance=at<P>(inv+8*slot);
     return instance?at<P>(instance+0x38):0;
@@ -840,7 +833,19 @@ bool makePlan(P target,P rank,const recipe::Catalog& db,const recipe::Recipe& r,
     p.automatic=automatic;
     unsigned budget=8192;
     bool ok=recipe::resolve(db,r,[&](const auto& picks,const auto& classPicks){
-      return recipe::withRole(db,classPicks,[&](P role){
+      auto expand=[&](const std::vector<P>& chain) {
+       auto source=[&](const recipe::Encounter* origin) {
+        const auto* e=origin;
+        auto authored=chain;
+        if (e) {
+            if (!recipe::fitsEncounter(db,r,*e,rank) || std::ranges::none_of(e->grants,[&](P id){
+                return std::ranges::find(chain,id)!=chain.end();})) return false;
+            for (P id:e->grants) if (std::ranges::find(authored,id)==authored.end()) authored.push_back(id);
+        }
+        if (!budget) return false;
+        --budget;
+        auto chooseRole=[&](const std::vector<P>& expanded) {
+        return recipe::withRequiredRole(db,r,e,fixed,picks,classPicks,expanded,[&](P role){
         auto bundle=fixed;
         if (role) for (P id:db.roles.at(role).grants) {
             std::set<P> need,deny;
@@ -850,7 +855,7 @@ bool makePlan(P target,P rank,const recipe::Catalog& db,const recipe::Recipe& r,
                 bundle.push_back(id);
             }
         }
-        if (!recipe::fitsCore(db,bundle,picks)) return false;
+        if (!recipe::fitsCore(db,bundle,expanded) || !recipe::fitsCore(db,expanded,expanded)) return false;
         auto requiredOutputs=automatic;
         if (role) {
             int size=ProjectTraits(m,bundle.data(),int(bundle.size()),p.generationLevel,rank,active);
@@ -859,9 +864,22 @@ bool makePlan(P target,P rank,const recipe::Catalog& db,const recipe::Recipe& r,
             for (const auto& row:r.traits) for (auto trait:row) requiredOutputs.erase(trait);
         }
         auto all=bundle;
-        for (P id:picks) if (std::ranges::find(all,id)==all.end()) all.push_back(id);
+        for (P id:expanded) if (std::ranges::find(all,id)==all.end()) all.push_back(id);
         auto accept=[&](const std::vector<P>& inputs){
             if (!recipe::markerInputs(db,r,inputs,p.requiredMarkers,p.forbiddenMarkers)) return false;
+            if (e) {
+                for (P id:e->removes) if (std::ranges::find(inputs,id)!=inputs.end()) return false;
+                for (P id:e->blocksPicker) if (std::ranges::find(inputs,id)!=inputs.end() &&
+                    std::ranges::find(e->grants,id)==e->grants.end()) return false;
+                p.requiredMarkers.insert(origin->markers.begin(),origin->markers.end());
+                auto markers=p.requiredMarkers;
+                if (role) markers.insert(db.roles.at(role).markers.begin(),db.roles.at(role).markers.end());
+                // A condition such as a story/rank marker is not a grant. Do not manufacture it.
+                for (P id:e->markers) if (!markers.contains(id)) return false;
+                p.forbiddenMarkers.insert(e->blocksMarker.begin(),e->blocksMarker.end());
+                if (!recipe::compatibleMarkers(db,markers) || std::ranges::any_of(markers,[&](P id){
+                    return p.forbiddenMarkers.contains(id);})) return false;
+            }
             if (role) for (P marker:db.roles.at(role).markers) if (p.forbiddenMarkers.contains(marker) ||
                 (db.allSpecializations.contains(marker) && marker!=r.specialization) ||
                 (db.combatClasses.contains(marker) && marker!=r.base) ||
@@ -869,7 +887,7 @@ bool makePlan(P target,P rank,const recipe::Catalog& db,const recipe::Recipe& r,
             int count=ProjectTraits(m,inputs.data(),int(inputs.size()),p.generationLevel,rank,active);
             if(count<0 || !recipe::matches(db,r,active,count,requiredOutputs) ||
                std::count_if(active,active+count,[&](P id){return db.epics.contains(id);})>db.epicCaps.at(r.rarity)) return false;
-            if (!planWeapons(db,active,count,role,m,p.weapons)) return false;
+            if (!recipe::planWeapons(db,active,count,role,[&](P id){return WeaponAllowed(m,id);},p.weapons)) return false;
             if (role) {
                 if (!p.personality) {
                     // All option checks and the staged generation must validate the same native identity.
@@ -886,10 +904,33 @@ bool makePlan(P target,P rank,const recipe::Catalog& db,const recipe::Recipe& r,
                 }
                 if (!p.personality || !roleWitness(target,tree,db.roleLists.at(role),role,p)) return false;
             }
-            p.role=role;p.grants=inputs;p.automatic=requiredOutputs;return true;
+            p.role=role;p.grants=inputs;p.automatic=requiredOutputs;p.encounter=origin?*origin:recipe::Encounter{};return true;
         };
-        return recipe::withHiddenGrants(db,all,budget,accept);
-      });
+        auto finish=[&](const std::vector<P>& inputs) {
+            // A prerequisite introduced by the role's own kit cannot borrow another role or reward.
+            for (P id:inputs) if (std::ranges::find(expanded,id)==expanded.end() &&
+                std::ranges::find(bundle,id)==bundle.end() && (db.encounterPickers.contains(id) || db.rolePickers.contains(id)) &&
+                !db.ordinaryDraws.permits({id})) return false;
+            for (P id:inputs) if (auto it=db.routes.find(id);it!=db.routes.end()) for (P mark:it->second.required)
+                if (db.roleMarkers.contains(mark) && (!role ||
+                    std::ranges::find(db.roles.at(role).markers,mark)==db.roles.at(role).markers.end())) return false;
+            return accept(inputs);
+        };
+        return recipe::withHiddenGrants(db,all,budget,finish);
+        });
+        };
+        if (!origin) return chooseRole(authored);
+        return recipe::withRewardRequirements(*origin,authored,budget,[&](const auto& resolved,auto& grants){
+            e=&resolved;
+            return recipe::withHiddenGrants(db,grants,budget,chooseRole);
+        });
+       };
+       if (source(nullptr)) return true;
+       for (const auto& e:db.encounters) if (source(&e)) return true;
+       return false;
+      };
+      auto roots=picks;
+      return recipe::withHiddenGrants(db,roots,budget,expand);
     },[&](const auto& picks){return recipe::fitsCore(db,fixed,picks);},&budget,nullptr,
       unsigned(std::ranges::count_if(automatic,[&](P v){return db.epics.contains(v);})));
     if (!ok) {error="The requested traits or their prerequisites are incompatible with this kit.";return false;}
@@ -908,6 +949,10 @@ ReplaceResult replace(P m,const GenerationPlan& p,const recipe::Catalog& db,cons
     const bool follower=!!(at<std::uint64_t>(m+0x508)&(1ull<<27));
     BuildParams params;
     const P b=params.ptr();
+    const auto& event=p.encounter;
+    if (event.reward && (std::ranges::find(db.encounters,event)==db.encounters.end() ||
+        !recipe::fitsEncounter(db,r,event,p.rank) ||
+        (!event.roles.empty() && std::ranges::find(event.roles,p.role)==event.roles.end()))) return ReplaceResult::Rejected;
     if (p.role) {
         if (!db.roleLists.contains(p.role) || !p.personality ||
             !roleWitness(m,db.trees.at(r.base),db.roleLists.at(p.role),p.role,p)) return ReplaceResult::Rejected;
@@ -923,7 +968,7 @@ ReplaceResult replace(P m,const GenerationPlan& p,const recipe::Catalog& db,cons
     for (P marker:p.requiredMarkers) if (marker!=r.base) call<void>(0x141c4ee48,b,marker);
     for (P marker:p.forbiddenMarkers)
         if (!db.allSpecializations.contains(marker) && !db.rarityRecords.contains(marker)) call<void>(0x141c62c44,b,marker);
-    for(P id:p.grants) call<void>(0x141c62aa4,b,id);
+    for(P id:p.grants) if (std::ranges::find(event.grants,id)==event.grants.end()) call<void>(0x141c62aa4,b,id);
     for(P id:p.exclude) call<void>(0x141c62ab0,b,id);
     if (!installBuildCap()) return ReplaceResult::Rejected;
     started=true;
@@ -940,6 +985,15 @@ ReplaceResult replace(P m,const GenerationPlan& p,const recipe::Catalog& db,cons
         return ReplaceResult::ChangedUnexpectedly;
     if ((p.role && at<P>(m+0x318)!=p.role) || (!p.weapons.empty() && (!gearScope || !gearScope->populated)) ||
         !equipmentMatches(m,p.weapons)) return ReplaceResult::ChangedUnexpectedly;
+    if (event.reward) {
+        if (!rewardEligible(m,event.list,event.reward)) return ReplaceResult::ChangedUnexpectedly;
+        // Same dispatcher and arguments as the encounter-list branch of the captain builder.
+        call<void>(0x1403511f4,m,event.reward,P(0),static_cast<unsigned char>(1));
+        std::vector<P> slots;
+        if (!records(m+0x1e0,32,slots) || std::ranges::any_of(event.grants,[&](P id){
+            return std::ranges::find(slots,id)==slots.end();}) || !equipmentMatches(m,p.weapons) ||
+            !records(m+0x198,8,active)) return ReplaceResult::ChangedUnexpectedly;
+    }
     if(optionalResult(db,r,active,p.automatic)) return ReplaceResult::Replaced;
     // Direct grants and later rewards do not consult the weighted-draw exclusion list.
     // Only reconcile optional slots if the finished native result actually differs.

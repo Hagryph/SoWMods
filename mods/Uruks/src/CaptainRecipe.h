@@ -30,7 +30,17 @@ struct ClassKit {
 struct RoleKit {
     std::vector<Id> grants, markers, weapons;
 };
+struct Encounter {
+    Id builder{},list{},reward{},tribe{},rank{},tree{};
+    std::vector<Id> roles,markers,grants,removes;
+    std::vector<std::vector<Id>> needsPicker,needsMarker;
+    std::set<Id> blocksPicker,blocksMarker,types,blockedTypes;
+    bool operator==(const Encounter&) const = default;
+};
 struct Catalog {
+    std::vector<Encounter> encounters;
+    std::set<Id> encounterPickers,rolePickers,roleMarkers;
+    std::map<Id,std::vector<Id>> markerGroups;
     std::map<Id, unsigned> categories;
     std::map<Id,Id> weaknessGatedHateEntries; // native option row -> single Hate output
     std::map<Id,std::set<Id>> hiddenDependencies,hiddenProducers;
@@ -71,15 +81,36 @@ struct Recipe {
 struct Slot { Id picker{}, definition{}; };
 // One captain has one role. Ordinary draws may still supply any of the other picks.
 template<class Accept>
-bool withRole(const Catalog& db,const std::vector<Id>& classPicks,Accept accept) {
-    if (db.ordinaryDraws.permits(classPicks)) return accept(Id{});
+bool withRole(const Catalog& db,const std::vector<Id>& classPicks,Accept accept,const std::vector<Id>& allowed={}) {
+    if (allowed.empty() && db.ordinaryDraws.permits(classPicks)) return accept(Id{});
     for (auto [role,list]:db.roleLists) {
+        if (!allowed.empty() && std::ranges::find(allowed,role)==allowed.end()) continue;
         const auto& grants=db.roles.at(role).grants;
         auto remaining=classPicks;
         std::erase_if(remaining,[&](Id id){return std::ranges::find(grants,id)!=grants.end();});
-        if (remaining.size()!=classPicks.size() && db.ordinaryDraws.permits(remaining) && accept(role)) return true;
+        if ((!allowed.empty() || remaining.size()!=classPicks.size()) && db.ordinaryDraws.permits(remaining) && accept(role)) return true;
     }
     return false;
+}
+inline bool fitsEncounter(const Catalog& db,const Recipe& r,const Encounter& e,Id rank) {
+    if ((e.tribe && r.tribe!=e.tribe) || (e.rank && rank!=e.rank) ||
+        (e.tree && (!db.trees.contains(r.base) || db.trees.at(r.base)!=e.tree))) return false;
+    if ((!e.types.empty() || !e.blockedTypes.empty()) && (!db.types.contains(r.base) ||
+        e.blockedTypes.contains(db.types.at(r.base)) || (!e.types.empty() && !e.types.contains(db.types.at(r.base))))) return false;
+    for (Id marker:e.markers) {
+        if ((db.combatClasses.contains(marker) && marker!=r.base) ||
+            (db.allSpecializations.contains(marker) && marker!=r.specialization)) return false;
+        if (db.neverClass.contains(r.specialization) && marker==db.neverClass.at(r.specialization)) return false;
+        if (db.rarityRecords.contains(marker) && (!db.rarityRecords.contains(r.rarity) ||
+            db.rarityRecords.at(marker)!=db.rarityRecords.at(r.rarity))) return false;
+    }
+    return true;
+}
+inline bool compatibleMarkers(const Catalog& db,const std::set<Id>& markers) {
+    std::set<Id> held;
+    for (Id id:markers) if (auto i=db.markerGroups.find(id);i!=db.markerGroups.end())
+        for (Id group:i->second) if (!held.insert(group).second) return false;
+    return true;
 }
 using WeaponSlots=std::map<unsigned,std::set<Id>>;
 using Loadout=std::map<unsigned,Id>; // zero reserves a hand that must remain empty
@@ -123,6 +154,23 @@ bool lockWeapons(const Catalog& db,const WeaponSlots& clauses,Allowed allowed,Lo
     };
     if (!solve(solve,clauses.begin())) return false;
     out=std::move(chosen);return true;
+}
+template<class Allowed>
+bool planWeapons(const Catalog& db,const Id* active,int count,Id role,Allowed allowed,Loadout& result) {
+    WeaponSlots clauses;
+    auto require=[&](const std::vector<Id>& items,bool mandatory){
+        WeaponSlots source;
+        for (Id item:items) {
+            auto slots=db.weaponSlots.find(item);
+            if (slots!=db.weaponSlots.end() && slots->second.size()==1 && allowed(item))
+                source[*slots->second.begin()].insert(item);
+        }
+        return (!mandatory || !source.empty()) && requireWeapons(clauses,source);
+    };
+    if (role && !db.roles.at(role).weapons.empty() && !require(db.roles.at(role).weapons,true)) return false;
+    for (int i=0;i<count;++i)
+        if (auto it=db.traitWeapons.find(active[i]);it!=db.traitWeapons.end() && !require(it->second,true)) return false;
+    return lockWeapons(db,clauses,allowed,result);
 }
 inline bool permitsSlot(const Catalog& db,const Loadout& locked,Id item) {
     auto slots=db.weaponSlots.find(item);
@@ -224,6 +272,56 @@ inline bool markerInputs(const Catalog& db,const Recipe& r,const std::vector<Id>
         forbidden.insert(it->second.forbidden.begin(),it->second.forbidden.end());
     }
     return std::ranges::none_of(required,[&](Id id){return forbidden.contains(id);});
+}
+template<class Accept>
+bool withRequiredRole(const Catalog& db,const Recipe& r,const Encounter* e,const std::vector<Id>& fixed,
+                      const std::vector<Id>& selected,const std::vector<Id>& classPicks,
+                      const std::vector<Id>& expanded,Accept accept) {
+    auto has=[](const auto& list,Id id){return std::ranges::find(list,id)!=list.end();};
+    std::vector<Id> dependent,allowed;
+    std::set<Id> required,forbidden;
+    if (!markerInputs(db,r,expanded,required,forbidden)) return false;
+    if (e) for (Id marker:e->markers)
+        if (std::ranges::any_of(e->needsMarker,[&](const auto& clause){return has(clause,marker);})) required.insert(marker);
+    for (Id id:expanded) {
+        if (has(fixed,id) || (e && has(e->grants,id))) continue;
+        if (has(classPicks,id) || db.encounterPickers.contains(id) ||
+            (!has(selected,id) && db.rolePickers.contains(id))) dependent.push_back(id);
+    }
+    if ((e && !e->roles.empty()) || std::ranges::any_of(required,[&](Id id){return db.roleMarkers.contains(id);})) {
+        for (const auto& [id,list]:db.roleLists) {
+            if (e && !e->roles.empty() && !has(e->roles,id)) continue;
+            if (std::ranges::all_of(required,[&](Id mark){return !db.roleMarkers.contains(mark) ||
+                has(db.roles.at(id).markers,mark);})) allowed.push_back(id);
+        }
+        if (allowed.empty()) return false;
+    }
+    return withRole(db,dependent,accept,allowed);
+}
+// An authored OR-list is one prerequisite, not a request to grant every alternative.
+template<class Accept>
+bool withRewardRequirements(const Encounter& source,std::vector<Id>& inputs,unsigned& budget,Accept accept) {
+    Encounter chosen=source;
+    auto walk=[&](auto&& self,size_t i)->bool {
+        if (!budget) return false;
+        --budget;
+        if (i==source.needsPicker.size()+source.needsMarker.size()) return accept(chosen,inputs);
+        bool marker=i>=source.needsPicker.size();
+        const auto& options=marker?source.needsMarker[i-source.needsPicker.size()]:source.needsPicker[i];
+        auto& result=marker?chosen.markers:inputs;
+        for (Id v:options) {
+            if ((marker?source.blocksMarker:source.blocksPicker).contains(v)) continue;
+            // A reward cannot supply its own precondition.
+            if (!marker && std::ranges::find(source.grants,v)!=source.grants.end()) continue;
+            bool add=std::ranges::find(result,v)==result.end();
+            if (add) result.push_back(v);
+            bool ok=self(self,i+1);
+            if (add) result.pop_back();
+            if (ok) return true;
+        }
+        return false;
+    };
+    return walk(walk,0);
 }
 // Try the native inputs first. Only expand missing, non-UI prerequisites; the
 // final projection must still yield precisely the player's visible categories.

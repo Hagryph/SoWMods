@@ -53,6 +53,7 @@ struct GenerationPlan {
     unsigned level{},generationLevel{},index{};
     P role{},roleSeed{},personality{};
     recipe::Loadout weapons;
+    recipe::Encounter encounter;
     recipe::Recipe requested;
     std::vector<P> grants,exclude;
     std::set<P> requiredMarkers,forbiddenMarkers,automatic;

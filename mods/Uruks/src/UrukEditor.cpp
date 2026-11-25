@@ -146,7 +146,7 @@ Catalog LoadCatalog(Ptr database = 0) {
     for (uint32_t i = 0; i < count; ++i) {
         const Ptr category = categories + i * 0x58;
         const auto name = Text(Read<Ptr>(category));
-        if (name!="Faction/Rewards/Definitions" && name!="Faction/Tribes/Definitions" &&
+        if (name!="Faction/FactionMemberBuilder" && name!="Faction/Rewards/Definitions" && name!="Faction/Tribes/Definitions" &&
             name!="Faction/Traits/Picker" && name!="Faction/Traits/Definitions" && name!="Faction/Traits/PickerListRaw" &&
             name!="Interface/Menu/MenuTreeNode/TraitGroup" && name!="Faction/Traits/Marker" && name!="Faction/Roles/Definitions" &&
             name!="Faction/Contracts/Contract" && name!="Inventory/Items") continue;
@@ -343,6 +343,76 @@ void LoadClassRewards(recipe::Catalog& db,Ptr reward,const std::vector<Ptr>& own
             }
         }
 }
+// Interpret only deterministic trait grants/removals. Never dispatch a story,
+// inventory-changing or delayed reward just because it also grants a trait.
+bool EncounterRecord(Ptr p,std::initializer_list<unsigned> allowed,Ptr defaults=0) {
+    if (!p || (Read<uint8_t>(p+1)&16)) return false;
+    for (unsigned i=0;i<Read<uint8_t>(p);++i) {
+        Ptr f=Read<Ptr>(p+8)+16*i;
+        unsigned key=Read<uint32_t>(f),type=Read<uint8_t>(f+10)&63;
+        if (type==10) {
+            if (std::find(allowed.begin(),allowed.end(),key)==allowed.end() && !Links(p,key).empty()) return false;
+        } else if (defaults) {
+            for (unsigned j=0;j<Read<uint16_t>(f+12);++j) {
+                auto mask=type==1?255ull:0xffffffffull;
+                if ((CellHash(p,key,j,type)&mask)!=(CellHash(defaults,key,j,type,~0ull)&mask)) return false;
+            }
+        }
+    }
+    return true;
+}
+void LoadEncounters(const Catalog& catalog,recipe::Catalog& db) {
+    auto builders=catalog.find("Faction/FactionMemberBuilder"),defs=catalog.find("Faction/Rewards/Definitions");
+    if (builders==catalog.end() || defs==catalog.end()) return;
+    auto ref=std::ranges::find(defs->second,"DLC5_Y3_VO_SummonSpiders",&Record::name);
+    if (ref==defs->second.end()) return;
+    for (const auto& [builder,name]:builders->second) {
+        if (DemoTraitId(name)) continue;
+        auto lists=Links(builder,0x1836875e);
+        if (lists.size()!=1 || !EncounterRecord(lists[0],{0x0a535c57}) ||
+            CellHash(lists[0],0xeffb4687,0,3)!=1 ||
+            !EncounterRecord(builder,{0xef0db9af,0xbd1b75de,0x85aefa2f,0x54172756,0x1fe6b183,0x1836875e,0x77837511,0xc7a758d})) continue;
+        if (Ptr instance=CellHash(builder,0xef0db9af,0);instance && Read<uint8_t>(instance)!=0) continue;
+        recipe::Encounter origin;
+        origin.builder=builder;origin.list=lists[0];origin.tribe=CellHash(builder,0xbd1b75de,0);
+        origin.rank=CellHash(builder,0x85aefa2f,0);origin.tree=CellHash(builder,0x77837511,0);
+        origin.markers=Links(builder,0x1fe6b183);
+        for (Ptr list:Links(builder,0xc7a758d)) {
+            auto roles=Links(list,0xc7a758d);origin.roles.insert(origin.roles.end(),roles.begin(),roles.end());
+        }
+        if (CellHash(builder,0xc7a758d,0) && origin.roles.empty()) continue;
+        for (Ptr reward:Links(origin.list,0x0a535c57)) {
+            if (!EncounterRecord(reward,{0x5b7f9956,0xa22cf1b9,0xf273ff9a,0x8148127c,
+                0xdd4ea5f7,0xf15ea6b9,0x79f22fe8,0x99b5808a},ref->address)) continue;
+            auto e=origin;e.reward=reward;
+            auto predicates=[&](unsigned field,unsigned link,auto add) {
+                for (Ptr group:Links(reward,field)) {
+                    auto values=Links(group,link);
+                    if (values.empty() || !EncounterRecord(group,{link})) return false;
+                    add(values);
+                }
+                return true;
+            };
+            if (!predicates(0xf273ff9a,0xff778c99,[&](auto& v){e.needsMarker.push_back(v);}) ||
+                !predicates(0x8148127c,0xff778c99,[&](auto& v){e.blocksMarker.insert(v.begin(),v.end());}) ||
+                !predicates(0x79f22fe8,0x7abf91f5,[&](auto& v){e.needsPicker.push_back(v);}) ||
+                !predicates(0x99b5808a,0x7abf91f5,[&](auto& v){e.blocksPicker.insert(v.begin(),v.end());}) ||
+                !predicates(0xdd4ea5f7,0x014ba459,[&](auto& v){e.types.insert(v.begin(),v.end());}) ||
+                !predicates(0xf15ea6b9,0x014ba459,[&](auto& v){e.blockedTypes.insert(v.begin(),v.end());})) continue;
+            auto read=[&](unsigned key,auto& out) {
+                for (Ptr group:Links(reward,key)) {
+                    auto members=Links(group,0x7abf91f5);
+                    if (members.size()!=1 || !db.routes.contains(members.front())) return false;
+                    out.push_back(members.front());
+                }
+                return true;
+            };
+            if (!read(0x5b7f9956,e.grants) || e.grants.empty() || !read(0xa22cf1b9,e.removes)) continue;
+            db.encounterPickers.insert(e.grants.begin(),e.grants.end());
+            db.encounters.push_back(std::move(e));
+        }
+    }
+}
 bool LoadRecipeCatalog(const Catalog& catalog,recipe::Catalog& db,Ptr army) {
     const auto nodes=catalog.find("Interface/Menu/MenuTreeNode/TraitGroup"),
         defs=catalog.find("Faction/Traits/Definitions"), pickers=catalog.find("Faction/Traits/Picker"),
@@ -370,7 +440,10 @@ bool LoadRecipeCatalog(const Catalog& catalog,recipe::Catalog& db,Ptr army) {
     if (auto roles=catalog.find("Faction/Roles/Definitions");roles!=catalog.end())
         for (const auto& [id,name]:roles->second) if (name.starts_with("Role_") && !DemoTraitId(name)) {
             auto grants=Links(id,0x66fc592b);
-            if (!grants.empty()) db.roles.emplace(id,recipe::RoleKit{std::move(grants),Links(id,0xe0f81767),weapons(id)});
+            db.rolePickers.insert(grants.begin(),grants.end());
+            db.roles.emplace(id,recipe::RoleKit{std::move(grants),Links(id,0xe0f81767),weapons(id)});
+            for (Ptr mark:db.roles.at(id).markers) if (RecordName(mark).starts_with("RoleMarker_"))
+                db.roleMarkers.insert(mark);
         }
     for (unsigned i=0;i<recipe::nodes.size();++i) {
         auto row=std::ranges::find(nodes->second,recipe::nodes[i],&Record::name);
@@ -393,6 +466,7 @@ bool LoadRecipeCatalog(const Catalog& catalog,recipe::Catalog& db,Ptr army) {
     }
     auto raw=catalog.find("Faction/Traits/PickerListRaw");
     for (const auto& [id,name]:markers->second) {
+        db.markerGroups[id]=Links(id,0xb2e40fc1);
         auto bind=[&](const std::string& suffix){
             auto base=std::ranges::find(pickers->second,"Picker_BaseStrength_"+suffix,&Record::name);
             if (base!=pickers->second.end()) {
@@ -501,6 +575,7 @@ bool LoadRecipeCatalog(const Catalog& catalog,recipe::Catalog& db,Ptr army) {
         for (auto trait:outputs) if (db.managedPickers.contains(id))
             db.managedTraits.insert(trait);
     }
+    LoadEncounters(catalog,db);
     return !db.producers.empty() && !db.classes.empty() && db.rarities.size()==3;
 }
 void RecipeFields(Snapshot& snap,const Catalog& catalog) {
@@ -897,6 +972,8 @@ bool GenerationReport(const Task& task,const Catalog& catalog,Ptr m,const std::s
     auto action=task.draft.edits.find(Kind::Regenerate);
     if (action!=task.draft.edits.end()) if (auto plan=action->second.second.generation) {
         report+="Role: "+(plan->role?RecordName(plan->role):std::string("automatic"))+"\r\n";
+        if (auto& e=plan->encounter;e.reward) report+="Encounter: "+RecordName(e.builder)+" -> "+
+            RecordName(e.list)+" -> "+RecordName(e.reward)+"\r\n";
         for (auto [slot,item]:plan->weapons) {
             Ptr instance=m?Read<Ptr>(m+0x50+8*slot):0;
             report+="Weapon slot "+std::to_string(slot)+": reserved "+(item?RecordName(item):"empty")+
@@ -1007,6 +1084,7 @@ void RunTask(Task* task) {
                     candidate.label="Generation settings";
                     candidate.preview=it->label+"\nLevel "+std::to_string(plan->level+1);
                     if (plan->role) candidate.preview+="\nRequired role: "+RecordName(plan->role);
+                    if (plan->encounter.reward) candidate.preview+="\nEncounter reward: "+RecordName(plan->encounter.reward);
                     for (auto [slot,item]:plan->weapons)
                         candidate.preview+="\nWeapon slot "+std::to_string(slot)+": "+(item?RecordName(item):"reserved empty");
                     for (const auto& [kind,edit]:task->draft.edits) if (Selector(kind))

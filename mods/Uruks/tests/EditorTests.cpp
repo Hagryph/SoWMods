@@ -354,6 +354,33 @@ int main() {
             Check(recipe::withRole(gear,{1},[](Ptr role){return !role;}));
             Check(recipe::withRole(gear,{1,2,3},[](Ptr role){return role==5;}));
             Check(!recipe::withRole(gear,{2,4},[](Ptr){return true;}));
+            recipe::Recipe build;build.base=100;build.specialization=101;build.tribe=102;build.rarity=103;
+            gear.trees[100]=104;gear.types[100]=105;gear.neverClass[101]=106;
+            recipe::Encounter event;event.tribe=102;event.tree=104;event.rank=107;event.types={105};
+            event.roles={5,6};event.grants={200};event.needsPicker={{201,202}};event.blocksPicker={201};
+            gear.encounterPickers.insert(200);
+            gear.roleMarkers={210};gear.roles[5].markers={210};gear.routes[202]={202,{},{210},{}};
+            gear.rolePickers.insert(202);gear.roles[5].grants.push_back(202);
+            gear.markerGroups={{210,{999}},{211,{999}}};
+            Check(recipe::fitsEncounter(gear,build,event,107) && !recipe::fitsEncounter(gear,build,event,108));
+            auto wrong=build;wrong.tribe=109;Check(!recipe::fitsEncounter(gear,wrong,event,107));
+            event.markers={106};Check(!recipe::fitsEncounter(gear,build,event,107));event.markers.clear();
+            auto joint=[&](Ptr offhand){
+                unsigned left=64;std::vector<Ptr> roots{200};
+                return recipe::withRewardRequirements(event,roots,left,[&](const auto& source,const auto& inputs){
+                    return recipe::withRequiredRole(gear,build,&source,{},{200},{200},inputs,[&](Ptr role){
+                        if (role!=5 || inputs!=std::vector<Ptr>{200,202}) return false;
+                        gear.roles[role].weapons={12};
+                        gear.traitWeapons[300]={offhand};
+                        const Ptr active[]{300};
+                        return recipe::planWeapons(gear,active,1,role,allowed,lock);
+                    });
+                });
+            };
+            Check(joint(20) && !joint(21));
+            event.roles={6};Check(!joint(20));
+            event.roles={5};event.needsPicker={{200}};Check(!joint(20));
+            Check(!recipe::compatibleMarkers(gear,{210,211}));
         }
         g_snapshot.recipeCatalog=db;
         auto make=[&](Kind k,const char* label,std::vector<Choice> c){

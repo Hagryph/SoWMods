@@ -73,6 +73,13 @@ inventory. A two-handed weapon reserves both hands; single-handed weapons
 leave the other hand available for compatible native kit items. The save
 report records reserved slots alongside the equipment actually observed.
 
+The generator can also use a trait reward from an encounter builder. It checks
+the builder's tribe, Army rank, base class, allowed roles and markers, expands
+supported reward prerequisites, and plans the required weapons before Save.
+Only one outcome of a single-draw list can be used. Builders with additional
+unmodelled setup and rewards with unknown actions are not replayed. The preview
+names the chosen reward; the save report records its builder and list.
+
 Generator saves append a timestamped report to
 `%LOCALAPPDATA%\SoWLoader\logs\Uruks-generation.log`. It compares requested
 traits to the Army seat after the save attempt and lists other active traits
