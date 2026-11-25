@@ -15,6 +15,7 @@ add_library(SoWLoader SHARED
     src/Loader.cpp
     src/Log.cpp
     src/Config.cpp
+    src/ModConfigService.cpp
     src/Console.cpp
     src/Overlay.cpp
     src/GameHooks.cpp
@@ -34,6 +35,14 @@ target_link_libraries(SoWLoader PRIVATE minhook::minhook imgui::imgui d3d11 dxgi
 
 # The output DLL MUST be named exactly steam_api64.dll (it impersonates the Steam API DLL).
 set_target_properties(SoWLoader PROPERTIES PREFIX "" OUTPUT_NAME "steam_api64")
+
+include(CTest)
+if(BUILD_TESTING)
+    add_executable(ModConfigTests tests/ModConfigTests.cpp src/ModConfigService.cpp)
+    target_include_directories(ModConfigTests PRIVATE src "${CMAKE_CURRENT_SOURCE_DIR}/../shared")
+    target_compile_definitions(ModConfigTests PRIVATE UNICODE _UNICODE WIN32_LEAN_AND_MEAN)
+    add_test(NAME LoaderModConfig COMMAND ModConfigTests)
+endif()
 
 # The 796 forwarder exports come from #pragma comment(linker,"/EXPORT:...") in src/exports_forward.h
 # (MSVC .def "name=other.name" forwarders don't link — LNK2001; /EXPORT directives do).

@@ -23,15 +23,15 @@ IgnoreRecruitmentLevel=0
 ```
 
 Default is off. The HagUI toggle writes this global configuration immediately and
-applies to all saves. It does not store settings in a save file. Default config
-deployment never overwrites an existing configuration. Runtime status and completed
+applies to all saves. It does not store settings in a save file. The Loader creates
+the INI on typed option registration and retains existing valid values. Runtime status and completed
 level adjustments are logged to `%LOCALAPPDATA%/SoWLoader/logs/UrukEditor.log`.
 
 ## Build
 
 Build the loader first to provide the static MinHook dependency, then run
 `mods/build_mods.ps1 -Only UrukEditor`. HagUI ABI v9 is required for the persistent,
-callback-backed setting toggle. Older mods retain their append-only API layout.
+callback-backed setting toggle, plus Loader Config API v1. Older mods retain their append-only API layout.
 
 ## Native References
 

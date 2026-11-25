@@ -1,5 +1,5 @@
 #include "Settings.h"
-#include <atomic>
+#include "ModConfig.h"
 #include <algorithm>
 #include <iterator>
 #include <cstdio>
@@ -7,8 +7,8 @@
 
 namespace uruk {
 namespace {
-std::wstring g_path;
-std::atomic<bool> g_ignoreLevel{false};
+sowmod::Config g_config;
+sowmod::Option<bool> g_ignoreLevel;
 }
 
 void Log(const char* message) {
@@ -36,34 +36,25 @@ void Log(const char* message) {
     ::CloseHandle(file);
 }
 
-bool LoadSettings(HMODULE module) {
-    wchar_t path[32768]{};
-    const DWORD count = ::GetModuleFileNameW(module, path, static_cast<DWORD>(std::size(path)));
-    if (!count || count >= std::size(path)) return false;
-    const std::wstring full(path, count);
-    const auto slash = full.find_last_of(L"\\/");
-    if (slash == std::wstring::npos) return false;
-    const auto folder = full.substr(0, slash) + L"\\cfg";
-    if (!::CreateDirectoryW(folder.c_str(), nullptr) && ::GetLastError() != ERROR_ALREADY_EXISTS) return false;
-    g_path = folder + L"\\UrukEditor.ini";
-    if (::GetFileAttributesW(g_path.c_str()) == INVALID_FILE_ATTRIBUTES) {
-        if (!::WritePrivateProfileStringW(L"Recruitment", L"IgnoreRecruitmentLevel", L"0", g_path.c_str())) return false;
-    }
-    g_ignoreLevel.store(::GetPrivateProfileIntW(L"Recruitment", L"IgnoreRecruitmentLevel", 0, g_path.c_str()) == 1,
-                        std::memory_order_release);
-    Log(g_ignoreLevel.load() ? "Ignore Recruitment Level loaded: enabled" : "Ignore Recruitment Level loaded: disabled");
-    return true;
+bool LoadSettings(int page) {
+    try {
+        g_config = sowmod::Config(page);
+        g_ignoreLevel = g_config.Register<bool>("Recruitment", "IgnoreRecruitmentLevel", false);
+        Log(IgnoreRecruitmentLevel() ? "Loader config loaded: recruitment bypass enabled" : "Loader config loaded: recruitment bypass disabled");
+        return true;
+    } catch (...) { return false; }
 }
 
-bool IgnoreRecruitmentLevel() { return g_ignoreLevel.load(std::memory_order_acquire); }
+bool IgnoreRecruitmentLevel() {
+    try { return g_config.Read(g_ignoreLevel); }
+    catch (...) { return false; }
+}
 
 void SetIgnoreRecruitmentLevel(bool enabled) {
-    if (g_path.empty() || !::WritePrivateProfileStringW(L"Recruitment", L"IgnoreRecruitmentLevel",
-        enabled ? L"1" : L"0", g_path.c_str())) {
+    if (!g_config.Update(g_ignoreLevel, enabled)) {
         Log("Could not save mods/cfg/UrukEditor.ini; setting unchanged");
         return;
     }
-    g_ignoreLevel.store(enabled, std::memory_order_release);
     Log(enabled ? "Ignore Recruitment Level enabled" : "Ignore Recruitment Level disabled");
 }
 }

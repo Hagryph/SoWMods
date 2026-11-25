@@ -1,4 +1,5 @@
 #include "ModManager.h"
+#include "ModConfigService.h"
 #include "Log.h"
 #include "HagUI.h"        // one tab per mod: the loader registers the mod's page
 #include "SoWModAPI.h"   // ../shared (on the include path)
@@ -80,6 +81,7 @@ void ModManager::LoadAll() {
 
         const int page = HagUI::Get().RegisterPage(tabName.c_str());   // the loader owns tab creation
         HagUI::Get().SetPageScope(page, scope);
+        BindModConfig(page, full);
 
         auto init = reinterpret_cast<SoWMod_Init_t>(::GetProcAddress(mod, "SoWMod_Init"));
         char l[300];

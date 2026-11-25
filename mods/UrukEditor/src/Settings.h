@@ -3,7 +3,7 @@
 
 namespace uruk {
 void Log(const char* message);
-bool LoadSettings(HMODULE module);
+bool LoadSettings(int page);
 bool IgnoreRecruitmentLevel();
 void SetIgnoreRecruitmentLevel(bool enabled);
 }
