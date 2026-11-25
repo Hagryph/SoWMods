@@ -7,6 +7,13 @@
 
 namespace uruk::engine {
 using P = std::uintptr_t;
+namespace detail {
+// A matching generation tree asks for the class ceiling, not Talion's follower ceiling.
+template<class Query>
+unsigned queryTreeCap(Query query,P tree,bool follower,bool* capped,P generationTree) {
+    return query(tree,follower && (!generationTree || tree!=generationTree),capped);
+}
+}
 struct Look {
     P base{}, head{}, pieces[23]{}, designs[15]{};
     std::uint32_t body{}, palette[17]{};

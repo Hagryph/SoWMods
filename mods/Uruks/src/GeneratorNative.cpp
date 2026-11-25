@@ -639,6 +639,30 @@ bool permitsGrants(P m,const std::vector<P>& picks) {
     }
     return true;
 }
+constexpr P treeCapAddress=0x1403517e0;
+using TreeCapFn=unsigned(*)(P,bool,bool*);
+TreeCapFn originalTreeCap=nullptr;
+thread_local P generatingTree=0;
+unsigned treeCapDuringBuild(P tree,bool follower,bool* capped) {
+    return detail::queryTreeCap(originalTreeCap,tree,follower,capped,generatingTree);
+}
+bool installBuildCap() {
+    if (originalTreeCap) return true;
+    const P address=game::FromRVA(treeCapAddress);
+    if (at<std::uint64_t>(address)!=0x83485708245c8948ULL) return false;
+    void* target=reinterpret_cast<void*>(address);
+    if (MH_CreateHook(target,reinterpret_cast<void*>(&treeCapDuringBuild),reinterpret_cast<void**>(&originalTreeCap))!=MH_OK)
+        return false;
+    if (MH_EnableHook(target)==MH_OK) return true;
+    MH_RemoveHook(target);originalTreeCap=nullptr;return false;
+}
+void buildAtClassCap(P member,P ctx,P params,unsigned char intel,P row,P tree) {
+    const P previous=generatingTree;
+    __try {
+        generatingTree=tree;
+        call<P>(0x141bbfe7c,member,ctx,params,intel,row);
+    } __finally {generatingTree=previous;}
+}
 // Build the ordinary input packet. Unspecified fields keep the native constructor defaults.
 bool makePlan(P target,P rank,const recipe::Catalog& db,const recipe::Recipe& r,GenerationPlan& p,std::string& error) {
     if (!Supported() || !target || !rank || !r.complete() || !TribeAvailable(r.tribe)) {
@@ -650,7 +674,8 @@ bool makePlan(P target,P rank,const recipe::Catalog& db,const recipe::Recipe& r,
         !db.trees.contains(r.base)) {error="The selected Army seat or level is unavailable.";return false;}
     bool capped=false;
     auto flags=at<std::uint64_t>(target+0x508);
-    unsigned cap=call<unsigned>(0x1403517e0,db.trees.at(r.base),int((!(flags&0x400) && (flags&(1ull<<27))) || (flags&(1ull<<28))),&capped);
+    const P tree=db.trees.at(r.base);
+    unsigned cap=detail::queryTreeCap(reinterpret_cast<TreeCapFn>(game::FromRVA(treeCapAddress)),tree,true,&capped,tree);
     if (p.level>cap) {error="The selected class cannot retain this level.";return false;}
     p.generationLevel=(std::min)(cap,84u);
     // Evaluate the same kit and level that the native builder will receive.
@@ -702,8 +727,9 @@ ReplaceResult replace(P m,const GenerationPlan& p,const recipe::Catalog& db,cons
         if (!db.allSpecializations.contains(marker) && !db.rarityRecords.contains(marker)) call<void>(0x141c62c44,b,marker);
     for(P id:p.grants) call<void>(0x141c62aa4,b,id);
     for(P id:p.exclude) call<void>(0x141c62ab0,b,id);
+    if (!installBuildCap()) return ReplaceResult::Rejected;
     started=true;
-    call<P>(0x141bbfe7c,m,ctx,b,intel,p.row);
+    buildAtClassCap(m,ctx,b,intel,p.row,db.trees.at(r.base));
     std::vector<P> markers,active;
     if(at<P>(m+0x178)!=p.army || at<P>(m+0x268)!=p.row || at<unsigned>(m+0x174)!=p.index ||
        at<unsigned char>(m+0x51b)!=column || !!(at<std::uint64_t>(m+0x508)&(1ull<<27))!=follower ||

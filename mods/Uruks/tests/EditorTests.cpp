@@ -38,6 +38,15 @@ bool CaptureTask(HagUI_GameTaskFn fn,void* context) {
 int main() {
     try {
         using namespace uruk;
+        {
+            constexpr Ptr defender=101,archer=102;
+            auto nativeCap=[](Ptr,bool follower,bool* capped){*capped=follower;return follower?2u:84u;};
+            bool capped=false;
+            Check(engine::detail::queryTreeCap(nativeCap,defender,true,&capped,defender)==84 && !capped);
+            Check(engine::detail::queryTreeCap(nativeCap,defender,true,&capped,0)==2 && capped);
+            Check(engine::detail::queryTreeCap(nativeCap,archer,true,&capped,defender)==2 && capped);
+            Check(engine::detail::queryTreeCap(nativeCap,archer,false,&capped,defender)==84 && !capped);
+        }
         Check(Read<Ptr>(0) == 0);
         Check(Read<Ptr>(1) == 0);
         Check(FieldHash("CombatProp") == 0x9ce11687);
