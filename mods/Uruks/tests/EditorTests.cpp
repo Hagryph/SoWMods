@@ -104,19 +104,26 @@ int main() {
         };
         auto original=Stamp(member.at());
         auto& list=field(Kind::Traits);
-        Check(!g_snapshot.mayRollTraits && list.choices.size()==1 && !list.choices[0].selected);
-        Check(Enabled(list) && SetOption(nullptr,list.id,1,nullptr,0));
+        Check(list.choices.empty()); // an equipped picker is not a source of eligibility
+        Check(Enabled(list) && !SetOption(nullptr,list.id,1,nullptr,0));
         Check(SetApply(nullptr,list.id,nullptr,0));
         HagUI_PopupState blocked{};
         State(nullptr,0,0,&blocked);
         Check(blocked.dirty && !blocked.canSave); // fixture has no supported runtime
         Discard(nullptr);
         list.choices.clear();
-        g_snapshot.traitFamilies.clear();
+        g_snapshot.traitRules={};
         Check(Enabled(list) && SetApply(nullptr,list.id,nullptr,0));
         Discard(nullptr);
         list.choices={Choice{11,"A"},Choice{12,"B"},Choice{13,"C"}};
-        g_snapshot.traitFamilies={{11,12},{12,13}};
+        auto& rules=g_snapshot.traitRules;
+        rules.groups={{11,{77}},{12,{}},{13,{77}}};
+        rules.sources={{1,{{11,12,13}}},{1,{{12}}}};
+        Check(rules.permits({12,11}) && !rules.permits({11,13}) && !rules.permits({11,11}));
+        engine::TraitRules alternatives{{{1,{}},{2,{}},{3,{}}},{{2,{{1,2},{2,3}}}}};
+        Check(!alternatives.permits({1,3}) && alternatives.permits({1,2}) && alternatives.permits({2,3}));
+        alternatives.sources={{1,{{1,2,3}}}};
+        Check(!alternatives.permits({1,2}) && alternatives.permits({3}));
         Check(!list.choices[0].selected && HandlesSet(nullptr,list.id));
         uint64_t ab[]{1,2},ac[]{1,3};
         Check(SetOption(nullptr,list.id,2,ab,1) && !SetOption(nullptr,list.id,3,ab,1));

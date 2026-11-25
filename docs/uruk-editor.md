@@ -45,15 +45,17 @@ Two different engine paths apply. Initial generation is not the limit on what a
 captain can earn.
 
 1. **Trait list** starts with zero selections (or reopens the staged list).
-   Check and uncheck individual picker records. The remaining choices must
-   coexist with every selected record in at least one observed set: the captain's
-   existing set or one of up to 32 native picker rolls on private storage.
-   This is a conservative sample, not an exhaustive compatibility database.
+   Options come from the pre-draw source walk in 0x141BB876C / 0x141BB84E0.
+   The editor enumerates authored grants and one-of lists, then (if enabled)
+   role, tribe, and faction default lists. It checks native marker predicates,
+   builder exclusions, positive-weight table and quantity rows, and the upper
+   reachable quantity without calling the RNG. The checklist tests exclusive
+   groups and finds an assignment to eligible lists: each list supplies at most
+   its capacity and uses only one alternative table. Neither an equipped trait
+   nor a previously drawn combination is evidence for or against eligibility.
    Apply stages the replacement list, including an explicitly empty list;
    Cancel preserves the previous draft. An authored builder does not lock the
-   list: current picker records are offered unchecked and new rolls use the
-   captain's own builder parameters. The empty list never requires a compatible
-   family. Save Uruk commits the draft for writable captains; a real trait lock
+   list. Save Uruk re-reads the rules before changing a writable captain; a real trait lock
    or recorded reward history blocks saving, not opening the checklist.
 2. **Level-up reward** previews a one-level advancement. The native XP path
    (0x14034F9F0) collects scheduled lists (0x1403513DC), picks a weighted reward

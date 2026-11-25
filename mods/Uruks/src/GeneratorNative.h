@@ -1,6 +1,7 @@
 #pragma once
 #include <array>
 #include <cstdint>
+#include "TraitRules.h"
 
 namespace uruk::engine {
 using P = std::uintptr_t;
@@ -25,7 +26,7 @@ bool PreviewStage(P member,P role,std::uint64_t roll,const Look& expected,P item
 void RestoreStage(StageLease& lease);
 bool StageCurrent(const StageLease& lease);
 bool StageSelection(P& army,unsigned& index);
-int TraitRoll(P member, P (&pickers)[512]);
+bool ReadTraitRules(P member,TraitRules& out);
 struct Advancement { P list{},reward{}; unsigned level{}; };
 bool RollAdvancement(P member,Advancement& out);
 // 0 = no advancement, 1 = previewed reward used, 2 = level changed under native fallback.

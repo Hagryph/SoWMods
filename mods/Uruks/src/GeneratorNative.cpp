@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <cstring>
 #include <cmath>
+#include <stdexcept>
 #include <MinHook.h>
 
 namespace uruk::engine {
@@ -296,38 +297,82 @@ bool PreviewStage(P m,P role,std::uint64_t roll,const Look& expected,P item,unsi
         return ready;
     } __except(EXCEPTION_EXECUTE_HANDLER) { return false; }
 }
-int TraitRoll(P m,P (&pickers)[512]) {
-    // The generic builder's picker phase reads the army, role, tribe and marker span,
-    // clears its destination slot vector, appends rolls, and sets its own dirty flag.
-    alignas(16) unsigned char projection[0x528]{};
-    alignas(16) unsigned char slots[512*0x20]{};
-    P p=reinterpret_cast<P>(projection);
+namespace {
+// These are the read-only iterators and predicates used before the weighted
+// choices in 141bb876c / 141bb84e0. No sampler or live picker slot is consulted.
+template<class F> void eachRecord(P owner,P init,P get,F visit) {
+    if (!owner) return;
+    Iter it{};
+    call<void>(init,&it,owner);
+    if (it.count>8192) throw std::runtime_error("Invalid picker list");
+    for (;it.index<it.count;++it.index) {
+        P scratch{};
+        P record=get==0x141156ac0 || get==0x141150460 ?
+            call<P>(get,&it,it.index,&scratch):call<P>(get,&it);
+        if (record) visit(record);
+    }
+}
+int maxQuantity(P row) {
+    int def=1;
+    const int lo=call<bool>(0x141bbd6c8)?call<int>(0x140278758,row,call<unsigned char>(0x141bbe880),0,&def)
+        :call<int>(0x141169594,row,call<P>(0x141bbb3d8),0,&def);
+    const int hi=call<int>(0x141bbcda8,row);
+    // Native bounded RNG is [0, hi-lo); a fixed quantity does not call it.
+    return hi>lo?hi-1:lo;
+}
+void collectRules(P m,TraitRules& out) {
+    const P markers=m+0x1b0,builder=at<P>(m+0x3a0);
+    P emptyGroups[65]{};
+    auto eligible=[&](P p) {
+        if (!call<bool>(0x1407d4890,p,markers,emptyGroups)) return false;
+        if (!out.groups.contains(p)) {
+            auto& groups=out.groups[p];
+            eachRecord(p,0x14019f734,0x14019f814,[&](P g){
+                if (std::find(groups.begin(),groups.end(),g)==groups.end()) groups.push_back(g);
+            });
+        }
+        return true;
+    };
+    auto direct=[&](P p){if (eligible(p)) out.sources.push_back({1,{{p}}});};
+    std::set<P> excluded;
+    if (builder) {
+        eachRecord(builder,0x141c62434,0x141c629fc,[&](P p){excluded.insert(p);});
+        eachRecord(builder,0x141c622b4,0x141c629c4,direct);
+        eachRecord(builder,0x141c624f4,0x141c62a18,[&](P list){
+            std::set<P> entries;
+            eachRecord(list,0x14077d360,0x14077a684,[&](P p){if (eligible(p)) entries.insert(p);});
+            if (!entries.empty()) out.sources.push_back({1,{std::move(entries)}});
+        });
+        if (!call<bool>(0x141c62f10,builder)) return;
+    }
+    eachRecord(at<P>(m+0x318),0x141bb5e74,0x141150460,direct);
+    eachRecord(at<P>(m+0x328),0x141bb5f34,0x141bb7190,direct);
+    eachRecord(call<P>(0x141bbedc4,at<P>(m+0x178)),0x141bb66d4,0x141bb7318,[&](P list){
+        int cap=0;
+        eachRecord(list,0x141bb63b4,0x141156ac0,[&](P q){
+            if (call<bool>(0x141bb9e94,q,markers) && call<float>(0x141bbe34c,q)>0)
+                cap=(std::max)(cap,maxQuantity(q));
+        });
+        if (cap<=0) return;
+        TraitSource source{unsigned(cap),{}};
+        eachRecord(list,0x141bb5634,0x141bb705c,[&](P row){
+            if (!call<bool>(0x141bb9da4,row,markers) || !(call<float>(0x141bbe2f8,row)>0)) return;
+            std::set<P> entries;
+            eachRecord(row,0x141bb5ff4,0x141bb71ac,[&](P p){
+                if (!excluded.contains(p) && eligible(p)) entries.insert(p);
+            });
+            if (!entries.empty()) source.tables.push_back(std::move(entries));
+        });
+        if (!source.tables.empty()) out.sources.push_back(std::move(source));
+    });
+}
+}
+bool ReadTraitRules(P m,TraitRules& out) {
     __try {
-        if (at<P>(m+0x190) || (at<std::uint64_t>(m+0x508)&(1ull<<38))) return 0;
-        for (int o : {0x178,0x188,0x1b0,0x1b8,0x270,0x318,0x328}) at<P>(p+o)=at<P>(m+o);
-        at<P>(p+0x1e0)=at<P>(p+0x1e8)=reinterpret_cast<P>(slots);
-        at<unsigned>(p+0x1f0)=512;
-        int n=0;
-        __try {
-            const P builder=at<P>(m+0x3a0);
-            if (builder) {
-                // Same parameter construction and teardown as the native authored-member
-                // build (0x141bbf8a8), but run only its picker phase on the projection.
-                alignas(16) unsigned char params[400]{};
-                call<void>(0x141c62054,params);
-                __try {
-                    call<void>(0x141c63920,params,P(0),builder);
-                    call<void>(0x141bb876c,p,params);
-                } __finally { call<void>(0x141c628d0,params); }
-            } else call<void>(0x141bb876c,p,P(0));
-            P b=at<P>(p+0x1e0),e=at<P>(p+0x1e8);
-            if (e>=b && e-b<=sizeof slots && (e-b)%32==0) {
-                n=int((e-b)/32);
-                for (int i=0;i<n;++i) pickers[i]=at<P>(b+i*32);
-            }
-        } __finally { if (at<unsigned char>(p+0x1f4)) call<void>(0x141bba8d0,at<P>(p+0x1e0)); }
-        return n;
-    } __except(EXCEPTION_EXECUTE_HANDLER) { return 0; }
+        if (!m || !Supported() || at<P>(m+0x190)) return false;
+        collectRules(m,out);
+        return true;
+    } __except(GetExceptionCode()==EXCEPTION_ACCESS_VIOLATION?EXCEPTION_EXECUTE_HANDLER:EXCEPTION_CONTINUE_SEARCH) {return false;}
 }
 namespace {
 struct ListBuffer { unsigned count,padding; P values[64]; };

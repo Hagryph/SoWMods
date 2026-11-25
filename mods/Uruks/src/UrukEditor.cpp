@@ -70,10 +70,10 @@ struct Snapshot {
     uint64_t session = 0;
     Key selected;
     std::vector<Target> targets;
-    std::vector<std::vector<Ptr>> traitFamilies;
+    engine::TraitRules traitRules;
     std::vector<Field> fields;
     bool supported=false;
-    bool mayGenerate=false, mayRollTraits=false, mayAdvance=false;
+    bool mayGenerate=false, mayAdvance=false;
     const char* traitSaveBlock=nullptr;
     uint64_t baseline=0;
     std::string status;
@@ -235,7 +235,6 @@ void Capture(Snapshot& snapshot, const Catalog& catalog) {
     snapshot.traitSaveBlock=!writable ? "This captain is not writable." :
         flags&(1ull<<38) ? "The engine has locked this captain's traits." :
         VectorSize(member+0x1c8,8) ? "Replacing traits with recorded reward history is not supported." : nullptr;
-    snapshot.mayRollTraits=!snapshot.traitSaveBlock;
     std::map<unsigned,std::vector<Choice>> equipment;
     if (writable) {
         Ptr kit[512]{};
@@ -261,31 +260,13 @@ void Capture(Snapshot& snapshot, const Catalog& catalog) {
     title.expected=Read<Ptr>(member+0x318);
     Add(snapshot,"Appearance generator",RecordName(Read<Ptr>(Read<Ptr>(member+0x2d8)+0x170)),Kind::Appearance);
     auto& traits=Add(snapshot,"Trait list","0 selected",Kind::Traits);
-    {
-        std::set<Ptr> options;
-        auto remember=[&](std::vector<Ptr> set) {
-            std::sort(set.begin(),set.end());
-            set.erase(std::unique(set.begin(),set.end()),set.end());
-            if (set.empty() || std::find(snapshot.traitFamilies.begin(),snapshot.traitFamilies.end(),set)!=snapshot.traitFamilies.end()) return;
-            options.insert(set.begin(),set.end());
-            snapshot.traitFamilies.push_back(std::move(set));
-        };
-        std::vector<Ptr> existing;
-        const Ptr slots=Read<Ptr>(member+0x1e0);
-        for (int i=0,n=VectorSize(member+0x1e0,32,512);i<n;++i) {
-            auto picker=Read<Ptr>(slots+i*32);
-            if (InCatalog(catalog,"Faction/Traits/Picker",picker)) existing.push_back(picker);
-        }
-        remember(std::move(existing));
-        for (int i=0;snapshot.mayRollTraits && i<32;++i) {
-            Ptr rolled[512]{};
-            int n=engine::TraitRoll(member,rolled);
-            if (!n) break;
-            if (std::all_of(rolled,rolled+n,[&](Ptr v){return InCatalog(catalog,"Faction/Traits/Picker",v);}))
-                remember(std::vector<Ptr>(rolled,rolled+n));
-        }
-        for (Ptr picker:options) traits.choices.push_back({picker,RecordName(picker)});
+    if (snapshot.supported && engine::ReadTraitRules(member,snapshot.traitRules)) {
+        for (const auto& [p,groups]:snapshot.traitRules.groups)
+            if (InCatalog(catalog,"Faction/Traits/Picker",p)) traits.choices.push_back({p,RecordName(p)});
         std::sort(traits.choices.begin(),traits.choices.end(),[](const Choice& a,const Choice& b){return a.label<b.label;});
+    } else {
+        snapshot.traitRules={};
+        snapshot.traitSaveBlock="Native picker rules unavailable.";
     }
     Add(snapshot,"Level-up reward","Advance one level",Kind::Advance);
 
@@ -497,6 +478,10 @@ bool Commit(Ptr m,const Task& task,const Catalog& catalog,std::string& status) {
     }
     if (auto t=get(Kind::Traits)) {
         for (auto p:t->pickers) if (!InCatalog(catalog,"Faction/Traits/Picker",p)) return false;
+        engine::TraitRules now;
+        if (!engine::ReadTraitRules(m,now) || !now.permits(t->pickers)) {
+            status="The captain's picker rules changed. No traits saved."; return false;
+        }
         return SaveTraits(m,t->pickers);
     }
     if (auto a=get(Kind::Advance)) {
@@ -726,17 +711,13 @@ bool HandlesSet(void*,uint64_t id) {
 }
 bool Compatible(const Field& f,uint64_t candidate,const uint64_t* picks,int n) {
     if (n<0 || n>512 || (n && !picks) || (candidate && candidate>f.choices.size())) return false;
-    // Options were already sourced for this captain. There are no peers to conflict with yet.
-    if (n==0) return true;
-    for (const auto& family:g_snapshot.traitFamilies) {
-        auto has=[&](uint64_t id){return id && id<=f.choices.size() &&
-            std::binary_search(family.begin(),family.end(),f.choices[id-1].value);};
-        if (candidate && !has(candidate)) continue;
-        bool fits=true;
-        for (int i=0;i<n && fits;++i) fits=has(picks[i]);
-        if (fits) return true;
+    std::vector<Ptr> set;
+    for (int i=0;i<n;++i) {
+        if (!picks[i] || picks[i]>f.choices.size()) return false;
+        set.push_back(f.choices[picks[i]-1].value);
     }
-    return false;
+    if (candidate) set.push_back(f.choices[candidate-1].value);
+    return g_snapshot.traitRules.permits(set);
 }
 bool SetOption(void*,uint64_t id,uint64_t candidate,const uint64_t* picks,int n) {
     std::lock_guard lock(g_mutex); auto f=Find(id);
