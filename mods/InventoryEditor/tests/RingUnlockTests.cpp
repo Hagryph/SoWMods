@@ -35,6 +35,18 @@ struct FakeGame {
 }
 
 int main() {
+    State visibility;
+    Check(game::ring::ShouldOffer(visibility, 1, false), "Locked loaded save must show the button");
+    Check(!game::ring::ShouldOffer(visibility, 0, false), "Main menu must not show the button");
+    Check(!game::ring::ShouldOffer(visibility, 2, false), "Previous save state must not control the button");
+    Check(!game::ring::ShouldOffer(visibility, 1, true), "Queued unlock must hide the button");
+    visibility.unlocked[0] = true;
+    Check(game::ring::ShouldOffer(visibility, 1, false), "Partial unlock must remain available");
+    visibility.unlocked[1] = true;
+    Check(!game::ring::ShouldOffer(visibility, 1, false), "Natural or manual unlock must hide the button");
+    visibility.valid = false;
+    Check(!game::ring::ShouldOffer(visibility, 1, false), "Unreadable state must not permit a grant");
+
     FakeGame game;
     State state;
     Check(game.Run(state), "Initial unlock failed");

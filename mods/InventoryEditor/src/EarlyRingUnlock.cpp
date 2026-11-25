@@ -5,6 +5,7 @@
 #include "RingUnlockRecords.h"
 #include "GameOffsets.h"
 #include <cstring>
+#include <cstdio>
 #include <new>
 
 namespace inventory_editor {
@@ -88,10 +89,21 @@ void Execute(void* context) {
     }
     if (!ok || g_ui->SaveSession() != request.session) state.valid = false;
     ::AcquireSRWLockExclusive(&g_lock);
+    const Snapshot previous = g_snapshot;
     g_snapshot = state;
     if (request.unlock) g_unlockPending = false;
     else g_probePending = false;
     ::ReleaseSRWLockExclusive(&g_lock);
+    if (g_log && (previous.session != state.session || previous.valid != state.valid ||
+        previous.unlocked[0] != state.unlocked[0] || previous.unlocked[1] != state.unlocked[1])) {
+        char message[192]{};
+        std::snprintf(message, sizeof(message),
+            "Early ring state: world=%llu eligible=%d brand=%d captains=%d button=%s",
+            static_cast<unsigned long long>(state.session), state.valid,
+            state.unlocked[0], state.unlocked[1],
+            game::ring::ShouldOffer(state, g_ui->SaveSession(), false) ? "visible" : "hidden");
+        g_log(message);
+    }
 }
 
 void Queue(bool unlock) {
@@ -128,8 +140,7 @@ bool Visible() {
     const auto session = g_ui->SaveSession();
     Queue(false);
     ::AcquireSRWLockShared(&g_lock);
-    const bool result = session && g_snapshot.session == session && g_snapshot.valid &&
-        !g_unlockPending && !game::ring::Complete(g_snapshot);
+    const bool result = game::ring::ShouldOffer(g_snapshot, session, g_unlockPending);
     ::ReleaseSRWLockShared(&g_lock);
     return result;
 }

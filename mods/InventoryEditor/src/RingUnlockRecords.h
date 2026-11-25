@@ -20,6 +20,12 @@ bool Complete(const State& state) {
     return state.valid && state.unlocked[0] && state.unlocked[1];
 }
 
+template <class State, class Session>
+bool ShouldOffer(const State& state, Session currentSession, bool actionPending) {
+    return currentSession != 0 && state.session == currentSession && state.valid &&
+        !actionPending && !Complete(state);
+}
+
 template <class State, class Session, class Give, class Read>
 bool GrantMissing(State& state, Session sameSession, Give give, Read read) {
     if (!state.valid || !sameSession()) return false;
