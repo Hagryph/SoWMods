@@ -392,6 +392,44 @@ void Overlay::SyncCursorState() {
     }
 }
 
+namespace {
+struct SceneCapture {
+    ID3D11Texture2D* copy{};
+    ID3D11ShaderResourceView* view{};
+    IDXGISwapChain* swap{};
+    ID3D11Device* device{};
+    ID3D11DeviceContext* context{};
+    bool used{};
+    void Release() {
+        if (view) { view->Release(); view=nullptr; }
+        if (copy) { copy->Release(); copy=nullptr; }
+    }
+    static ImTextureID Read(void* opaque,float& aspect) {
+        auto& s=*static_cast<SceneCapture*>(opaque);
+        ID3D11Texture2D* frame{};
+        if (FAILED(s.swap->GetBuffer(0,IID_PPV_ARGS(&frame)))) return 0;
+        D3D11_TEXTURE2D_DESC d{}, old{};
+        frame->GetDesc(&d);
+        if (s.copy) s.copy->GetDesc(&old);
+        if (d.Width!=old.Width || d.Height!=old.Height || d.Format!=old.Format) {
+            s.Release();
+            auto dst=d;
+            dst.BindFlags=D3D11_BIND_SHADER_RESOURCE; dst.MiscFlags=0; dst.CPUAccessFlags=0;
+            dst.Usage=D3D11_USAGE_DEFAULT; dst.SampleDesc={1,0};
+            if (SUCCEEDED(s.device->CreateTexture2D(&dst,nullptr,&s.copy)) &&
+                FAILED(s.device->CreateShaderResourceView(s.copy,nullptr,&s.view))) s.Release();
+        }
+        if (s.copy) {
+            if (d.SampleDesc.Count==1) s.context->CopyResource(s.copy,frame);
+            else s.context->ResolveSubresource(s.copy,0,frame,0,d.Format);
+        }
+        frame->Release();
+        aspect=float(d.Width)/float(d.Height);
+        s.used=true;
+        return reinterpret_cast<ImTextureID>(s.view);
+    }
+};
+}
 void Overlay::DrawFrame(IDXGISwapChain* swap) {
     if (!ctx_) {
         if (FAILED(swap->GetDevice(__uuidof(ID3D11Device), reinterpret_cast<void**>(&dev_))) || !dev_) return;
@@ -433,7 +471,12 @@ void Overlay::DrawFrame(IDXGISwapChain* swap) {
     ImGui::NewFrame();
 
     if (!InSave()) DrawWatermark();   // watermark only at the menu; hidden once in a save
+    static SceneCapture scene;
+    scene.swap=swap; scene.device=dev_; scene.context=ctx_; scene.used=false;
+    BeginPropertyFrame(&scene,&SceneCapture::Read);
     if (menuOpen_) DrawHub();
+    EndPropertyFrame();
+    if (!scene.used) scene.Release();
 
     ImGui::Render();
     ctx_->OMSetRenderTargets(1, &rtv, nullptr);   // ImGui's DX11 backend saves/restores the rest

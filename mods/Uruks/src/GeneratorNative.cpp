@@ -115,7 +115,7 @@ P GenerateTitle(P m) {
         return (!personality || personality==at<P>(m+0x270)) && fitsRole(m,at<P>(m+0x2d8),role)?role:0;
     } __except(EXCEPTION_EXECUTE_HANDLER) { return 0; }
 }
-bool Appearance(P m,P role,std::uint64_t roll,Look& result,const Look* commit) {
+static bool BuildAppearance(P m,P role,std::uint64_t roll,Look& result,const Look* expected,P destination) {
     __try {
         P live=at<P>(m+0x2d8), temp=0;
         if (!live || !roll || at<P>(m+0x48)) return false;
@@ -133,13 +133,17 @@ bool Appearance(P m,P role,std::uint64_t roll,Look& result,const Look* commit) {
             call<void>(0x14061bad4,m+0x50,temp);
             ok=inspect(temp,result) && result.body==at<unsigned>(live) &&
                result.base==at<P>(live+0x20) && fitsRole(m,temp,role);
-            if (ok && commit) {
-                ok=result==*commit;
-                if (ok) call<void>(0x1402eba60,live,temp);
+            if (ok && expected) {
+                ok=result==*expected;
+                if (ok && destination) call<void>(0x1402eba60,destination,temp);
             }
         } __finally { call<void>(0x1402ed9d4,&temp); }
         return ok;
     } __except(EXCEPTION_EXECUTE_HANDLER) { return false; }
+}
+bool Appearance(P m,P role,std::uint64_t roll,Look& result,const Look* commit) {
+    __try { return BuildAppearance(m,role,roll,result,commit,commit?at<P>(m+0x2d8):0); }
+    __except(EXCEPTION_EXECUTE_HANDLER) { return false; }
 }
 int LevelCap(P m) {
     __try {
@@ -193,6 +197,103 @@ bool WeaponLook(P m,P item,unsigned& slot,P& look) {
         if (!look || slot>=10) return false;
         P old=at<P>(m+0x50+slot*8);
         return !old || at<P>(old+0x38)==item || call<bool>(0x14061c224,old,static_cast<unsigned char>(8),item);
+    } __except(EXCEPTION_EXECUTE_HANDLER) { return false; }
+}
+namespace {
+bool StageBuild() {
+    static constexpr struct { P va; std::uint64_t bytes; } functions[]{
+        {0x140455edc,0xb8c1814828ec8348ULL},{0x141a28fac,0x6c894808245c8948ULL},
+        {0x140627f40,0x4810588948c48b48ULL},{0x1402eb444,0x83485708245c8948ULL},
+        {0x1402eb3fc,0x0175c98548098b48ULL},{0x1401c7b7c,0x8b4820ec83485340ULL},
+        {0x1418bdf4c,0x18c1834828ec8348ULL},
+    };
+    for(auto f:functions) if(std::memcmp((void*)game::FromRVA(f.va),&f.bytes,8)) return false;
+    return true;
+}
+P LookupStage(const StageLease& l,P& live) {
+    const P key[]{l.army,l.index};
+    P owner=at<P>(game::FromRVA(0x1426ffb60));
+    P holder=owner?call<P>(0x140455edc,owner,l.army):0;
+    live=holder?call<P>(0x141b5c0f8,faction(),key):0;
+    if (!live || at<P>(live+0x88)!=l.army || at<unsigned>(live+0x90)!=l.index ||
+        at<std::uint64_t>(live+0x118)!=l.seed) return 0;
+    P actor=call<P>(0x141a28fac,holder,key);
+    if (!actor || at<P>(actor)!=game::FromRVA(0x141f733c0) || !at<P>(actor+0x760)) return 0;
+    return actor;
+}
+bool CheckedStageBuild() {
+    __try { return StageBuild(); }
+    __except(EXCEPTION_EXECUTE_HANDLER) { return false; }
+}
+bool StageSupported() { static const bool ok=CheckedStageBuild(); return ok; }
+}
+bool StageSelection(P& army,unsigned& index) {
+    __try {
+        if (!StageSupported()) return false;
+        P ui=at<P>(game::FromRVA(0x1426ffb08)), menu=ui?at<P>(ui+0x50):0;
+        P key=menu?call<P>(0x1418bdf4c,menu+0x6fd0):0;
+        if (!key || !at<P>(key) || at<unsigned>(key+8)==~0u) return false;
+        army=at<P>(key); index=at<unsigned>(key+8); return true;
+    } __except(EXCEPTION_EXECUTE_HANDLER) { return false; }
+}
+bool StageCurrent(const StageLease& l) {
+    if (!l.actor || !l.privateLook) return false;
+    __try {
+        P a,live; unsigned i;
+        if (!StageSelection(a,i) || a!=l.army || i!=l.index) return false;
+        P actor=LookupStage(l,live); return actor==l.actor && at<P>(actor+0x728)==l.privateLook;
+    }
+    __except(EXCEPTION_EXECUTE_HANDLER) { return false; }
+}
+void RestoreStage(StageLease& l) {
+    __try {
+        P live;
+        if (l.actor && LookupStage(l,live)==l.actor && at<P>(l.actor+0x728)==l.privateLook)
+            call<void>(0x140627f40,l.actor,live,P(0),0);
+    } __except(EXCEPTION_EXECUTE_HANDLER) {}
+    l={};
+}
+bool PreviewStage(P m,P role,std::uint64_t roll,const Look& expected,P item,unsigned slot,StageLease& lease) {
+    __try {
+        if (!StageSupported() || !Supported() || !m || ((item==0)==(roll==0))) return false;
+        StageLease l{at<P>(m+0x178),0,0,at<unsigned>(m+0x174),at<std::uint64_t>(m+0x168)};
+        P selected; unsigned index;
+        if (!StageSelection(selected,index) || selected!=l.army || index!=l.index) return false;
+        P live=0;
+        l.actor=LookupStage(l,live);
+        if (!l.actor) return false;
+        P copy=0, weapon=0; bool ready=false;
+        // The stage rebuild takes its own deep copy. Never edit its bound items in place.
+        call<P>(0x1402eb444,&copy,P(0),live);
+        if (!copy) return false;
+        __try {
+            const P appearance=at<P>(copy+0x40), inventory=at<P>(copy+0x30);
+            if (appearance && inventory && appearance!=at<P>(live+0x40) && inventory!=at<P>(live+0x30)) {
+                at<P>(copy+0x140)=role;
+                at<unsigned char>(copy+0x190)|=1; // Reveal the private model, not campaign intel.
+                if (roll) {
+                    Look actual{};
+                    ready=BuildAppearance(m,role,roll,actual,&expected,appearance);
+                } else if (slot<10 && WeaponAllowed(m,item)) {
+                    P builder=call<P>(0x1401c0d9c,item);
+                    if (builder) call<void>(0x1401c7bac,&weapon);
+                    if (weapon) {
+                        call<void>(0x1411565a4,weapon,item,builder,1,l.seed);
+                        ready=at<unsigned>(weapon+0x2c)==slot && at<P>(weapon+0x40)==expected.base;
+                        if (ready) call<void>(0x1401c7b7c,inventory+slot*8,&weapon);
+                    }
+                }
+                if (ready) {
+                    call<void>(0x140627f40,l.actor,copy,P(0),0);
+                    l.privateLook=at<P>(l.actor+0x728);
+                    lease=l;
+                }
+            }
+        } __finally {
+            if (weapon) call<void>(0x1401c7b6c,&weapon);
+            call<void>(0x1402eb3fc,&copy);
+        }
+        return ready;
     } __except(EXCEPTION_EXECUTE_HANDLER) { return false; }
 }
 int TraitRoll(P m,P (&pickers)[512]) {

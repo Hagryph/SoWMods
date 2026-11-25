@@ -573,7 +573,12 @@ void Run(void* context) {
         Snapshot snapshot;
         snapshot.session=task->session; snapshot.selected=task->selected;
         snapshot.targets=Targets(); snapshot.supported=engine::Supported();
-        auto it=std::find_if(snapshot.targets.begin(),snapshot.targets.end(),[&](const auto& t){return t.key==task->selected;});
+        if (task->op==Op::Refresh && !task->selected.army) {
+            Ptr army; unsigned index;
+            if (engine::StageSelection(army,index)) for (const auto& t:snapshot.targets)
+                if (t.key.army==army && t.key.index==index) { snapshot.selected=t.key; break; }
+        }
+        auto it=std::find_if(snapshot.targets.begin(),snapshot.targets.end(),[&](const auto& t){return t.key==snapshot.selected;});
         Ptr m=it==snapshot.targets.end()?0:it->member;
         const Catalog catalog=LoadCatalog();
         if (task->op!=Op::Refresh && (!m || Stamp(m)!=task->baseline)) {
@@ -741,6 +746,92 @@ void Discard(void*) {
     for (auto& f:g_snapshot.fields) if (Generator(f.kind)) f.choices.clear();
     g_snapshot.status="Draft discarded.";
 }
+struct SceneId {
+    uint64_t session{},field{},choice{};
+    bool operator==(const SceneId&) const = default;
+};
+SceneId wantedScene{};
+bool sceneQueued=false;
+int sceneState=0;
+std::chrono::steady_clock::time_point lastProbe{};
+// Only the game thread touches the lease. Identity, never a pointer alone,
+// determines whether a later task is allowed to restore the Army character.
+engine::StageLease lease{};
+SceneId leasedScene{};
+void ClearLease() {
+    if (leasedScene.session && leasedScene.session==g_ui->SaveSession()) engine::RestoreStage(lease);
+    lease={}; leasedScene={};
+}
+void RunScene(void*) {
+    SceneId id;
+    Key target{};
+    uint64_t baseline=0;
+    Kind kind=Kind::View;
+    Choice candidate{};
+    Ptr role=0;
+    unsigned slot=0;
+    try {
+        {
+            std::lock_guard lock(g_mutex);
+            id=wantedScene;
+            if (id.session && id.session==g_ui->SaveSession()) if (auto f=Find(id.field)) {
+                if (auto c=ChoiceById(*f,id.choice); c && !c->disabled) {
+                    target=g_snapshot.selected; baseline=g_snapshot.baseline; kind=f->kind; slot=f->slot;
+                    candidate=*c;
+                    if (auto r=g_draft.edits.find(Kind::Role); r!=g_draft.edits.end()) role=r->second.second.value;
+                }
+            }
+        }
+        bool ready=target.army && leasedScene==id && engine::StageCurrent(lease);
+        if (!ready) {
+            ClearLease();
+            Ptr selectedArmy; unsigned selectedIndex;
+            if (target.army && id.session==g_ui->SaveSession() && engine::StageSelection(selectedArmy,selectedIndex)
+                    && selectedArmy==target.army && selectedIndex==target.index) {
+                for (const auto& t:Targets()) if (t.key==target && Stamp(t.member)==baseline) {
+                    if (!role) role=Read<Ptr>(t.member+0x318);
+                    ready=engine::PreviewStage(t.member,role,kind==Kind::Appearance?candidate.value:0,
+                            candidate.look,kind==Kind::Equipment?candidate.value:0,slot,lease);
+                    if (ready) leasedScene=id;
+                    break;
+                }
+            }
+        }
+        bool stale;
+        {
+            std::lock_guard lock(g_mutex);
+            stale=id!=wantedScene || (id.session && id.session!=g_ui->SaveSession());
+            sceneState=stale?0:(ready?2:1);
+            sceneQueued=false;
+        }
+        if (stale) ClearLease();
+    } catch (...) {
+        ClearLease();
+        std::lock_guard lock(g_mutex);
+        sceneQueued=false; sceneState=1;
+    }
+}
+int Scene(void*,uint64_t field,uint64_t choice,char (&message)[192]) {
+    std::lock_guard lock(g_mutex);
+    SceneId id{};
+    auto f=field?Find(field):nullptr;
+    const bool visual=f && (f->kind==Kind::Appearance || f->kind==Kind::Equipment);
+    if (visual && !g_pending) if (auto c=ChoiceById(*f,choice); c && !c->disabled)
+        id={g_snapshot.session,field,choice};
+    const auto now=std::chrono::steady_clock::now();
+    const bool changed=id!=wantedScene;
+    if (changed) { wantedScene=id; sceneState=0; }
+    if (!sceneQueued && (changed || (id.session && now-lastProbe>std::chrono::milliseconds(sceneState==2?250:1500)))) {
+        sceneQueued=g_ui->QueueGameTask(RunScene,nullptr);
+        lastProbe=now;
+        if (!sceneQueued) { wantedScene={~uint64_t(0),0,0}; return 1; }
+    }
+    if (!visual) return 0;
+    if (!id.choice) strcpy_s(message,f->kind==Kind::Appearance?"Generate an appearance to preview.":"Select a weapon to preview.");
+    else if (!sceneState) strcpy_s(message,"Preparing Army model...");
+    else if (sceneState!=2) strcpy_s(message,"Open this captain's detail view in the Army screen before opening the editor.");
+    return id.choice && sceneState==2?2:1;
+}
 void Close(void*,uint64_t field) {
     std::lock_guard lock(g_mutex);
     ++g_generationRequest;
@@ -754,7 +845,8 @@ void AddUrukEditor(int parent, HagUIAPI* ui) {
     if (page < 0) return;
     const HagUI_PropertySource source{Refresh, Count, ReadField, ChoiceCount, ReadChoice, Apply};
     const HagUI_PopupActions popup{"Save Uruk",State,Generate,Save,Discard,Close};
-    ui->AddPopupEditor(page,nullptr,&source,&popup);
+    if (ui->abiVersion>=12 && ui->AddSceneEditor) ui->AddSceneEditor(page,nullptr,&source,&popup,Scene);
+    else ui->AddPopupEditor(page,nullptr,&source,&popup);
     ui->AddSubPageButton(parent, "Uruk Editor", page);
 }
 }

@@ -104,6 +104,15 @@ int main() {
             return f.id;
         };
         auto original=Stamp(member.at());
+        char message[192]{};
+        auto appearanceId=candidate(Kind::Appearance,9900);
+        Check(Scene(nullptr,appearanceId,9900,message)==1 && queuedFn==RunScene);
+        Check(wantedScene.choice==9900 && !g_draft.dirty() && !g_pending);
+        // Closing before the game thread gets a tick must cancel, not draw a stale model.
+        Check(Scene(nullptr,0,0,message)==0 && !wantedScene.session);
+        queuedFn(nullptr);
+        Check(!sceneQueued && !lease.actor && Stamp(member.at())==original);
+        queuedFn=nullptr;
         uint64_t titleId=candidate(Kind::Role,10000);
         Close(nullptr,titleId);
         Check(!Apply(nullptr,titleId,10000) && !g_draft.dirty());

@@ -39,10 +39,11 @@ void ApiAddSubPageButton(int p, const char* label, int child) { sow::HagUI::Get(
 void ApiAddPropertyEditor(int p, void* context, const HagUI_PropertySource* source) { sow::HagUI::Get().AddPropertyEditor(p, context, source); }
 
 void ApiAddPopupEditor(int p, void* c, const HagUI_PropertySource* s, const HagUI_PopupActions* a) { sow::HagUI::Get().AddPropertyEditor(p,c,s,a); }
+void ApiAddSceneEditor(int p, void* c, const HagUI_PropertySource* s, const HagUI_PopupActions* a,HagUI_SceneFn scene) { sow::HagUI::Get().AddPropertyEditor(p,c,s,a,scene); }
 HagUIAPI g_api = { HAGUI_ABI_VERSION, &ApiRegisterPage, &ApiAddLabel, &ApiAddToggle, &ApiAddButton,
                    &ApiAddList, &ApiAddFacetedList, &ApiAddFacetedActionList, &ApiQueueGameTask,
                    &ApiSetPageOnFirstOpenInSave, &ApiAddConditionalButton, &sow::CurrentSaveSession,
-                   &ApiAddHeaderButton, &ApiAddSettingToggle, &ApiRegisterSubPage, &ApiAddSubPageButton, &ApiAddPropertyEditor, &ApiAddPopupEditor };
+                   &ApiAddHeaderButton, &ApiAddSettingToggle, &ApiRegisterSubPage, &ApiAddSubPageButton, &ApiAddPropertyEditor, &ApiAddPopupEditor, &ApiAddSceneEditor };
 }  // namespace
 
 // Any ABI from 1..current is served the same struct: the layout is append-only, so a v1 caller simply

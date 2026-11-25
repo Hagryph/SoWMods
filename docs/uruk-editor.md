@@ -28,9 +28,15 @@ and a fingerprint of the original captain state before generating or saving.
 - Weapon: candidates are items from the captain's personality, role, tribe or
   class kit. A temporary native item build resolves the slot and actual look.
   Both native character-type and replacement checks must pass.
-- Preview limitation: the popup displays the actual record names and colours.
-  It does **not** draw a 3D character or weapon. It never swaps the live Army
-  screen model to simulate a preview.
+- 3D preview (HagUI ABI 12): open the captain's native Army detail view, then
+  open the editor. With no prior editor selection it picks the Army selection.
+  Generate an appearance or select a weapon to see the animated Army scene in
+  the popup **before Apply**. The preview deep-copies the summary, changes only
+  that copy, and uses the normal stage-character redraw. The Loader copies the
+  game frame on the GPU before drawing the overlay; it does not render a second
+  mesh or change the camera. No preview is shown without the matching Army
+  selection. Apply, Cancel, closing the hub, or changing candidates releases
+  the temporary stage look. Save Uruk remains the only campaign write.
 - Raw designs, personalities, tribes, flags, class transitions and individual
   picker slots are inspected, not freely writable.
 

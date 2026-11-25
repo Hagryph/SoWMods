@@ -5,6 +5,15 @@
 
 namespace sow {
 namespace {
+SceneTextureFn captureScene{};
+void *captureContext{}, *sceneContext{};
+HagUI_SceneFn activeScene{};
+bool sceneUsed{};
+void StopScene() {
+    char unused[192]{};
+    if (activeScene && activeScene(sceneContext,0,0,unused)) return;
+    activeScene=nullptr;
+}
 bool Matches(const char* text, const char* query) {
     std::string value(text), filter(query);
     auto lower = [](unsigned char c) { return static_cast<char>(std::tolower(c)); };
@@ -12,6 +21,13 @@ bool Matches(const char* text, const char* query) {
     std::transform(filter.begin(), filter.end(), filter.begin(), lower);
     return value.find(filter) != std::string::npos;
 }
+}
+void BeginPropertyFrame(void* context, SceneTextureFn capture) {
+    captureContext=context; captureScene=capture; sceneUsed=false;
+}
+void EndPropertyFrame() {
+    if (!sceneUsed) StopScene();
+    captureContext=nullptr; captureScene=nullptr;
 }
 void DrawPropertyEditor(const HagUI::Widget& widget, ImVec2 position, ImVec2 size,
                         float sx, float sy, ImFont* font) {
@@ -78,6 +94,7 @@ void DrawPropertyEditor(const HagUI::Widget& widget, ImVec2 position, ImVec2 siz
                         widget.actionField = field.id;
                         widget.popupTitle = std::string(field.label) + "###property-value";
                         widget.selectedChoice = 0;
+                        widget.largePreview = false;
                         widget.choiceSearch[0] = 0;
                         widget.applyFailed = false;
                         widget.choices.clear();
@@ -110,7 +127,11 @@ void DrawPropertyEditor(const HagUI::Widget& widget, ImVec2 position, ImVec2 siz
         ImGui::OpenPopup(widget.popupTitle.c_str());
         widget.editingField = 0;
     }
-    ImGui::SetNextWindowSize(ImVec2((std::min)(size.x, 600 * sx), (std::min)(size.y, 405 * sy)), ImGuiCond_Appearing);
+    ImVec2 display=ImGui::GetIO().DisplaySize;
+    ImGui::SetNextWindowSize(widget.largePreview ?
+        ImVec2((std::min)(display.x*.92f,940*sx),(std::min)(display.y*.9f,660*sy)) :
+        ImVec2((std::min)(size.x,600*sx),(std::min)(size.y,405*sy)));
+    if (widget.largePreview) ImGui::SetNextWindowPos(ImVec2(display.x*.5f,display.y*.5f),ImGuiCond_Always,ImVec2(.5f,.5f));
     if (!widget.popupTitle.empty() && ImGui::BeginPopupModal(widget.popupTitle.c_str(), nullptr, ImGuiWindowFlags_NoResize)) {
         HagUI_PopupState detail{};
         if (popup.state) popup.state(widget.context, widget.actionField, widget.selectedChoice, &detail);
@@ -142,9 +163,28 @@ void DrawPropertyEditor(const HagUI::Widget& widget, ImVec2 position, ImVec2 siz
         }
         ImGui::EndChild();
         }
-        if (detail.generator || detail.preview[0]) {
+        char message[192]{};
+        int scene=0;
+        if (widget.scene) {
+            if (activeScene && (activeScene!=widget.scene || sceneContext!=widget.context)) StopScene();
+            scene=widget.scene(widget.context,widget.actionField,widget.selectedChoice,message);
+            widget.largePreview=scene!=0;
+            if (scene) { activeScene=widget.scene; sceneContext=widget.context; sceneUsed=true; }
+        }
+        if (detail.generator || detail.preview[0] || scene) {
             if (ImGui::BeginChild("Preview", ImVec2(0,-60*sy), ImGuiChildFlags_Borders)) {
-                ImGui::TextDisabled("Preview");
+                ImGui::TextDisabled(scene ? "Army preview" : "Preview");
+                if (scene==2 && captureScene) {
+                    float aspect=1;
+                    const auto texture=captureScene(captureContext,aspect);
+                    if (texture && aspect>0) {
+                        auto avail=ImGui::GetContentRegionAvail();
+                        const float w=(std::min)(avail.x, (std::max)(1.f,avail.y)*aspect);
+                        ImGui::SetCursorPosX(ImGui::GetCursorPosX()+(avail.x-w)*.5f);
+                        ImGui::Image(texture,ImVec2(w,w/aspect));
+                    } else ImGui::TextDisabled("Scene texture unavailable.");
+                }
+                if (message[0]) ImGui::TextWrapped("%s",message);
                 for (int i=0, shown=0; i<17; ++i) if (detail.palette[i] >> 24) {
                     if (shown++ % 8) ImGui::SameLine();
                     auto c=detail.palette[i];
@@ -160,6 +200,7 @@ void DrawPropertyEditor(const HagUI::Widget& widget, ImVec2 position, ImVec2 siz
         ImGui::BeginDisabled(!widget.selectedChoice || detail.busy);
         if (ImGui::Button("Apply")) {
             if (source.apply(widget.context,widget.actionField,widget.selectedChoice)) {
+                StopScene();
                 if (popup.close) popup.close(widget.context,widget.actionField);
                 ImGui::CloseCurrentPopup();
             }
@@ -168,6 +209,7 @@ void DrawPropertyEditor(const HagUI::Widget& widget, ImVec2 position, ImVec2 siz
         ImGui::EndDisabled();
         ImGui::SameLine();
         if (ImGui::Button("Cancel")) {
+            StopScene();
             if (popup.close) popup.close(widget.context,widget.actionField);
             ImGui::CloseCurrentPopup();
         }
