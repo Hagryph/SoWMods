@@ -23,6 +23,7 @@ add_library(SoWLoader SHARED
     src/WindowWatch.cpp
     src/ModManager.cpp
     src/HagUI.cpp
+    src/PropertyEditor.cpp
     src/HagApiExport.cpp
 )
 
@@ -42,6 +43,11 @@ if(BUILD_TESTING)
     target_include_directories(ModConfigTests PRIVATE src "${CMAKE_CURRENT_SOURCE_DIR}/../shared")
     target_compile_definitions(ModConfigTests PRIVATE UNICODE _UNICODE WIN32_LEAN_AND_MEAN)
     add_test(NAME LoaderModConfig COMMAND ModConfigTests)
+    add_executable(PropertyEditorTests tests/PropertyEditorTests.cpp src/PropertyEditor.cpp)
+    target_include_directories(PropertyEditorTests PRIVATE src "${CMAKE_CURRENT_SOURCE_DIR}/../shared")
+    target_compile_definitions(PropertyEditorTests PRIVATE UNICODE _UNICODE)
+    target_link_libraries(PropertyEditorTests PRIVATE imgui::imgui)
+    add_test(NAME LoaderPropertyEditor COMMAND PropertyEditorTests)
 endif()
 
 # The 796 forwarder exports come from #pragma comment(linker,"/EXPORT:...") in src/exports_forward.h

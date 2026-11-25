@@ -161,6 +161,49 @@ int HagUI::RegisterPage(const char* title) {
 void HagUI::SetPageScope(int page, int scope) {
     if (page >= 0 && page < (int)pages_.size()) pages_[page].scope = scope;
 }
+int HagUI::RegisterSubPage(int parent, const char* title) {
+    if (parent < 0 || parent >= (int)pages_.size()) return -1;
+    const int scope = pages_[parent].scope;
+    int page = RegisterPage(title);
+    pages_[page].parent = parent;
+    pages_[page].scope = scope;
+    return page;
+}
+void HagUI::AddSubPageButton(int page, const char* label, int child) {
+    if (child < 0 || child >= (int)pages_.size() || pages_[child].parent != page) return;
+    AddButton(page, label, nullptr);
+    pages_[page].widgets.back().type = WSubPage;
+    pages_[page].widgets.back().child = child;
+}
+void HagUI::AddPropertyEditor(int page, void* context, const HagUI_PropertySource* source) {
+    if (page < 0 || page >= (int)pages_.size() || !source || !source->refresh || !source->count ||
+        !source->read || !source->choiceCount || !source->choice || !source->apply) return;
+    Widget widget{};
+    widget.type = WProperties;
+    widget.context = context;
+    widget.properties = *source;
+    pages_[page].widgets.push_back(std::move(widget));
+}
+int HagUI::ResolvePage(int root) {
+    if (!history_.empty() && history_.front() != root) ResetNavigation();
+    return history_.empty() ? root : history_.back();
+}
+void HagUI::OpenSubPage(int page) {
+    if (page < 0 || page >= (int)pages_.size() || pages_[page].parent < 0) return;
+    const int parent = pages_[page].parent;
+    if (history_.empty()) history_.push_back(parent);
+    if (history_.back() != parent) return;
+    history_.push_back(page);
+    for (const auto& widget : pages_[page].widgets)
+        if (widget.type == WProperties) widget.properties.refresh(widget.context);
+}
+bool HagUI::Back() {
+    if (history_.size() < 2) return false;
+    history_.pop_back();
+    if (history_.size() == 1) history_.clear();
+    return true;
+}
+void HagUI::ResetNavigation() { history_.clear(); }
 void HagUI::AddLabel(int page, const char* text) {
     if (page >= 0 && page < (int)pages_.size()) pages_[page].widgets.push_back({ WLabel, text ? text : "", nullptr, nullptr });
 }

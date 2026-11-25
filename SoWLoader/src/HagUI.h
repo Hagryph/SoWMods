@@ -2,6 +2,7 @@
 #include "PCH.h"
 #include <string>
 #include <vector>
+#include "HagUIAPI.h"
 
 namespace sow {
 
@@ -27,6 +28,13 @@ public:
     void AddButton(int page, const char* label, void (*onClick)());
     void AddConditionalButton(int page, const char* label, void (*onClick)(), bool (*visible)());
     void AddHeaderButton(int page, const char* label, void (*onClick)(), bool (*visible)());
+    int RegisterSubPage(int parent, const char* title);
+    void AddSubPageButton(int page, const char* label, int child);
+    void AddPropertyEditor(int page, void* context, const HagUI_PropertySource* source);
+    int ResolvePage(int root);
+    void OpenSubPage(int page);
+    bool Back();
+    void ResetNavigation();
     struct Widget;
     static bool WidgetVisible(const Widget& widget);
     static bool ToggleValue(const Widget& widget);
@@ -41,7 +49,7 @@ public:
     void RunFirstOpenInSave();
 
     // Read access for the renderer (Overlay::DrawHub): tabs exist ONLY for registered pages.
-    enum WType { WLabel = 0, WToggle = 1, WButton = 2, WList = 3, WHeaderButton = 4 };
+    enum WType { WLabel = 0, WToggle = 1, WButton = 2, WList = 3, WHeaderButton = 4, WSubPage = 5, WProperties = 6 };
     // One filterable dimension: its distinct values + a live multi-select mask (parallel to opts).
     struct Facet {
         std::string name;
@@ -64,6 +72,15 @@ public:
         bool (*visible)() = nullptr;
         bool (*getToggle)() = nullptr;
         void (*setToggle)(bool) = nullptr;
+        int child = -1;
+        void* context = nullptr;
+        HagUI_PropertySource properties{};
+        mutable std::uint64_t editingField = 0;
+        mutable std::uint64_t actionField = 0;
+        mutable std::vector<HagUI_Choice> choices;
+        mutable char propertySearch[128]{};
+        mutable char choiceSearch[128]{};
+        mutable bool applyFailed = false;
     };
     struct Page {
         std::string title;
@@ -71,6 +88,7 @@ public:
         std::vector<Widget> widgets;
         void (*onFirstOpenInSave)(int page) = nullptr;
         bool firstOpenInSaveDone = false;
+        int parent = -1;
     };  // scope: 0=global,1=local
     const std::vector<Page>& Pages() const { return pages_; }
 
@@ -83,6 +101,7 @@ private:
     void DrawHub(Overlay& r);
 
     std::vector<Page> pages_;
+    std::vector<int> history_;
     bool inited_ = false, open_ = false;
     int  tab_ = 0, sel_ = 0;   // tab_ 0 = WELCOME landing, 1..N = registered pages
     bool prev_[9] = {};        // F8, Up, Down, Left, Right, Enter, Space, Esc, LMB (edge detection)

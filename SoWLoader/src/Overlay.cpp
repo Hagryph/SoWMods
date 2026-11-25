@@ -1,6 +1,7 @@
 #include "Overlay.h"
 #include "Log.h"
 #include "HagUI.h"
+#include "PropertyEditor.h"
 #include "GameOffsets.h"   // ../shared: game::FromRVA + kPauseToggle (call the game's own pause)
 #include "Loader.h"
 #include "SoWModAPI.h"   // ../shared: SOWMOD_LOCAL scope constant
@@ -793,7 +794,7 @@ void Overlay::DrawHub() {
         const bool inSave = InSave();
         std::vector<int> vis;                                 // page indices visible right now
         for (int p = 0; p < (int)pages.size(); ++p)
-            if (pages[p].scope != SOWMOD_LOCAL || inSave) vis.push_back(p);
+            if (pages[p].parent < 0 && (pages[p].scope != SOWMOD_LOCAL || inSave)) vis.push_back(p);
         if (activeTab_ > (int)vis.size()) activeTab_ = 0;     // visible set can change between frames
         const float fTabPx = 15.0f * s, pad = 16.0f * sx, gap = 12.0f * sx, cellH = 35.0f * sy;
         const float navY = Y(28), hairY = Y(28 + 34);
@@ -807,7 +808,7 @@ void Overlay::DrawHub() {
             ImGui::SetCursorScreenPos(ImVec2(cx, navY));
             ImGui::InvisibleButton("##tab", ImVec2(cellW, cellH));
             const bool hov = ImGui::IsItemHovered();
-            if (ImGui::IsItemClicked()) activeTab_ = i;
+            if (ImGui::IsItemClicked()) { activeTab_ = i; HagUI::Get().ResetNavigation(); }
             ImGui::PopID();
             AddTextCX(dl, fTab_, fTabPx, ImVec2(cx + pad, navY + 6.0f * sy),
                       active ? uAccent : (hov ? uText : uDim), label.c_str(), XS);
@@ -831,15 +832,28 @@ void Overlay::DrawHub() {
         } else {
             // registered page — 1:1 with the AS option page (buildOptionPage / makeCheckbox /
             // paintButton): header bold 21 at (60,86); rows from y+44, 40 apart.
-            const HagUI::Page& pg = pages[vis[activeTab_ - 1]];
-            AddTextCX(dl, fTab_, 21.0f * s, ImVec2(X(60), Y(86)), uText, pg.title.c_str(), XS);
+            auto& hub = HagUI::Get();
+            if (!inSave) hub.ResetNavigation();
+            const int currentPage = hub.ResolvePage(vis[activeTab_ - 1]);
+            const HagUI::Page& pg = pages[currentPage];
+            float titleX = 60;
+            if (pg.parent >= 0) {
+                ImGui::SetCursorScreenPos(ImVec2(X(60), Y(86)));
+                if (ImGui::ArrowButton("##back", ImGuiDir_Left)) hub.Back();
+                if (ImGui::IsItemHovered()) ImGui::SetTooltip("Back");
+                titleX = 88;
+            }
+            AddTextCX(dl, fTab_, 21.0f * s, ImVec2(X(titleX), Y(86)), uText, pg.title.c_str(), XS);
             float headerRight = X(772);
             float ry = 86 + 44;
             for (int i = 0; i < (int)pg.widgets.size(); ++i) {
                 const HagUI::Widget& wd = pg.widgets[i];
                 if (!HagUI::WidgetVisible(wd)) continue;
                 ImGui::PushID(i);
-                if (wd.type == HagUI::WToggle) {
+                if (wd.type == HagUI::WProperties) {
+                    DrawPropertyEditor(wd, ImVec2(X(60), Y(ry)), ImVec2(712 * sx, (434 - ry) * sy), sx, sy, fBody_);
+                    ry = 434;
+                } else if (wd.type == HagUI::WToggle) {
                     // full-width clickable row (AS: invisible hit rect w x 30, flips the box)
                     ImGui::SetCursorScreenPos(ImVec2(X(60), Y(ry)));
                     ImGui::InvisibleButton("##row", ImVec2(712.0f * sx, 30.0f * sy));
@@ -859,7 +873,8 @@ void Overlay::DrawHub() {
                         dl->AddPolyline(pts, 3, uAccent, 0, 2.0f * s);
                     }
                     txt(fBody_, 17.0f * s, 60 + 36, ry + 3, uText, wd.text.c_str());
-                } else if (wd.type == HagUI::WButton || wd.type == HagUI::WHeaderButton) {
+                } else if (wd.type == HagUI::WButton || wd.type == HagUI::WHeaderButton || wd.type == HagUI::WSubPage) {
+                    if (wd.type == HagUI::WSubPage && pages[wd.child].scope == SOWMOD_LOCAL && !inSave) { ImGui::PopID(); continue; }
                     // gold button (AS paintButton): rr7, vgrad a18->6 border a42; hover a34/14/78
                     const float lw = measureW(fTab_, 15.0f * s, wd.text.c_str());
                     const bool header = wd.type == HagUI::WHeaderButton;
@@ -874,6 +889,7 @@ void Overlay::DrawHub() {
                     ImGui::InvisibleButton("##btn", ImVec2(pb.x - pa.x, pb.y - pa.y));
                     const bool hov = ImGui::IsItemHovered();
                     if (ImGui::IsItemClicked() && wd.onClick) wd.onClick();
+                    if (ImGui::IsItemClicked() && wd.type == HagUI::WSubPage) hub.OpenSubPage(wd.child);
                     RoundedVGrad(dl, pa, pb, IM_COL32(0xE0, 0xB3, 0x4A, hov ? 87 : 46),
                                              IM_COL32(0xE0, 0xB3, 0x4A, hov ? 36 : 15), 7.0f * s);
                     dl->AddRect(pa, pb, IM_COL32(0xE0, 0xB3, 0x4A, hov ? 199 : 107), 7.0f * s, 0, 1.0f * s);

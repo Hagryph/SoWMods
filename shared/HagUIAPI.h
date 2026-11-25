@@ -13,10 +13,32 @@
 
 extern "C" {
 
-constexpr std::uint32_t HAGUI_ABI_VERSION = 9;
+constexpr std::uint32_t HAGUI_ABI_VERSION = 10;
 
 typedef void (*HagUI_GameTaskFn)(void* ctx);
 typedef void (*HagUI_PageOpenFn)(int page);
+
+struct HagUI_Property {
+    std::uint64_t id;
+    char label[96];
+    char value[1024];
+    bool editable;
+    char readOnlyReason[192];
+};
+struct HagUI_Choice {
+    std::uint64_t id;
+    char label[256];
+    bool selected;
+};
+// Callbacks read cached snapshots only. Native access belongs in QueueGameTask.
+struct HagUI_PropertySource {
+    void (*refresh)(void* context);
+    int (*count)(void* context);
+    bool (*read)(void* context, int index, HagUI_Property* property);
+    int (*choiceCount)(void* context, std::uint64_t field);
+    bool (*choice)(void* context, std::uint64_t field, int index, HagUI_Choice* choice);
+    bool (*apply)(void* context, std::uint64_t field, std::uint64_t choice);
+};
 
 struct HagUIAPI {
     std::uint32_t abiVersion;                              // == HAGUI_ABI_VERSION
@@ -60,6 +82,10 @@ struct HagUIAPI {
     void (*AddHeaderButton)(int page, const char* label, void (*onClick)(), bool (*visible)());
     // v9: callback-backed toggle for atomic settings and immediate persistence on change.
     void (*AddSettingToggle)(int page, const char* label, bool (*get)(), void (*set)(bool));
+    // v10: nested pages stay out of the tab bar; Back returns to their parent screen.
+    int (*RegisterSubPage)(int parent, const char* title);
+    void (*AddSubPageButton)(int page, const char* label, int child);
+    void (*AddPropertyEditor)(int page, void* context, const HagUI_PropertySource* source);
 };
 
 // Exported by the loader DLL. Returns null if the requested ABI version is unsupported.
