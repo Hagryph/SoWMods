@@ -59,6 +59,15 @@ int main() {
         Check(PickerLabel(demoPicker.header.at()).empty());
         Check(TraitLabel(curse.header.at(),lookup)=="Immune Curse");
         Check(!DemoTraitId("Picker_Demoralize"));
+        FakeRecord bloodlust("Hate_EnragedOrcs"), mercBloodlust("Easterling_Hate_EnragedOrcs");
+        auto bloodlustLookup=[](const char*) { return L"Bloodlust"; };
+        for (auto* record:{&bloodlust,&mercBloodlust}) {
+            record->Field("test",reinterpret_cast<Ptr>(displayKey),4);
+            Put<uint32_t>(record->descriptors.at(),0xf51aff36);
+        }
+        Check(TraitLabel(bloodlust.header.at(),bloodlustLookup)=="Bloodlust");
+        Check(TraitLabel(mercBloodlust.header.at(),bloodlustLookup).empty());
+        Check(UrukTraitDefinition("DLC4_Hate_Frost"));
         picker.Field("ExclusiveGroup", 123);
         Check(Cell(picker.header.at(), "ExclusiveGroup") == 123);
         Check(Cell(picker.header.at(), "ExclusiveGroup", 1) == 0);

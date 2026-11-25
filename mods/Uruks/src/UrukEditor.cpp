@@ -132,6 +132,9 @@ bool DemoTraitId(std::string_view id) {
     }
     return false;
 }
+bool UrukTraitDefinition(std::string_view id) {
+    return !id.starts_with("Easterling_") && !DemoTraitId(id);
+}
 Catalog LoadCatalog(Ptr database = 0) {
     Catalog catalog;
     if (!database) database = Read<Ptr>(game::FromRVA(game::kGameDatabase));
@@ -230,7 +233,7 @@ std::string ReadableId(const std::string& id) {
 }
 std::string TraitLabel(Ptr trait,LookupText lookup=GameText) {
     auto id=RecordName(trait);
-    if (DemoTraitId(id)) return {};
+    if (!UrukTraitDefinition(id)) return {};
     // Type-4 Army display key, distinct from the adjacent description and hint keys.
     auto key=Text(CellHash(trait,0xf51aff36,0,4));
     char label[1024]{};
@@ -321,8 +324,8 @@ bool LoadRecipeCatalog(const Catalog& catalog,recipe::Catalog& db,Ptr army) {
     }
     for (const auto& [id,name]:defs->second) {
         db.definitions.insert(id);
-        // Recognize existing native traits without offering demo definitions in a recipe.
-        if (DemoTraitId(name)) continue;
+        // Keep native records recognizable even when they aren't Uruk editor choices.
+        if (!UrukTraitDefinition(name)) continue;
         for (auto g:Links(id,0xc402530b)) if (auto it=groups.find(g);it!=groups.end()) {
             if (RecordName(g)=="UIGroup_Epics") db.epics.insert(id);
             auto [entry,added]=db.categories.emplace(id,it->second);
