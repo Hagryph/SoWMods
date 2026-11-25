@@ -8,37 +8,20 @@ Spawned, dead and temporary captains cannot be edited.
 ## Regenerate Captain (HagUI ABI 14)
 
 Open **Uruks > Regenerate Captain**, select the captain to replace, then choose
-the base class, advanced class, tribe and rarity. The last selector prepares
-a private profile at the selected captain's level. Pick the base class before
-the advanced class. Changing base clears an incompatible advanced class. Tribe
-membership does not depend on class; individual tribal attacks can be restricted.
-Core, class and tribal
-grants are automatic; there is no Class Traits checklist. The seven optional
-checklists start empty. Empty means **no extra picks**, not an empty class kit.
-Changing a selector clears optional picks and prepares a new kit.
-Select **Generate** at the bottom left to check the assembled profile or retry
-kit preparation. Apply
-accepts that preview; editing the recipe invalidates it. Only **Save Uruk**
-requests an in-place replacement. No second Army slot or custom save file is used.
+the base class, advanced class, tribe and rarity. The seven optional lists
+unlock immediately. They check the requested kit, exclusive groups, previous
+picks and rarity budget; an empty list requests no extra traits.
 
-Choices are trait definitions linked to the Army menu's UI groups, not picker
-names or samples from previous rolls. The editor checks alternative picker
-routes, exclusive groups, class markers and rarity limits. The next optional
-pick is checked against the fixed profile and current choices on the game thread. Final generation
-also checks the actual profile: a picker with several possible outputs has to
-resolve to the requested definition at this seat and level. A rejected **profile**
-does not remove that trait from the catalog.
+**Generate** resolves the selected definitions to native picker inputs at the
+retained level. **Apply** accepts those settings. Only **Save Uruk** invokes
+the native same-seat generator. This is an input review, not a sampled captain.
 
-The preflight uses the chosen faction combat tree and tribe, generates a
-personality, look, role, markers and natural picker list, and keeps unmanaged
-non-Army slots (including dormant ones). It takes class grants from compatible
-advanced-class reward records and tribal attacks from the selected tribe;
-native marker gates still apply. It replays the merged list through the
-explicit-grant builder before offering Apply. The live build uses the native
-same-seat replacement path, retaining level and affiliation; catch-up XP rewards
-are suppressed only for the replacement being built. Normal later level-ups
-are unaffected. Scripted scar/event roles are not previewed.
-
+The builder receives ordinary class, tribe, marker, starting-level, picker
+grant and picker exclusion inputs. Normal generation and level progression
+stay enabled. Managed and mixed-output pickers are not blanket-excluded.
+If direct grants or later rewards change the optional result, the mod checks
+whether a trait-only correction can yield the requested set without removing
+unmanaged hidden or class-kit slots. A matching result is left untouched.
 The save operation rebuilds the live captain. It verifies the resulting seat,
 level, markers, pickers and resolved traits, but is **not a rollback mechanism**.
 Test the first replacement and save/reload on a backed-up campaign.

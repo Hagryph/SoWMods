@@ -39,6 +39,8 @@ struct Catalog {
     std::map<Id,std::vector<Id>> tribes;
     std::map<Id,std::vector<ClassKit>> kits;
     std::set<Id> managedPickers, managedTraits;
+    std::set<Id> optionalOnly;
+    std::map<Id,Picker> routes;
 };
 struct Recipe {
     Id specialization{}, rarity{};
@@ -48,6 +50,25 @@ struct Recipe {
     bool operator==(const Recipe&) const = default;
 };
 struct Slot { Id picker{}, definition{}; };
+inline std::vector<Id> coreInputs(const Catalog& db,const Recipe& r) {
+    std::vector<Id> fixed;
+    for (Id marker:{r.base,r.specialization}) if (db.baseGrants.contains(marker)) fixed.push_back(db.baseGrants.at(marker));
+    if (auto t=db.tribes.find(r.tribe);t!=db.tribes.end()) for (Id id:t->second) {
+        auto route=db.routes.find(id);
+        if (route!=db.routes.end() && std::ranges::any_of(route->second.forbidden,[&](Id m){
+            return m==r.base || m==r.specialization || m==r.rarity;
+        })) continue;
+        if (std::ranges::find(fixed,id)==fixed.end()) fixed.push_back(id);
+    }
+    return fixed;
+}
+inline bool fitsCore(const Catalog& db,const std::vector<Id>& fixed,const std::vector<Id>& picks) {
+    for (Id id:picks) if (auto route=db.routes.find(id);route!=db.routes.end())
+        for (Id f:fixed) if (f!=id && db.routes.contains(f))
+            for (Id g:db.routes.at(f).groups)
+                if (std::ranges::find(route->second.groups,g)!=route->second.groups.end()) return false;
+    return true;
+}
 inline bool fitsClass(const Catalog& db,Id base,Id specialization) {
     auto type=db.types.find(base);
     auto kits=db.kits.find(specialization);
@@ -140,6 +161,23 @@ inline bool matches(const Catalog& db,const Recipe& wanted,const Id* active,size
     for (auto id:automatic) if (!count || std::find(active,active+count,id)==active+count) return false;
     for (unsigned i=0;i<nodes.size();++i)
         if (actual[i]!=std::set<Id>(wanted.traits[i].begin(),wanted.traits[i].end())) return false;
+    return true;
+}
+inline std::vector<Id> exclusions(const Catalog& db,const std::vector<Id>& grants) {
+    std::vector<Id> result;
+    for (Id id:db.optionalOnly) if (!db.managedPickers.contains(id) &&
+        std::ranges::find(grants,id)==grants.end()) result.push_back(id);
+    return result;
+}
+inline bool optionalResult(const Catalog& db,const Recipe& r,const std::vector<Id>& active) {
+    std::array<std::set<Id>,nodes.size()> actual;
+    for (auto id:active) {
+        auto group=db.categories.find(id);
+        if (group!=db.categories.end() && group->second!=2 && !db.managedTraits.contains(id))
+            actual[group->second].insert(id);
+    }
+    for (size_t i=0;i<nodes.size();++i)
+        if (actual[i]!=std::set<Id>(r.traits[i].begin(),r.traits[i].end())) return false;
     return true;
 }
 }

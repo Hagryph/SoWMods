@@ -521,12 +521,6 @@ int ProjectTraits(P m,const P* pickers,int count,unsigned level,P rank,P (&activ
     } __except(EXCEPTION_EXECUTE_HANDLER) { return -1; }
 }
 namespace {
-struct NativeMember {
-    alignas(16) unsigned char data[0x530]{};
-    P ptr() {return reinterpret_cast<P>(data);}
-    NativeMember() {call<P>(0x141bb4c1c,ptr());}
-    ~NativeMember() {call<void>(0x141bb6b00,ptr());}
-};
 struct BuildParams {
     alignas(16) unsigned char data[400]{};
     P ptr() {return reinterpret_cast<P>(data);}
@@ -555,291 +549,107 @@ bool permitsGrants(P m,const std::vector<P>& picks) {
     }
     return true;
 }
-void replayParams(P params,const GenerationPlan& p) {
-    at<P>(params+0x170)=p.seed;
-    at<unsigned>(params+0x178)=p.level+1;
-    at<P>(params+0x148)=p.role;
-    call<void>(0x141c4edc0,params,p.tree);
-    call<void>(0x141c62b24,params,p.personality);
-    if (p.tribe) call<void>(0x141c4ee54,params,p.tribe);
-    for (P marker:p.markers) call<void>(0x141c4ee48,params,marker);
-    for (P picker:p.pickers) call<void>(0x141c62aa4,params,picker);
-    at<unsigned char>(params+0x181)=0; // use the supplied lists, no second draw
-}
-bool prepare(P target,P rank,const recipe::Catalog& db,const recipe::Recipe& r,GenerationPlan& p,std::string& error,const GenerationPlan* frozen) {
-    auto fail=[&](const char* why){error=why;return false;};
-    if (!Supported() || !rank || !r.complete() || !TribeAvailable(r.tribe) ||
-        !recipe::resolve(db,r,[](const auto&){return true;})) return fail("Select compatible classes, tribe, rarity and optional traits.");
-    const P ctx=army(target);
-    if (!ctx || !at<P>(ctx+0x50)) return fail("The selected Army is unavailable.");
-    p={}; p.army=at<P>(target+0x178); p.row=at<P>(target+0x268);
-    p.index=at<unsigned>(target+0x174); p.level=at<unsigned>(target+0x4b8); p.originalSeed=at<P>(target+0x168);
-    if (p.level>84) return fail("Unsupported captain level.");
-    NativeMember scratch; BuildParams params;
-    P m=scratch.ptr(), b=params.ptr();
-    // Only immutable records and seat context are borrowed. All native vectors,
-    // equipment and model objects belong to the new, unregistered member.
-    call<void>(0x141bc6014,m,p.army);
-    at<P>(m+0x268)=p.row;
-    at<unsigned>(m+0x4b8)=p.level;
+// Build the ordinary input packet. Unspecified fields keep the native constructor defaults.
+bool makePlan(P target,P rank,const recipe::Catalog& db,const recipe::Recipe& r,GenerationPlan& p,std::string& error) {
+    if (!Supported() || !target || !rank || !r.complete() || !TribeAvailable(r.tribe)) {
+        error="The selected captain or kit is unavailable."; return false;
+    }
+    p={}; p.army=at<P>(target+0x178); p.row=at<P>(target+0x268); p.index=at<unsigned>(target+0x174);
+    p.originalSeed=at<P>(target+0x168);p.level=at<unsigned>(target+0x4b8);p.rank=rank;p.requested=r;
+    if (!p.row || !p.army || p.level>84 || !db.rarityRecords.contains(r.rarity) ||
+        !db.trees.contains(r.base)) {error="The selected Army seat or level is unavailable.";return false;}
+    bool capped=false;
+    auto flags=at<std::uint64_t>(target+0x508);
+    unsigned cap=call<unsigned>(0x1403517e0,db.trees.at(r.base),int((!(flags&0x400) && (flags&(1ull<<27))) || (flags&(1ull<<28))),&capped);
+    if (p.level>cap) {error="The selected class cannot retain this level.";return false;}
+    // Resolve records at the retained level without borrowing the old captain's slots.
+    alignas(16) unsigned char input[0x530]{};
+    P m=reinterpret_cast<P>(input);
     at<unsigned char>(m+0x51a)=at<unsigned char>(target+0x51a);
-    at<std::uint64_t>(m+0x508)|=at<std::uint64_t>(target+0x508)&(1ull<<27);
-    if (frozen && (frozen->army!=p.army || frozen->index!=p.index || frozen->row!=p.row ||
-        frozen->level!=p.level || frozen->originalSeed!=p.originalSeed || frozen->tree!=db.trees.at(r.base) ||
-        frozen->tribe!=r.tribe)) return fail("The captain or selected kit changed.");
-    p.seed=at<P>(m+0x168)=at<P>(b+0x170)=frozen?frozen->seed:at<P>(b+0x170);
-    p.tree=at<P>(m+0x188)=db.trees.at(r.base);
-    p.tribe=at<P>(m+0x328)=r.tribe;
-    if (!p.tree || int(p.level)>LevelCap(m)) return fail("The generated combat class cannot retain this level.");
-    p.personality=at<P>(m+0x270)=frozen?frozen->personality:call<P>(0x141bda7ac,p.army,p.tree,b+0xf8,b+0x110);
-    if (!p.personality) return fail("No native personality for this combat class.");
-    at<P>(m+0x278)=call<P>(0x14057710c,p.tree);
-    Context look;
-    call<void>(0x140577190,look.ptr());
-    call<void>(0x141bea190,look.ptr(),m);
-    call<void>(0x1404c5194,at<P>(m+0x2d8),look.ptr());
-    call<void>(0x141821734,look.ptr());
-    P base=at<P>(at<P>(m+0x2d8)+0x20);
-    const char* skeleton=base?at<const char*>(base+0x20):nullptr;
-    if (!skeleton || (_stricmp(skeleton,"orc_anim_base") && _stricmp(skeleton,"olog_anim_base")))
-        return fail("Native build did not produce an Orc or Olog.");
-    Context title;
-    if (!initTitle(title,m,at<P>(m+0x2d8))) return fail("No native title context.");
-    p.role=frozen?frozen->role:call<P>(0x141bd7934,title.ptr());
-    call<void>(0x141b59d2c,title.ptr());
-    if (!p.role || call<P>(0x141bbc6ec,p.role) || call<P>(0x141bbe1c0,p.role))
-        return fail("The generated title requires a scripted event or scar. No captain changed.");
-    P personality=call<P>(0x141bbc8dc,p.role);
-    if (personality && personality!=p.personality) return fail("Title requires a different personality.");
-    at<P>(m+0x318)=p.role; // the real setter publishes campaign events
-    for (auto id:db.allSpecializations) if (id!=r.specialization) call<void>(0x141c62c44,b,id);
-    for (auto [id,rarity]:db.rarityRecords) if (id!=r.rarity) call<void>(0x141c62c44,b,id);
-    call<void>(0x141c4ee48,b,r.specialization); call<void>(0x141c4ee48,b,r.rarity);
-    if (frozen) {
-        for (auto id:frozen->markers) call<void>(0x141c4ee48,b,id);
-        at<unsigned char>(b+0x181)=0;
-    }
-    call<void>(0x141bb8068,m,b);
-    call<void>(0x141bb83ec,m,b);
-    if (!records(m+0x1b0,8,p.markers)) return fail("Invalid generated markers.");
-    auto has=[&](P id){return std::ranges::find(p.markers,id)!=p.markers.end();};
-    if (!has(r.base) || !has(r.specialization) || !has(r.rarity) || !db.rarityRecords.contains(r.rarity) ||
-        std::ranges::any_of(p.markers,[&](P id){return (db.allSpecializations.contains(id) && id!=r.specialization) ||
-            (db.combatClasses.contains(id) && id!=r.base);}) ||
-        (frozen && !std::ranges::is_permutation(p.markers,frozen->markers)) ||
-        at<P>(m+0x390)!=db.rarityRecords.at(r.rarity) ||
-        (db.neverClass.contains(r.specialization) && has(db.neverClass.at(r.specialization))))
-        return fail("The generated profile conflicts with the chosen class or rarity.");
-    if (!frozen) call<void>(0x141bb876c,m,b);
-    std::vector<P> natural,kept;
-    if (!records(m+0x1e0,32,natural)) return fail("Invalid native trait list.");
-    P active[512]{},byPicker[512]{};
-    if (ProjectTraits(m,natural.data(),int(natural.size()),p.level,rank,active,byPicker)<0)
-        return fail("Could not resolve the natural trait list.");
-    std::vector<recipe::Slot> slots;
-    std::set<P> hidden;
-    for (size_t i=0;i<natural.size();++i) {
-        slots.push_back({natural[i],byPicker[i]});
-    }
-    if (!recipe::retained(db,slots,kept)) return fail("Unclassified native trait; no traits removed.");
-    if (frozen) {
-        kept=frozen->fixed; p.automatic=frozen->automatic; p.removed=frozen->removed;
-        p.eligible=frozen->eligible;
-    } else {
-        std::vector<const recipe::ClassKit*> kits;
-        for (const auto& k:db.kits.at(r.specialization)) {
-            if (k.fits(db.types.at(r.base)) && !std::ranges::any_of(k.forbiddenMarkers,has) &&
-                std::ranges::all_of(k.requiredAny,[&](const auto& group){return std::ranges::any_of(group,has);})) kits.push_back(&k);
-        }
-        if (kits.empty()) return fail("No advanced-class kit fits this profile.");
-        const auto& kit=*kits[p.seed%kits.size()];
-        p.removed=kit.removed;
-        std::vector<P> grants;
-        auto grant=[&](P id){
-            if (p.removed.contains(id)) return false;
-            if (std::ranges::find(grants,id)!=grants.end()) return true;
-            grants.push_back(id);
-            if (permitsGrants(m,grants)) return true;
-            grants.pop_back();return false;
-        };
-        if (!grant(db.baseGrants.at(r.base)) || (db.baseGrants.contains(r.specialization) && !grant(db.baseGrants.at(r.specialization))))
-            return fail("Native class grants conflict with this profile.");
-        for (auto id:db.tribes.at(r.tribe))
-            if (!grant(id) && permitsGrants(m,{id})) return fail("A required tribe grant conflicts with the class kit.");
-        for (const auto& group:kit.grants) {
-            bool supplied=false;
-            for (size_t i=0;i<group.size();++i) if (grant(group[(p.seed+i)%group.size()])) {supplied=true;break;}
-            if (!supplied && std::ranges::any_of(group,[&](P id){return permitsGrants(m,{id});}))
-                return fail("Two required kit grants conflict.");
-        }
-        std::erase_if(kept,[&](P id){return p.removed.contains(id);});
-        int n=ProjectTraits(m,grants.data(),int(grants.size()),p.level,rank,active);
-        if (n<0) return fail("Could not resolve the automatic kit.");
-        p.automatic.insert(active,active+n);
-        kept.insert(kept.end(),grants.begin(),grants.end());
-    }
-    p.fixed=kept;
-    int fixedCount=ProjectTraits(m,kept.data(),int(kept.size()),p.level,rank,active);
-    if (fixedCount<0 || !permitsGrants(m,kept)) return fail("The core kit conflicts with a retained trait.");
-    for (int i=0;i<fixedCount;++i) if (!db.categories.contains(active[i])) hidden.insert(active[i]);
-    p.hidden=hidden; p.rank=rank; p.intel=at<unsigned char>(m+0x51a);
-    p.remap=at<P>(m+0x280); p.follower=!!(at<std::uint64_t>(m+0x508)&(1ull<<27));
-    for (size_t i=0;i<natural.size();++i) {
-        auto mission=at<P>(at<P>(m+0x1e0)+32*i+16);
-        if (mission) p.missionSlots.push_back({natural[i],0,mission,0});
-    }
-    if (!frozen) {
-        for (const auto& [trait,routes]:db.producers) {
-            if (db.managedTraits.contains(trait)) continue;
-            auto single=r; single.traits={}; single.traits[db.categories.at(trait)].push_back(trait);
-            for (const auto& route:routes) {
-                if (db.managedPickers.contains(route.id) || p.removed.contains(route.id)) continue;
-                auto trial=kept;
-                if (std::ranges::find(trial,route.id)!=trial.end()) continue;
-                trial.push_back(route.id);
-                if (!permitsGrants(m,trial)) continue;
-                p.eligible[trait].insert(route.id);
-                int n=ProjectTraits(m,trial.data(),int(trial.size()),p.level,rank,active);
-                if (n>=0 && recipe::matches(db,single,active,n,p.automatic)) {
-                    std::set<P> other;
-                    for (int j=0;j<n;++j) if (!db.categories.contains(active[j])) other.insert(active[j]);
-                    if (other==hidden) p.singles.insert(trait);
-                }
-            }
-        }
-    }
-    auto combine=[&](const auto& selected){
-        p.pickers=kept;
-        for (P id:selected) if (std::ranges::find(p.pickers,id)==p.pickers.end()) p.pickers.push_back(id);
-    };
-    unsigned remaining=8192;
-    bool ok=recipe::resolve(db,r,[&](const auto& selected){
-        combine(selected);
-        if (p.pickers.size()>512) return false;
-        int n=ProjectTraits(m,p.pickers.data(),int(p.pickers.size()),p.level,rank,active);
-        if (n<0 || !recipe::matches(db,r,active,n,p.automatic)) return false;
-        std::set<P> after;
-        for (int i=0;i<n;++i) if (!db.categories.contains(active[i])) after.insert(active[i]);
-        return hidden==after;
-    },[&](const auto& partial){
-        if (auto it=db.classOnlyPickers.find(partial.back());it!=db.classOnlyPickers.end() && !has(it->second)) return false;
-        combine(partial);return permitsGrants(m,p.pickers);
-    },&remaining,&p.eligible,unsigned(std::ranges::count_if(p.automatic,[&](P id){return db.epics.contains(id);})));
-    if (!ok && !remaining) return fail("Picker search limit reached; this combination was not proved invalid. No captain changed.");
-    if (!ok) return fail("This generated profile cannot resolve the exact traits at the retained level. No captain changed.");
-    // Exercise the same authored-input path used at commit. This catches native
-    // marker exclusions and picker grants silently dropped by the builder.
-    BuildParams replay;
-    replayParams(replay.ptr(),p);
-    call<void>(0x141bb8068,m,replay.ptr()); call<void>(0x141bb876c,m,replay.ptr());
-    std::vector<P> markers,picks;
-    if (!records(m+0x1b0,8,markers) || markers!=p.markers || !records(m+0x1e0,32,picks) ||
-        !std::ranges::is_permutation(picks,p.pickers)) return fail("The native builder rejected the supplied list.");
-    int n=ProjectTraits(m,picks.data(),int(picks.size()),p.level,rank,active);
-    if (n<0 || !recipe::matches(db,r,active,n,p.automatic)) return fail("Native builder replay changed a selected trait.");
-    std::set<P> replayHidden;
-    for (int i=0;i<n;++i) if (!db.categories.contains(active[i])) replayHidden.insert(active[i]);
-    if (replayHidden!=hidden) return fail("Native builder replay changed a hidden trait.");
-    p.active.assign(active,active+n);
+    at<std::uint64_t>(m+0x508)=flags&(1ull<<27);
+    auto fixed=recipe::coreInputs(db,r);
+    P active[512]{};
+    int n=ProjectTraits(m,fixed.data(),int(fixed.size()),p.level,rank,active);
+    if(n<0){error="Could not resolve the automatic class kit.";return false;}
+    const std::set<P> automatic(active,active+n);
+    unsigned budget=8192;
+    bool ok=recipe::resolve(db,r,[&](const auto& picks){
+        auto all=fixed;all.insert(all.end(),picks.begin(),picks.end());
+        int count=ProjectTraits(m,all.data(),int(all.size()),p.level,rank,active);
+        if(count<0 || !recipe::matches(db,r,active,count,automatic)) return false;
+        p.grants=std::move(all);return true;
+    },[&](const auto& picks){return recipe::fitsCore(db,fixed,picks);},&budget,nullptr,
+      unsigned(std::ranges::count_if(automatic,[&](P v){return db.epics.contains(v);})));
+    if (!ok) {error="The requested trait inputs could not be resolved at the retained level.";return false;}
+    p.exclude=recipe::exclusions(db,p.grants);
     return true;
 }
-}
-bool PlanGeneration(P target,P rank,const recipe::Catalog& db,const recipe::Recipe& r,GenerationPlan& p,std::string& error,const GenerationPlan* frozen) {
-    __try {return prepare(target,rank,db,r,p,error,frozen);}
-    __except(GetExceptionCode()==EXCEPTION_ACCESS_VIOLATION?EXCEPTION_EXECUTE_HANDLER:EXCEPTION_CONTINUE_SEARCH) {
-        error="Native generation preflight failed. No captain changed.";return false;
-    }
-}
-bool FitsProfile(const recipe::Catalog& db,const recipe::Recipe& r,const GenerationPlan& p) {
-    // ProjectTraits reads only these input fields. No live member or owning native vectors.
-    alignas(16) unsigned char bytes[0x530]{};
-    P m=reinterpret_cast<P>(bytes);
-    at<P>(m+0x280)=p.remap; at<unsigned char>(m+0x51a)=p.intel;
-    at<std::uint64_t>(m+0x508)=std::uint64_t(p.follower)<<27;
-    at<P>(m+0x1e0)=reinterpret_cast<P>(p.missionSlots.data());
-    at<P>(m+0x1e8)=at<P>(m+0x1e0)+p.missionSlots.size()*32;
-    unsigned budget=8192;
-    return recipe::resolve(db,r,[&](const auto& selected){
-        auto all=p.fixed; all.insert(all.end(),selected.begin(),selected.end());
-        P active[512]{};
-        int n=ProjectTraits(m,all.data(),int(all.size()),p.level,p.rank,active);
-        if (n<0 || !recipe::matches(db,r,active,n,p.automatic)) return false;
-        std::set<P> hidden;
-        for (int i=0;i<n;++i) if (!db.categories.contains(active[i])) hidden.insert(active[i]);
-        return hidden==p.hidden;
-    },[](const auto&){return true;},&budget,&p.eligible,unsigned(std::ranges::count_if(p.automatic,[&](P id){return db.epics.contains(id);})));
-}
-namespace {
-using ProgressFn=void(*)(P);
-ProgressFn originalProgress{};
-thread_local P replacing{};
-void progressDuringBuild(P m) {
-    // The retained level is the new captain's starting level, not a series of
-    // level-up rewards. Subsequent real level-ups take the unmodified path.
-    if (m==replacing && m) at<unsigned>(m+0x4c0)=at<unsigned>(m+0x4b8);
-    else originalProgress(m);
-}
-bool observeProgress() {
-    if (originalProgress) return true;
-    void* target=reinterpret_cast<void*>(game::FromRVA(0x14034f9f0));
-    if (MH_CreateHook(target,reinterpret_cast<void*>(&progressDuringBuild),reinterpret_cast<void**>(&originalProgress))!=MH_OK)
-        return false;
-    if (MH_EnableHook(target)==MH_OK) return true;
-    MH_RemoveHook(target); originalProgress=nullptr; return false;
-}
 ReplaceResult replace(P m,const GenerationPlan& p,const recipe::Catalog& db,const recipe::Recipe& r,WritePickers write,bool& started) {
-    if (!Supported() || !m || replacing || !p.row || !p.army || !p.tree || !p.personality || !p.role ||
-        at<P>(m+0x178)!=p.army || at<unsigned>(m+0x174)!=p.index || at<P>(m+0x268)!=p.row ||
-        at<unsigned>(m+0x4b8)!=p.level || at<P>(m+0x168)!=p.originalSeed || !write || at<P>(m+0x48) || at<P>(m+0x190) ||
-        (at<std::uint64_t>(m+0x508)&(4|(1ull<<37))) ||
-        !r.complete() || !db.trees.contains(r.base) || db.trees.at(r.base)!=p.tree || r.tribe!=p.tribe ||
-        std::ranges::find(p.markers,r.specialization)==p.markers.end() || !db.rarityRecords.contains(r.rarity) ||
-        !recipe::matches(db,r,p.active.data(),p.active.size(),p.automatic)) return ReplaceResult::Rejected;
-    P ctx=army(m);
-    P begin=at<P>(m+0x2e8),end=at<P>(m+0x2f0);
-    if (!ctx || end<begin || (end-begin)%16 || (end-begin)/16>32 || !observeProgress()) return ReplaceResult::Rejected;
-    const unsigned char intel=at<unsigned char>(m+0x51a),column=at<unsigned char>(m+0x51b);
+    if (!Supported() || !m || !write || p.requested!=r || !r.complete() || !db.trees.contains(r.base) ||
+        !db.rarityRecords.contains(r.rarity) || !TribeAvailable(r.tribe) || !p.rank ||
+        at<P>(m+0x178)!=p.army || at<P>(m+0x268)!=p.row || at<unsigned>(m+0x174)!=p.index ||
+        at<P>(m+0x168)!=p.originalSeed || at<unsigned>(m+0x4b8)!=p.level || at<P>(m+0x48) ||
+        at<P>(m+0x190) || (at<std::uint64_t>(m+0x508)&(4|(1ull<<37)))) return ReplaceResult::Rejected;
+    const P ctx=army(m),begin=at<P>(m+0x2e8),end=at<P>(m+0x2f0);
+    if (!ctx || end<begin || (end-begin)%16 || (end-begin)/16>32) return ReplaceResult::Rejected;
+    const auto intel=at<unsigned char>(m+0x51a), column=at<unsigned char>(m+0x51b);
     const bool follower=!!(at<std::uint64_t>(m+0x508)&(1ull<<27));
     BuildParams params;
-    replayParams(params.ptr(),p);
-    at<unsigned char>(params.ptr()+0x17d)=follower;
-    struct Scope {Scope(P m){replacing=m;} ~Scope(){replacing=0;}} scope(m);
+    const P b=params.ptr();
+    at<unsigned>(b+0x178)=p.level+1; at<unsigned char>(b+0x17d)=follower;
+    call<void>(0x141c4edc0,b,db.trees.at(r.base));
+    call<void>(0x141c4ee54,b,r.tribe);
+    for(auto id:db.allSpecializations) if(id!=r.specialization) call<void>(0x141c62c44,b,id);
+    for(auto [id,_]:db.rarityRecords) if(id!=r.rarity) call<void>(0x141c62c44,b,id);
+    call<void>(0x141c4ee48,b,r.specialization);call<void>(0x141c4ee48,b,r.rarity);
+    for(P id:p.grants) call<void>(0x141c62aa4,b,id);
+    for(P id:p.exclude) call<void>(0x141c62ab0,b,id);
     started=true;
-    call<P>(0x141bbfe7c,m,ctx,params.ptr(),intel,p.row);
-    // Restore the ordinary remap and unlock later natural trait progression
-    // after using the engine's explicit-list builder mode for this one build.
-    call<void>(0x141bb83ec,m,P(0));
-    call<void>(game::kFactionMemberSetFlag,m,38u,false);
-    call<void>(game::kFactionMemberSetFlag,m,34u,true);
-    call<void>(game::kFactionMemberUpdateTraits,m,0u);
-    std::vector<P> active,markers,pickers;
-    if (!records(m+0x1e0,32,pickers)) return ReplaceResult::ChangedUnexpectedly;
-    auto wanted=p.pickers;
-    for (size_t i=0;i<pickers.size();++i) {
-        P trait=at<P>(at<P>(m+0x1e0)+i*32+8);
-        if (trait && !db.definitions.contains(trait)) return ReplaceResult::ChangedUnexpectedly;
-        if (!db.categories.contains(trait) && !p.removed.contains(pickers[i]) && !db.managedPickers.contains(pickers[i]) &&
-            !db.managedTraits.contains(trait) && std::ranges::find(wanted,pickers[i])==wanted.end()) wanted.push_back(pickers[i]);
+    call<P>(0x141bbfe7c,m,ctx,b,intel,p.row);
+    std::vector<P> markers,active;
+    if(at<P>(m+0x178)!=p.army || at<P>(m+0x268)!=p.row || at<unsigned>(m+0x174)!=p.index ||
+       at<unsigned char>(m+0x51b)!=column || !!(at<std::uint64_t>(m+0x508)&(1ull<<27))!=follower ||
+       at<unsigned>(m+0x4b8)!=p.level || at<P>(m+0x188)!=db.trees.at(r.base) || at<P>(m+0x328)!=r.tribe ||
+       at<P>(m+0x390)!=db.rarityRecords.at(r.rarity) || !records(m+0x1b0,8,markers) ||
+       std::ranges::find(markers,r.specialization)==markers.end() ||
+       std::ranges::any_of(markers,[&](P v){return (db.allSpecializations.contains(v) && v!=r.specialization) ||
+           (db.rarityRecords.contains(v) && v!=r.rarity);}) || !records(m+0x198,8,active))
+        return ReplaceResult::ChangedUnexpectedly;
+    if(optionalResult(db,r,active)) return ReplaceResult::Replaced;
+    // Direct grants and later rewards do not consult the weighted-draw exclusion list.
+    // Only reconcile optional slots if the finished native result actually differs.
+    std::vector<P> native,fixed;
+    if (!records(m+0x1e0,32,native)) return ReplaceResult::ChangedUnexpectedly;
+    const P slots=at<P>(m+0x1e0);
+    for(size_t i=0;i<native.size();++i) {
+        P v=at<P>(slots+32*i+8);
+        if (!db.categories.contains(v) || db.managedTraits.contains(v) || db.managedPickers.contains(native[i]))
+            fixed.push_back(native[i]);
     }
-    if (!std::ranges::is_permutation(pickers,wanted) && !write(m,wanted)) return ReplaceResult::ChangedUnexpectedly;
-    if (at<P>(m+0x178)!=p.army || at<unsigned>(m+0x174)!=p.index || at<P>(m+0x268)!=p.row ||
-        at<unsigned char>(m+0x51b)!=column || at<unsigned>(m+0x4b8)!=p.level || at<P>(m+0x168)!=p.seed ||
-        at<P>(m+0x188)!=p.tree || at<P>(m+0x318)!=p.role || at<P>(m+0x270)!=p.personality || at<P>(m+0x390)!=db.rarityRecords.at(r.rarity) ||
-        !!(at<std::uint64_t>(m+0x508)&(1ull<<27))!=follower || !records(m+0x198,8,active) ||
-        !records(m+0x1b0,8,markers) || !std::ranges::is_permutation(markers,p.markers) ||
-        at<P>(m+0x328)!=p.tribe || !records(m+0x1e0,32,pickers) || !std::ranges::is_permutation(pickers,wanted) ||
-        !recipe::matches(db,r,active.data(),active.size(),p.automatic) ||
-        !std::ranges::all_of(p.active,[&](P v){return std::ranges::find(active,v)!=active.end();})) return ReplaceResult::ChangedUnexpectedly;
+    std::set<P> automatic;
+    for(P v:active) if(db.managedTraits.contains(v) || !db.categories.contains(v)) automatic.insert(v);
+    std::vector<P> wanted;
+    unsigned budget=8192;
+    bool fits=recipe::resolve(db,r,[&](const auto& picks){
+        wanted=fixed;
+        for(P id:picks) if(std::ranges::find(wanted,id)==wanted.end()) wanted.push_back(id);
+        P projected[512]{};
+        int n=ProjectTraits(m,wanted.data(),int(wanted.size()),p.level,p.rank,projected);
+        return n>=0 && recipe::matches(db,r,projected,n,automatic);
+    },[&](const auto& picks){return permitsGrants(m,picks) && recipe::fitsCore(db,fixed,picks);},&budget);
+    if(!fits || !write(m,wanted) || !records(m+0x198,8,active) || !optionalResult(db,r,active))
+        return ReplaceResult::ChangedUnexpectedly;
     return ReplaceResult::Replaced;
 }
+}
+bool PlanGeneration(P m,P rank,const recipe::Catalog& db,const recipe::Recipe& r,GenerationPlan& p,std::string& error) {
+    __try {return makePlan(m,rank,db,r,p,error);}
+    __except(EXCEPTION_EXECUTE_HANDLER) {error="Could not prepare the native generation inputs.";return false;}
 }
 ReplaceResult ReplaceCaptain(P m,const GenerationPlan& p,const recipe::Catalog& db,const recipe::Recipe& r,WritePickers write) {
     bool started=false;
     __try {return replace(m,p,db,r,write,started);}
-    __except(GetExceptionCode()==EXCEPTION_ACCESS_VIOLATION?EXCEPTION_EXECUTE_HANDLER:EXCEPTION_CONTINUE_SEARCH) {
-        replacing=0;
-        return started?ReplaceResult::ChangedUnexpectedly:ReplaceResult::Rejected;
-    }
+    __except(EXCEPTION_EXECUTE_HANDLER) {return started?ReplaceResult::ChangedUnexpectedly:ReplaceResult::Rejected;}
 }
 int OrderCheck(P m,P contract,unsigned level,P title,unsigned name,const P* active,int count,P& reason) {
     __try {

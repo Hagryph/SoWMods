@@ -38,20 +38,12 @@ int RewardPickers(P member,P reward,bool remove,P (&out)[128]);
 // -1 unavailable, 0 no failure, 1 failure; never dispatches a contract.
 int ProjectTraits(P member,const P* pickers,int count,unsigned level,P rank,P (&active)[512],P* byPicker=nullptr);
 struct GenerationPlan {
-    P tree{},personality{},role{},tribe{},seed{},army{},row{},originalSeed{};
+    P army{},row{},originalSeed{},rank{};
     unsigned level{},index{};
-    std::vector<P> markers,pickers,active;
-    std::vector<P> fixed;
-    std::set<P> automatic,removed;
-    std::map<P,std::set<P>> eligible;
-    std::set<P> singles,hidden;
-    P remap{},rank{};
-    unsigned char intel{};
-    bool follower{};
-    std::vector<std::array<P,4>> missionSlots;
+    recipe::Recipe requested;
+    std::vector<P> grants,exclude;
 };
-bool FitsProfile(const recipe::Catalog&,const recipe::Recipe&,const GenerationPlan&);
-bool PlanGeneration(P target,P rank,const recipe::Catalog&,const recipe::Recipe&,GenerationPlan&,std::string& error,const GenerationPlan* profile=nullptr);
+bool PlanGeneration(P target,P rank,const recipe::Catalog&,const recipe::Recipe&,GenerationPlan&,std::string& error);
 enum class ReplaceResult { Rejected, Replaced, ChangedUnexpectedly };
 using WritePickers=bool(*)(P,const std::vector<P>&);
 ReplaceResult ReplaceCaptain(P target,const GenerationPlan&,const recipe::Catalog&,const recipe::Recipe&,WritePickers);

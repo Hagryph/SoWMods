@@ -87,7 +87,6 @@ struct Snapshot {
 };
 struct Draft {
     std::map<Kind,std::pair<uint64_t,Choice>> edits;
-    std::shared_ptr<const engine::GenerationPlan> profile;
     bool dirty() const { return !edits.empty(); }
     bool permits(Kind k,uint64_t field) const {
         if (!dirty()) return true;
@@ -340,9 +339,14 @@ bool LoadRecipeCatalog(const Catalog& catalog,recipe::Catalog& db,Ptr army) {
     for (const auto& [id,name]:pickers->second) {
         recipe::Picker route{id,Links(id,0xb2e40fc1),Links(id,0x4cf9fd36),Links(id,0x0fedbe24)};
         if (auto binding=db.classOnlyPickers.find(id);binding!=db.classOnlyPickers.end()) route.required.push_back(binding->second);
+        db.routes.emplace(id,route);
         std::set<Ptr> outputs;
-        for (auto e:Links(id,0x6bd57b1d)) for (auto trait:Links(e,0xbcb47686))
+        bool hiddenOutput=false;
+        for (auto e:Links(id,0x6bd57b1d)) for (auto trait:Links(e,0xbcb47686)) {
             if (db.categories.contains(trait)) outputs.insert(trait);
+            else hiddenOutput=true;
+        }
+        if (!hiddenOutput && !outputs.empty()) db.optionalOnly.insert(id);
         for (auto trait:outputs) db.producers[trait].push_back(route);
         for (auto trait:outputs) if (db.categories.at(trait)==2 || db.managedPickers.contains(id))
             db.managedTraits.insert(trait);
@@ -609,7 +613,7 @@ bool SaveTraits(Ptr m,const std::vector<Ptr>& wanted) {
     __try { return SaveTraitsImpl(m,wanted); }
     __except(EXCEPTION_EXECUTE_HANDLER) { return false; }
 }
-enum class Op { Refresh, Generate, Profile, Save };
+enum class Op { Refresh, Generate, Save };
 struct Task { uint64_t session=0, baseline=0, field=0, request=0; Key selected; Op op=Op::Refresh; Kind kind=Kind::View; Draft draft; unsigned slot=0; Ptr expected=0; };
 Ptr DraftRole(Ptr m,const Draft& d) {
     auto it=d.edits.find(Kind::Role);
@@ -691,14 +695,6 @@ bool Commit(Ptr m,const Task& task,const Catalog& catalog,std::string& status) {
     return !name || engine::SetName(m,unsigned(name->value));
 }
 bool Current();
-// Kit preparation belongs to the draft, not to the selector popup that started it.
-void PublishProfile(const Task& task,std::shared_ptr<const engine::GenerationPlan> plan,const std::string& error) {
-    if (!Current() || g_snapshot.session!=task.session || g_snapshot.selected!=task.selected ||
-        g_snapshot.baseline!=task.baseline || BuildRecipe(g_draft)!=BuildRecipe(task.draft)) return;
-    g_draft.profile=std::move(plan);
-    g_snapshot.status=g_draft.profile?"Automatic kit ready.":error.empty()?"Could not prepare this kit. Press Generate to retry.":error;
-    if (!g_draft.profile) Log(g_snapshot.status.c_str());
-}
 void RunTask(Task* task) {
     if (!g_ui || !task->session || g_ui->SaveSession()!=task->session) return;
     try {
@@ -715,25 +711,20 @@ void RunTask(Task* task) {
         const Catalog catalog=LoadCatalog();
         if (task->op!=Op::Refresh && (!m || Stamp(m)!=task->baseline)) {
             snapshot.status="Captain changed. Draft discarded; no edits saved.";
-        } else if (task->op==Op::Generate || task->op==Op::Profile) {
+        } else if (task->op==Op::Generate) {
             Choice candidate;
             bool ok=false;
             if (task->kind==Kind::Regenerate) {
                 auto plan=std::make_shared<engine::GenerationPlan>();
                 recipe::Catalog db;
                 ok=Writable(m) && LoadRecipeCatalog(catalog,db,task->selected.army) &&
-                    engine::PlanGeneration(m,CellHash(Read<Ptr>(m+0x268),0x40c579dc,0),db,BuildRecipe(task->draft),*plan,snapshot.status,task->draft.profile.get());
-                if (task->op==Op::Profile) {
-                    std::lock_guard lock(g_mutex);
-                    PublishProfile(*task,ok?plan:nullptr,snapshot.status);
-                    return;
-                }
+                    engine::PlanGeneration(m,CellHash(Read<Ptr>(m+0x268),0x40c579dc,0),db,BuildRecipe(task->draft),*plan,snapshot.status);
                 if (ok) {
                     candidate.ticket=g_nextField.fetch_add(1);
-                    candidate.label=RecordName(plan->role);
-                    candidate.preview=it->label+"\nReplacement: "+candidate.label+"\nLevel "+std::to_string(plan->level+1)+
-                        "\n"+RecordName(plan->tree)+" | "+RecordName(plan->tribe)+" | "+RecordName(plan->personality);
-                    for (auto id:plan->automatic) candidate.preview+="\nAutomatic: "+RecordName(id);
+                    candidate.label="Generation settings";
+                    candidate.preview=it->label+"\nLevel "+std::to_string(plan->level+1);
+                    for (const auto& [kind,edit]:task->draft.edits) if (Selector(kind))
+                        candidate.preview+="\n"+edit.second.label;
                     for (const auto& [kind,edit]:task->draft.edits) if (Bucket(kind)) for (auto id:edit.second.pickers)
                         candidate.preview+="\n"+RecordName(id);
                     candidate.generation=std::move(plan);
@@ -747,8 +738,6 @@ void RunTask(Task* task) {
             for (auto& f:g_snapshot.fields) if (f.id==task->field) {
                 f.choices.clear();
                 if (ok) {
-                    if (task->kind==Kind::Regenerate && !task->draft.profile)
-                        PublishProfile(*task,candidate.generation,{});
                     f.choices.push_back(std::move(candidate));
                 }
                 g_snapshot.status=ok?"Apply to draft or cancel.":snapshot.status.empty()?"No compatible profile. Try generating again.":snapshot.status;
@@ -809,7 +798,7 @@ bool Enabled(const Field& f) {
     if (f.kind==Kind::Traits) return true;
     if (Selector(f.kind)) return g_snapshot.mayGenerate && !f.choices.empty() &&
         (f.kind!=Kind::Class || g_draft.edits.contains(Kind::Base));
-    if (Bucket(f.kind)) return f.kind!=Kind::Classes && bool(g_draft.profile);
+    if (Bucket(f.kind)) return g_snapshot.mayGenerate && f.kind!=Kind::Classes && BuildRecipe(g_draft).complete();
     if (f.kind==Kind::Regenerate) return g_snapshot.mayGenerate && BuildRecipe(g_draft).complete();
     if (Generator(f.kind)) return g_snapshot.mayGenerate &&
         (f.kind!=Kind::Advance || g_snapshot.mayAdvance);
@@ -847,8 +836,6 @@ bool ReadField(void* page, int index, HagUI_Property* property) {
         !g_draft.permits(field.kind,field.id) ? "Save or discard the current draft first" :
         field.kind == Kind::Picker ? "Part of a generated set. Use Trait generator." :
         field.kind==Kind::Class && !g_draft.edits.contains(Kind::Base) ? "Select a base class first." :
-        Bucket(field.kind) && BuildRecipe(g_draft).complete() && !g_draft.profile ?
-            (g_snapshot.status.empty()?"Kit unavailable. Press Generate to retry.":g_snapshot.status.c_str()) :
         field.kind==Kind::Regenerate || Bucket(field.kind) ? "Select class, advanced class, tribe and rarity to prepare the automatic kit." :
         Generator(field.kind) ? "Requires a supported, living, unspawned procedural captain" :
         field.kind == Kind::View ? "Engine-managed field" :
@@ -916,16 +903,11 @@ bool Apply(void*,uint64_t id,uint64_t choiceId) {
     }
     g_draft.stage(*f,*c);
     if (Selector(f->kind)) {
-        g_draft.profile.reset();
         std::erase_if(g_draft.edits,[](const auto& e){return Bucket(e.first);});
         auto spec=g_draft.edits.find(Kind::Class);
         if (f->kind==Kind::Base && spec!=g_draft.edits.end() &&
             !recipe::fitsClass(g_snapshot.recipeCatalog,c->value,spec->second.second.value)) g_draft.edits.erase(spec);
         g_snapshot.status.clear();
-        if (BuildRecipe(g_draft).complete()) {
-            auto t=DraftTask(Op::Profile); t->kind=Kind::Regenerate;
-            if (!Queue(std::move(t))) g_snapshot.status="Kit preparation could not start. Press Generate to retry.";
-        }
     }
     if (RecipeField(f->kind) && f->kind!=Kind::Regenerate)
         for (auto& field:g_snapshot.fields) if (field.kind==Kind::Regenerate) field.choices.clear();
@@ -953,7 +935,7 @@ void State(void* page,uint64_t id,uint64_t choice,HagUI_PopupState* out) {
         if (auto c=ChoiceById(*f,choice)) {
             if (Selector(f->kind)) {
                 if (!FitsSelector(*f,*c)) {out->unavailable=true; strcpy_s(out->status,"Conflicts with the selected kit.");}
-                else if (g_draft.profile) strcpy_s(out->status,"Applying a selector rebuilds the kit and clears optional picks.");
+                else if (BuildRecipe(g_draft).complete()) strcpy_s(out->status,"Applying a selector clears optional picks.");
             }
             if (c->disabled) {out->unavailable=true; strncpy_s(out->status,c->disabled,_TRUNCATE);}
             strncpy_s(out->preview,c->preview.c_str(),_TRUNCATE);
@@ -1002,38 +984,45 @@ void Discard(void*) {
 bool HandlesSet(void*,uint64_t id) {
     std::lock_guard lock(g_mutex); auto f=Find(id); return f && (f->kind==Kind::Traits || Bucket(f->kind));
 }
-struct OptionBatch {
-    uint64_t field{},session{},baseline{};
-    recipe::Recipe recipe;
-    std::shared_ptr<const engine::GenerationPlan> profile;
+struct InputCheck {
+    Key target;
+    uint64_t session{},baseline{},field{};
+    recipe::Recipe staged;
     std::set<Ptr> allowed;
-    bool ready=false,valid=false;
+    bool valid=false,ready=false;
 };
-std::shared_ptr<OptionBatch> latestBatch;
-void CheckOptions(void* context) {
-    std::unique_ptr<std::shared_ptr<OptionBatch>> owner(static_cast<std::shared_ptr<OptionBatch>*>(context));
-    auto batch=*owner;
-    recipe::Catalog db; std::vector<Ptr> candidates; unsigned bucket;
+std::shared_ptr<InputCheck> inputCheck;
+// Evaluate native picker records on the game thread, without running the captain builder.
+void CheckInputs(void* arg) {
+    std::unique_ptr<std::shared_ptr<InputCheck>> job(static_cast<std::shared_ptr<InputCheck>*>(arg));
+    const auto check=*job;
+    recipe::Catalog db; std::vector<Ptr> choices; size_t bucket;
     {
         std::lock_guard lock(g_mutex);
-        const auto* f=Find(batch->field);
-        if (!f || latestBatch!=batch || batch->profile!=g_draft.profile || batch->session!=g_snapshot.session ||
-            batch->baseline!=g_snapshot.baseline || !Bucket(f->kind)) return;
-        bucket=unsigned(f->kind)-unsigned(Kind::Immunities);
+        auto f=Find(check->field);
+        if (!f || inputCheck!=check || g_snapshot.session!=check->session || !Bucket(f->kind)) return;
         db=g_snapshot.recipeCatalog;
-        for (const auto& c:f->choices) if (batch->profile->eligible.contains(c.value)) candidates.push_back(c.value);
+        bucket=int(f->kind)-int(Kind::Immunities);
+        for (const auto& c:f->choices) choices.push_back(c.value);
     }
-    auto r=batch->recipe;
-    bool valid=engine::FitsProfile(db,r,*batch->profile);
     std::set<Ptr> allowed;
-    for (auto trait:candidates) {
-        r.traits[bucket].push_back(trait);
-        if (engine::FitsProfile(db,r,*batch->profile)) allowed.insert(trait);
-        r.traits[bucket].pop_back();
+    bool valid=false;
+    for (const auto& t:Targets()) if (t.key==check->target && Stamp(t.member)==check->baseline) {
+        auto r=check->staged;
+        auto rank=CellHash(Read<Ptr>(t.member+0x268),0x40c579dc,0);
+        engine::GenerationPlan plan;
+        std::string error;
+        valid=engine::PlanGeneration(t.member,rank,db,r,plan,error);
+        for (Ptr id:choices) {
+            r.traits[bucket].push_back(id);
+            if (engine::PlanGeneration(t.member,rank,db,r,plan,error)) allowed.insert(id);
+            r.traits[bucket].pop_back();
+        }
+        break;
     }
     std::lock_guard lock(g_mutex);
-    if (latestBatch==batch && Current() && g_snapshot.session==batch->session && g_draft.profile==batch->profile) {
-        batch->valid=valid; batch->allowed=std::move(allowed); batch->ready=true;
+    if (inputCheck==check && Current() && g_snapshot.session==check->session) {
+        check->ready=true;check->valid=valid;check->allowed=std::move(allowed);
     }
 }
 bool Compatible(const Field& f,uint64_t candidate,const uint64_t* picks,int n) {
@@ -1046,34 +1035,33 @@ bool Compatible(const Field& f,uint64_t candidate,const uint64_t* picks,int n) {
     if (candidate) set.push_back(f.choices[candidate-1].value);
     if (Bucket(f.kind)) {
         auto r=BuildRecipe(g_draft);
-        if (!r.complete() || !g_draft.profile || f.kind==Kind::Classes) return false;
-        auto bucket=int(f.kind)-int(Kind::Immunities);
-        r.traits[bucket]=std::move(set);
+        if (!r.complete() || f.kind==Kind::Classes) return false;
+        r.traits[int(f.kind)-int(Kind::Immunities)]=std::move(set);
         const auto& db=g_snapshot.recipeCatalog;
+        auto fixed=recipe::coreInputs(db,r);
         unsigned budget=8192;
-        if (!recipe::resolve(db,r,[](const auto&){return true;},[](const auto&){return true;},&budget,
-            &g_draft.profile->eligible,unsigned(std::ranges::count_if(g_draft.profile->automatic,[&](Ptr v){return db.epics.contains(v);})))) return false;
-        size_t count=0; Ptr only=0;
-        for (const auto& row:r.traits) if (!row.empty()) {count+=row.size();only=row.front();}
-        if (count<=1) return !count || g_draft.profile->singles.contains(only);
-        if (candidate) r.traits[bucket].pop_back();
-        if (!candidate && latestBatch && latestBatch->ready && latestBatch->profile==g_draft.profile &&
-            latestBatch->field==f.id && !r.traits[bucket].empty()) {
-            auto previous=r;
-            Ptr last=previous.traits[bucket].back();previous.traits[bucket].pop_back();
-            if (previous==latestBatch->recipe && latestBatch->allowed.contains(last)) return true;
+        if (!recipe::resolve(db,r,[](const auto&){return true;},[&](const auto& picked){
+            return recipe::fitsCore(db,fixed,picked);
+        },&budget)) return false;
+        auto& row=r.traits[int(f.kind)-int(Kind::Immunities)];
+        if (candidate) row.pop_back();
+        auto same=[&]{return inputCheck && inputCheck->field==f.id && inputCheck->session==g_snapshot.session &&
+            inputCheck->baseline==g_snapshot.baseline && inputCheck->target==g_snapshot.selected;};
+        if (!candidate && same() && inputCheck->ready && !row.empty()) {
+            auto last=row.back();row.pop_back();
+            if (r==inputCheck->staged && inputCheck->allowed.contains(last)) return true;
+            row.push_back(last);
         }
-        if (!latestBatch || latestBatch->field!=f.id || latestBatch->profile!=g_draft.profile || latestBatch->recipe!=r) {
-            auto batch=std::make_shared<OptionBatch>();
-            batch->field=f.id;batch->session=g_snapshot.session;batch->baseline=g_snapshot.baseline;
-            batch->profile=g_draft.profile;batch->recipe=std::move(r);
-            auto context=std::make_unique<std::shared_ptr<OptionBatch>>(batch);
-            latestBatch=batch;
-            if (g_ui->QueueGameTask(CheckOptions,context.get())) context.release();
-            else latestBatch.reset();
-            return false;
-        }
-        return latestBatch->ready && (candidate?latestBatch->allowed.contains(f.choices[candidate-1].value):latestBatch->valid);
+        if (same() && inputCheck->staged==r) return inputCheck->ready &&
+            (candidate?inputCheck->allowed.contains(f.choices[candidate-1].value):inputCheck->valid);
+        auto check=std::make_shared<InputCheck>();
+        check->field=f.id;check->target=g_snapshot.selected;check->baseline=g_snapshot.baseline;
+        check->session=g_snapshot.session;check->staged=std::move(r);
+        auto job=std::make_unique<std::shared_ptr<InputCheck>>(check);
+        inputCheck=check;
+        if (g_ui->QueueGameTask(CheckInputs,job.get())) job.release();
+        else inputCheck.reset();
+        return false;
     }
     return g_snapshot.traitRules.permits(set);
 }
