@@ -784,6 +784,22 @@ constexpr P treeCapAddress=0x1403517e0;
 using TreeCapFn=unsigned(*)(P,bool,bool*);
 TreeCapFn originalTreeCap=nullptr;
 thread_local P generatingTree=0;
+using RewardPredicate=bool(*)(P,P);
+RewardPredicate originalEligibility=nullptr;
+thread_local P rewardMember=0;
+thread_local const std::set<P>* deniedRewards=nullptr;
+bool eligibleDuringBuild(P member,P reward) {
+    return !(member==rewardMember && deniedRewards && deniedRewards->contains(reward)) &&
+        originalEligibility(member,reward);
+}
+bool installRewardGate() {
+    if (originalEligibility) return true;
+    auto target=reinterpret_cast<void*>(game::FromRVA(0x140105aec));
+    if (MH_CreateHook(target,reinterpret_cast<void*>(&eligibleDuringBuild),
+        reinterpret_cast<void**>(&originalEligibility))!=MH_OK) return false;
+    if (MH_EnableHook(target)==MH_OK) return true;
+    MH_RemoveHook(target);originalEligibility=nullptr;return false;
+}
 unsigned treeCapDuringBuild(P tree,bool follower,bool* capped) {
     return detail::queryTreeCap(originalTreeCap,tree,follower,capped,generatingTree);
 }
@@ -797,12 +813,16 @@ bool installBuildCap() {
     if (MH_EnableHook(target)==MH_OK) return true;
     MH_RemoveHook(target);originalTreeCap=nullptr;return false;
 }
-void buildAtClassCap(P member,P ctx,P params,unsigned char intel,P row,P tree) {
+void buildAtClassCap(P member,P ctx,P params,P row,P tree,const std::set<P>& blocked) {
     const P previous=generatingTree;
+    const P oldMember=rewardMember;
+    auto* oldDenied=deniedRewards;
     __try {
-        generatingTree=tree;
-        call<P>(0x141bbfe7c,member,ctx,params,intel,row);
-    } __finally {generatingTree=previous;}
+        generatingTree=tree;rewardMember=member;deniedRewards=&blocked;
+        // Fresh-member builder used inside the native same-seat replacement,
+        // without its destruction of the old captain and command relationships.
+        call<void>(0x141bbf928,member,ctx,params,row,P(0));
+    } __finally {generatingTree=previous;rewardMember=oldMember;deniedRewards=oldDenied;}
 }
 // Build the ordinary input packet. Unspecified fields keep the native constructor defaults.
 bool makePlan(P target,P rank,const recipe::Catalog& db,const recipe::Recipe& r,GenerationPlan& p,std::string& error,uint64_t session) {
@@ -884,6 +904,9 @@ bool makePlan(P target,P rank,const recipe::Catalog& db,const recipe::Recipe& r,
                 (db.allSpecializations.contains(marker) && marker!=r.specialization) ||
                 (db.combatClasses.contains(marker) && marker!=r.base) ||
                 (db.rarities.contains(marker) && marker!=r.rarity)) return false;
+            auto protectedMarkers=p.requiredMarkers;
+            if (role) protectedMarkers.insert(db.roles.at(role).markers.begin(),db.roles.at(role).markers.end());
+            if (!recipe::classRewardPool(db,r,protectedMarkers,p.forbiddenMarkers,p.blockedClassRewards)) return false;
             int count=ProjectTraits(m,inputs.data(),int(inputs.size()),p.generationLevel,rank,active);
             if(count<0 || !recipe::matches(db,r,active,count,requiredOutputs) ||
                std::count_if(active,active+count,[&](P id){return db.epics.contains(id);})>db.epicCaps.at(r.rarity)) return false;
@@ -937,16 +960,15 @@ bool makePlan(P target,P rank,const recipe::Catalog& db,const recipe::Recipe& r,
     p.exclude=recipe::exclusions(db,p.grants);
     return true;
 }
-ReplaceResult replace(P m,const GenerationPlan& p,const recipe::Catalog& db,const recipe::Recipe& r,WritePickers write,bool& started) {
+ReplaceResult replace(P original,P m,const GenerationPlan& p,const recipe::Catalog& db,const recipe::Recipe& r,WritePickers write) {
+    if (!original || !m || original==m) return ReplaceResult::Rejected;
     if (!Supported() || !m || !write || p.requested!=r || !r.complete() || !db.trees.contains(r.base) ||
         !db.rarityRecords.contains(r.rarity) || !TribeAvailable(r.tribe) || !p.rank ||
-        at<P>(m+0x178)!=p.army || at<P>(m+0x268)!=p.row || at<unsigned>(m+0x174)!=p.index ||
-        at<P>(m+0x168)!=p.originalSeed || at<unsigned>(m+0x4b8)!=p.level || at<P>(m+0x48) ||
-        at<P>(m+0x190) || (at<std::uint64_t>(m+0x508)&(4|(1ull<<37)))) return ReplaceResult::Rejected;
-    const P ctx=army(m),begin=at<P>(m+0x2e8),end=at<P>(m+0x2f0);
-    if (!ctx || end<begin || (end-begin)%16 || (end-begin)/16>32) return ReplaceResult::Rejected;
-    const auto intel=at<unsigned char>(m+0x51a), column=at<unsigned char>(m+0x51b);
-    const bool follower=!!(at<std::uint64_t>(m+0x508)&(1ull<<27));
+        at<P>(original+0x168)!=p.originalSeed || at<unsigned>(original+0x4b8)!=p.level) return ReplaceResult::Rejected;
+    const P ctx=army(original);
+    if (!ctx) return ReplaceResult::Rejected;
+    const auto intel=at<unsigned char>(original+0x51a), column=at<unsigned char>(original+0x51b);
+    const bool follower=!!(at<std::uint64_t>(original+0x508)&(1ull<<27));
     BuildParams params;
     const P b=params.ptr();
     const auto& event=p.encounter;
@@ -955,7 +977,7 @@ ReplaceResult replace(P m,const GenerationPlan& p,const recipe::Catalog& db,cons
         (!event.roles.empty() && std::ranges::find(event.roles,p.role)==event.roles.end()))) return ReplaceResult::Rejected;
     if (p.role) {
         if (!db.roleLists.contains(p.role) || !p.personality ||
-            !roleWitness(m,db.trees.at(r.base),db.roleLists.at(p.role),p.role,p)) return ReplaceResult::Rejected;
+            !roleWitness(original,db.trees.at(r.base),db.roleLists.at(p.role),p.role,p)) return ReplaceResult::Rejected;
         at<P>(b+0x170)=p.roleSeed;
         call<void>(0x141c62b24,b,p.personality);
         at<P>(b+0x148)=p.role; // native builder's single fixed-role input
@@ -970,9 +992,14 @@ ReplaceResult replace(P m,const GenerationPlan& p,const recipe::Catalog& db,cons
         if (!db.allSpecializations.contains(marker) && !db.rarityRecords.contains(marker)) call<void>(0x141c62c44,b,marker);
     for(P id:p.grants) if (std::ranges::find(event.grants,id)==event.grants.end()) call<void>(0x141c62aa4,b,id);
     for(P id:p.exclude) call<void>(0x141c62ab0,b,id);
-    if (!installBuildCap()) return ReplaceResult::Rejected;
-    started=true;
-    buildAtClassCap(m,ctx,b,intel,p.row,db.trees.at(r.base));
+    if (!installBuildCap() || (!p.blockedClassRewards.empty() && !installRewardGate())) return ReplaceResult::Rejected;
+    call<void>(0x141bc6014,m,p.army);
+    at<unsigned>(m+0x174)=p.index;
+    at<P>(m+0x268)=p.row;
+    buildAtClassCap(m,ctx,b,p.row,db.trees.at(r.base),p.blockedClassRewards);
+    call<void>(0x14061ba74,m); // Row-dependent gear and look, without broadcasting a live seat change.
+    at<unsigned char>(m+0x51a)=intel;
+    at<unsigned char>(m+0x51b)=column;
     std::vector<P> markers,active;
     if(at<P>(m+0x178)!=p.army || at<P>(m+0x268)!=p.row || at<unsigned>(m+0x174)!=p.index ||
        at<unsigned char>(m+0x51b)!=column || !!(at<std::uint64_t>(m+0x508)&(1ull<<27))!=follower ||
@@ -1032,13 +1059,36 @@ void refreshGeneratedTraits(P m,const GenerationPlan& p) {
     __finally {at<unsigned>(m+0x4b8)=p.level;}
 }
 bool verifyRestored(P m,const GenerationPlan& p,const recipe::Catalog& db) {
-    std::vector<P> active;
+    std::vector<P> active,markers;
+    const auto& r=p.requested;
     auto matches=[&]{return (!p.role || at<P>(m+0x318)==p.role) && equipmentMatches(m,p.weapons) &&
+        at<unsigned>(m+0x4b8)==p.level && at<P>(m+0x188)==db.trees.at(r.base) &&
+        at<P>(m+0x328)==r.tribe && at<P>(m+0x390)==db.rarityRecords.at(r.rarity) &&
+        records(m+0x1b0,8,markers) &&
+        std::ranges::all_of(p.requiredMarkers,[&](P id){return std::ranges::find(markers,id)!=markers.end();}) &&
+        std::ranges::none_of(markers,[&](P id){return p.forbiddenMarkers.contains(id) ||
+            (db.allSpecializations.contains(id) && id!=r.specialization) ||
+            (db.rarityRecords.contains(id) && id!=r.rarity);}) &&
         records(m+0x198,8,active) && recipe::optionalResult(db,p.requested,active,p.automatic) &&
         std::ranges::all_of(p.automatic,[&](P id){return std::ranges::find(active,id)!=active.end();});};
     if (matches()) return true;
     refreshGeneratedTraits(m,p);
     return matches();
+}
+bool detachedNode(P n) {return at<P>(n)==n && at<P>(n+8)==n;}
+P seatOwner(P m,const GenerationPlan& p) {
+    if (!m || at<P>(m)!=game::FromRVA(game::kFactionMemberVtable) ||
+        at<P>(m+0x168)!=p.originalSeed || at<unsigned>(m+0x174)!=p.index ||
+        at<P>(m+0x178)!=p.army || at<P>(m+0x268)!=p.row || at<unsigned>(m+0x4b8)!=p.level ||
+        at<P>(m+0x48) || at<P>(m+0x190) || (at<uint64_t>(m+0x508)&(4|(1ull<<37))) ||
+        !detachedNode(m+8) || at<P>(m+0x4f0) || at<int>(m+0x2d0)!=-1 ||
+        at<P>(m+0x2e8)!=at<P>(m+0x2f0)) return 0;
+    P ctx=army(m),pool=ctx?at<P>(ctx+0x20):0;
+    if (!pool) return 0;
+    const P b=at<P>(pool+0x18),e=at<P>(pool+0x20);
+    if (!b || e<b || (e-b)%sizeof(P) || (e-b)/sizeof(P)>4096 || p.index>=(e-b)/sizeof(P)) return 0;
+    P slot=b+p.index*sizeof(P);
+    return at<P>(slot)==m?slot:0;
 }
 }
 bool EquipmentGrantReady() {
@@ -1056,26 +1106,39 @@ bool PlanGeneration(P m,P rank,const recipe::Catalog& db,const recipe::Recipe& r
     __except(EXCEPTION_EXECUTE_HANDLER) {error="Could not prepare the native generation inputs.";return false;}
 }
 ReplaceResult ReplaceCaptain(P m,const GenerationPlan& p,const recipe::Catalog& db,const recipe::Recipe& r,WritePickers write) {
-    bool started=false;
-    GearScope gear{m,db,p.weapons};
+    P owned=0;
+    bool published=false;
+    GearScope gear{0,db,p.weapons};
     auto* previousGear=gearScope;
-    HateGateScope scope{db,r,m ? m+0x198 : 0};
+    HateGateScope scope{db,r};
     auto* previous=hateScope;
     __try {
         __try {
+            if (!Supported() || !seatOwner(m,p)) return ReplaceResult::SeatUnavailable;
+            call<void>(0x1419ed468,&owned);
+            if (!owned) return ReplaceResult::Rejected;
+            gear.member=owned;
+            scope.memberTraits=owned+0x198;
             if (!beginHateScope(scope)) return ReplaceResult::Rejected;
             if (!p.weapons.empty() && !installGearLocks()) return ReplaceResult::Rejected;
             gearScope=p.weapons.empty()?nullptr:&gear;
-            ReplaceResult result=ReplaceResult::Rejected;
-            bool restored=false;
-            __try {result=replace(m,p,db,r,write,started);}
-            __finally {if (started) restored=restoreLevel(m,p);}
-            if (result==ReplaceResult::Replaced && (!restored || !verifyRestored(m,p,db)))
-                return ReplaceResult::ChangedUnexpectedly;
-            return result;
-        } __finally {gearScope=previousGear;hateScope=previous;}
+            bool valid=replace(m,owned,p,db,r,write)==ReplaceResult::Replaced &&
+                restoreLevel(owned,p) && verifyRestored(owned,p,db);
+            // On the game thread. Keep the pool's intrusive-list position, then
+            // exchange unique ownership as in the native member loader (140f9a276).
+            published=detail::publishCandidate(m,owned,valid,[&]{return reinterpret_cast<P*>(seatOwner(m,p));},
+                [](P old,P candidate) {
+                    if (!detachedNode(candidate+0x18)) return false;
+                    if (!detachedNode(old+0x18)) call<void>(0x140f9a2c0,old+0x18,candidate+0x18);
+                    return true;
+                });
+            return published?ReplaceResult::Replaced:valid?ReplaceResult::SeatUnavailable:ReplaceResult::Rejected;
+        } __finally {
+            gearScope=previousGear;hateScope=previous;
+            if (owned) call<void>(0x1419ef15c,&owned);
+        }
     }
-    __except(EXCEPTION_EXECUTE_HANDLER) {return started?ReplaceResult::ChangedUnexpectedly:ReplaceResult::Rejected;}
+    __except(EXCEPTION_EXECUTE_HANDLER) {return published?ReplaceResult::CleanupFailed:ReplaceResult::Rejected;}
 }
 int OrderCheck(P m,P contract,unsigned level,P title,unsigned name,const P* active,int count,P& reason) {
     __try {

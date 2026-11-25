@@ -525,6 +525,9 @@ bool LoadRecipeCatalog(const Catalog& catalog,recipe::Catalog& db,Ptr army) {
         LoadClassRewards(db,id,Links(id,0x53373e4d),false);
         for (auto spec:Links(id,0x53373e4d)) if (db.classes.contains(spec)) {
             auto& kit=db.kits[spec].emplace_back();
+            kit.reward=id;
+            kit.addsMarkers=Links(id,0x53373e4d);
+            kit.removesMarkers=Links(id,0xa839eb20);
             kit.drawLists=Links(id,0xe4d587ea);
             auto gather=[&](auto& into,Ptr record,unsigned hash){
                 for (auto v:Links(record,hash)) into.insert(v);
@@ -1013,11 +1016,14 @@ bool Commit(Ptr m,const Task& task,const Catalog& catalog,std::string& status) {
         if (!c || !c->generation || !LoadRecipeCatalog(catalog,db,task.selected.army) ||
             !engine::ScopeClassDraws(db,r,task.selected.army)) return false;
         auto result=engine::ReplaceCaptain(m,*c->generation,db,r,SaveTraits);
-        if (result==engine::ReplaceResult::ChangedUnexpectedly)
-            status="Replacement ran, but the engine state did not match the preview. Inspect the captain before continuing.";
+        if (result==engine::ReplaceResult::SeatUnavailable)
+            status="Cannot safely replace this seat while it is referenced or has command relationships. No replacement made.";
+        else if (result==engine::ReplaceResult::CleanupFailed)
+            status="Captain replaced, but the engine failed to release the previous member. Restart before continuing.";
         else if (result==engine::ReplaceResult::Replaced)
             status="Replaced the selected captain at his original level and Army seat.";
-        return result==engine::ReplaceResult::Replaced;
+        else status="Candidate failed validation. The original captain was not replaced.";
+        return result==engine::ReplaceResult::Replaced || result==engine::ReplaceResult::CleanupFailed;
     }
     if (auto l=get(Kind::Level))
         return int(l->value)<=engine::LevelCap(m) && ApplyNative(m,Kind::Level,0,0,l->value);

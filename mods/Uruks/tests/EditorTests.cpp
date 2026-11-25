@@ -265,6 +265,33 @@ int main() {
             Check(!recipe::markerInputs(prereq,req,inputs,required,forbidden));
         }
         {
+            Ptr slot=1,owned=2;
+            unsigned links=0;
+            auto publish=[&](bool valid,bool canLink=true){
+                return engine::detail::publishCandidate(1,owned,valid,[&]{return &slot;},
+                    [&](Ptr old,Ptr next){Check(old==1 && next==2);++links;return canLink;});
+            };
+            Check(!publish(false) && slot==1 && owned==2 && !links);
+            slot=3;Check(!publish(true) && slot==3 && owned==2 && !links);
+            slot=1;Check(!publish(true,false) && slot==1 && owned==2 && links==1);
+            Check(publish(true) && slot==2 && owned==1 && links==2);
+        }
+        {
+            recipe::Catalog kits;recipe::Recipe request;request.base=1;request.specialization=2;
+            kits.types[1]=3;
+            recipe::ClassKit poison,curse,strip;
+            poison.reward=10;poison.addsMarkers={2,20};
+            curse.reward=11;curse.addsMarkers={2,21};
+            strip.reward=12;strip.removesMarkers={20};
+            kits.kits[2]={poison,curse,strip};
+            std::set<Ptr> denied;
+            Check(recipe::classRewardPool(kits,request,{2,20},{21},denied) && denied==std::set<Ptr>{11,12});
+            kits.markerGroups={{20,{99}},{21,{99}}};
+            Check(recipe::classRewardPool(kits,request,{2,20},{},denied) && denied==std::set<Ptr>{11,12});
+            kits.kits[2].erase(kits.kits[2].begin());
+            Check(!recipe::classRewardPool(kits,request,{2,20},{21},denied));
+        }
+        {
             recipe::Catalog gates;
             gates.categories={{101,1},{102,1},{103,5},{104,0},{105,3}};
             recipe::indexWeaknessGate(gates,201,{101},{103});

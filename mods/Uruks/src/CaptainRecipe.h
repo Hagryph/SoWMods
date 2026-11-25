@@ -23,6 +23,8 @@ struct ClassKit {
     std::set<Id> allowedTypes, blockedTypes, forbiddenMarkers, removed;
     std::vector<std::vector<Id>> requiredAny, grants;
     std::vector<Id> drawLists;
+    Id reward{};
+    std::vector<Id> addsMarkers, removesMarkers;
     bool fits(Id type) const {
         return !blockedTypes.contains(type) && (allowedTypes.empty() || allowedTypes.contains(type));
     }
@@ -111,6 +113,22 @@ inline bool compatibleMarkers(const Catalog& db,const std::set<Id>& markers) {
     for (Id id:markers) if (auto i=db.markerGroups.find(id);i!=db.markerGroups.end())
         for (Id group:i->second) if (!held.insert(group).second) return false;
     return true;
+}
+// Filter authored reward effects, not a sample of what the RNG happened to draw.
+inline bool classRewardPool(const Catalog& db,const Recipe& r,const std::set<Id>& required,
+                            const std::set<Id>& forbidden,std::set<Id>& blocked) {
+    blocked.clear();
+    bool available=false;
+    for (const auto& kit:db.kits.at(r.specialization)) {
+        auto markers=required;
+        markers.insert(kit.addsMarkers.begin(),kit.addsMarkers.end());
+        if (!kit.fits(db.types.at(r.base)) || !compatibleMarkers(db,markers) ||
+            std::ranges::any_of(kit.addsMarkers,[&](Id id){return forbidden.contains(id);}) ||
+            std::ranges::any_of(kit.removesMarkers,[&](Id id){return required.contains(id);})) {
+            blocked.insert(kit.reward);
+        } else available=true;
+    }
+    return available;
 }
 using WeaponSlots=std::map<unsigned,std::set<Id>>;
 using Loadout=std::map<unsigned,Id>; // zero reserves a hand that must remain empty

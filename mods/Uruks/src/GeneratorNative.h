@@ -13,6 +13,16 @@ template<class Query>
 unsigned queryTreeCap(Query query,P tree,bool follower,bool* capped,P generationTree) {
     return query(tree,follower && (!generationTree || tree!=generationTree),capped);
 }
+// On the game thread: locate the owner again after validation. The caller
+// releases 'owned' in both cases, so ownership may change only at commit.
+template<class Locate,class Link>
+bool publishCandidate(P original,P& owned,bool validated,Locate locate,Link link) {
+    if (!validated || !original || !owned || original==owned) return false;
+    P* slot=locate();
+    if (!slot || *slot!=original || !link(original,owned)) return false;
+    std::swap(*slot,owned);
+    return true;
+}
 }
 struct Look {
     P base{}, head{}, pieces[23]{}, designs[15]{};
@@ -56,10 +66,10 @@ struct GenerationPlan {
     recipe::Encounter encounter;
     recipe::Recipe requested;
     std::vector<P> grants,exclude;
-    std::set<P> requiredMarkers,forbiddenMarkers,automatic;
+    std::set<P> requiredMarkers,forbiddenMarkers,automatic,blockedClassRewards;
 };
 bool PlanGeneration(P target,P rank,const recipe::Catalog&,const recipe::Recipe&,GenerationPlan&,std::string& error,uint64_t session);
-enum class ReplaceResult { Rejected, Replaced, ChangedUnexpectedly };
+enum class ReplaceResult { Rejected, Replaced, ChangedUnexpectedly, SeatUnavailable, CleanupFailed };
 using WritePickers=bool(*)(P,const std::vector<P>&);
 ReplaceResult ReplaceCaptain(P target,const GenerationPlan&,const recipe::Catalog&,const recipe::Recipe&,WritePickers);
 int OrderCheck(P member,P contract,unsigned level,P title,unsigned name,const P* active,int count,P& reason);
