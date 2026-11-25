@@ -99,6 +99,7 @@ HagUIAPI* g_ui = nullptr;
 std::mutex g_mutex;
 Snapshot g_snapshot;
 std::atomic<bool> g_pending{false};
+std::atomic<bool> g_loadFailed{false};
 std::atomic<uint64_t> g_nextField{1};
 
 int VectorSize(Ptr vector, size_t stride, int limit = 4096) {
@@ -565,9 +566,7 @@ bool Commit(Ptr m,const Task& task,const Catalog& catalog,std::string& status) {
     if (title && !ApplyNative(m,Kind::Role,0,0,role)) return false;
     return !name || engine::SetName(m,unsigned(name->value));
 }
-void Run(void* context) {
-    std::unique_ptr<Task> task(static_cast<Task*>(context));
-    struct Finish { ~Finish(){ g_pending.store(false); } } finish;
+void RunTask(Task* task) {
     if (!g_ui || !task->session || g_ui->SaveSession()!=task->session) return;
     try {
         Snapshot snapshot;
@@ -607,11 +606,24 @@ void Run(void* context) {
             std::lock_guard lock(g_mutex);
             g_snapshot=std::move(snapshot); g_draft={};
         }
-    } catch (...) { Log("Uruk editor operation failed"); }
+    } catch (...) { g_loadFailed=true; Log("Uruk editor operation failed"); }
+}
+void GuardedRun(Task* task) {
+    __try { RunTask(task); }
+    __except(GetExceptionCode()==EXCEPTION_ACCESS_VIOLATION?EXCEPTION_EXECUTE_HANDLER:EXCEPTION_CONTINUE_SEARCH) {
+        g_loadFailed=true;
+        Log("Uruk editor native access failed; refresh can be retried");
+    }
+}
+void Run(void* context) {
+    std::unique_ptr<Task> task(static_cast<Task*>(context));
+    GuardedRun(task.get());
+    g_pending=false;
 }
 bool Queue(std::unique_ptr<Task> task) {
     if (g_pending.exchange(true)) return false;
-    if (!g_ui->QueueGameTask(Run, task.get())) { g_pending.store(false); return false; }
+    g_loadFailed=false;
+    if (!g_ui->QueueGameTask(Run, task.get())) { g_loadFailed=true; g_pending.store(false); return false; }
     task.release();
     return true;
 }
@@ -639,7 +651,8 @@ bool ReadField(void*, int index, HagUI_Property* property) {
         if (index) return false;
         *property = {};
         strcpy_s(property->label, "State");
-        strcpy_s(property->value, g_pending.load() ? "Loading captain state..." : "No loaded world. Refresh after loading a save.");
+        strcpy_s(property->value, g_pending.load() ? "Loading captain state..." : g_loadFailed.load() ?
+            "Captain refresh failed. Press Refresh to retry." : "Refresh after loading a save.");
         return true;
     }
     if (index >= static_cast<int>(g_snapshot.fields.size())) return false;
@@ -702,6 +715,7 @@ bool Apply(void*,uint64_t id,uint64_t choiceId) {
 void State(void*,uint64_t id,uint64_t choice,HagUI_PopupState* out) {
     *out={};
     std::lock_guard lock(g_mutex);
+    out->busy=g_pending.load();
     if (!Current()) return;
     out->dirty=g_draft.dirty(); out->busy=g_pending;
     out->canSave=g_draft.ready() && !out->busy;

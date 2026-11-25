@@ -16,6 +16,7 @@ Task g_queue[kQueueCap]{};
 int g_head = 0;
 int g_tail = 0;
 int g_count = 0;
+volatile LONG g_ready = 0;
 
 bool PopTask(Task& out) {
     ::AcquireSRWLockExclusive(&g_lock);
@@ -42,8 +43,9 @@ bool CallTaskSeh(HagUI_GameTaskFn fn, void* ctx) {
 
 }  // namespace
 
+void EnableGameTasks() { InterlockedExchange(&g_ready,1); }
 bool QueueGameTask(HagUI_GameTaskFn fn, void* ctx) {
-    if (!fn) return false;
+    if (!fn || !InterlockedCompareExchange(&g_ready,0,0)) return false;
     ::AcquireSRWLockExclusive(&g_lock);
     if (g_count >= kQueueCap) {
         ::ReleaseSRWLockExclusive(&g_lock);

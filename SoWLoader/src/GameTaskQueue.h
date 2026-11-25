@@ -5,6 +5,7 @@
 namespace sow {
 
 bool QueueGameTask(HagUI_GameTaskFn fn, void* ctx);
+void EnableGameTasks();
 void DrainGameTasks(int maxTasks);
 
 }  // namespace sow

@@ -37,11 +37,15 @@ void DrawPropertyEditor(const HagUI::Widget& widget, ImVec2 position, ImVec2 siz
     if (popup.state) popup.state(widget.context, 0, 0, &state);
     ImGui::PushFont(font, 15.0f * (std::min)(sx, sy));
     ImGui::SetCursorScreenPos(position);
-    ImGui::SetNextItemWidth((std::max)(32.0f, size.x - (popup.state ? 330.f : 108.f) * sx));
+    const auto buttonSpace=[](const char* label) {
+        return ImGui::CalcTextSize(label).x + 2*ImGui::GetStyle().FramePadding.x + ImGui::GetStyle().ItemSpacing.x;
+    };
+    const float commands=buttonSpace("Refresh")+(popup.state ? buttonSpace("Discard")+buttonSpace(popup.saveLabel) : 0.f);
+    ImGui::SetNextItemWidth((std::max)(1.f,size.x-commands));
     ImGui::InputTextWithHint("##fields", "Filter fields...", widget.propertySearch, sizeof(widget.propertySearch));
     ImGui::SameLine();
     ImGui::BeginDisabled(state.busy || state.dirty);
-    if (ImGui::Button("Refresh", ImVec2(96 * sx, 28 * sy))) source.refresh(widget.context);
+    if (ImGui::Button("Refresh")) source.refresh(widget.context);
     ImGui::EndDisabled();
     if (popup.state) {
         ImGui::SameLine();
@@ -62,7 +66,9 @@ void DrawPropertyEditor(const HagUI::Widget& widget, ImVec2 position, ImVec2 siz
             (Matches(field.label, widget.propertySearch) || Matches(field.value, widget.propertySearch))) fields.push_back(field);
     }
     ImGui::SetCursorScreenPos(ImVec2(position.x, position.y + 38 * sy));
-    if (ImGui::BeginChild("##properties", ImVec2(size.x, (std::max)(1.0f, size.y - 38 * sy)), ImGuiChildFlags_Borders)) {
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding,ImVec2(8*sx,6*sy));
+    ImGui::PushStyleVar(ImGuiStyleVar_CellPadding,ImVec2(6*sx,3*sy));
+    if (ImGui::BeginChild("##properties", ImVec2(size.x, (std::max)(1.0f, size.y - 38 * sy)), ImGuiChildFlags_Borders|ImGuiChildFlags_AlwaysUseWindowPadding)) {
         if (ImGui::BeginTable("##grid", 2, ImGuiTableFlags_SizingStretchSame | ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_BordersInnerV)) {
             ImGuiListClipper clipper;
             const float rowHeight = 80 * sy;
@@ -123,6 +129,7 @@ void DrawPropertyEditor(const HagUI::Widget& widget, ImVec2 position, ImVec2 siz
         if (fields.empty()) ImGui::TextDisabled("No matching fields.");
     }
     ImGui::EndChild();
+    ImGui::PopStyleVar(2);
     if (widget.editingField) {
         ImGui::OpenPopup(widget.popupTitle.c_str());
         widget.editingField = 0;

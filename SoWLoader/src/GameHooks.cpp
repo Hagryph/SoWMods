@@ -143,13 +143,11 @@ static void __fastcall HookSaveToFrontEndClear(void* self) {
     if (g_inSave != 0) ::InterlockedExchange(&g_pendingMenuClear, 1);
 }
 
-using CursorRecenterFn = std::uint64_t (__fastcall*)();
-static CursorRecenterFn oCursorRecenter = nullptr;
-
-static std::uint64_t __fastcall HookCursorRecenter() {
-    const std::uint64_t r = oCursorRecenter();
+using ClientUpdateFn = void (__fastcall*)(void*);
+static ClientUpdateFn oClientUpdate = nullptr;
+static void __fastcall HookClientUpdate(void* self) {
+    oClientUpdate(self);
     if (g_inSave != 0) DrainGameTasks(1);
-    return r;
 }
 
 void GameHooks::Install() {
@@ -207,16 +205,15 @@ void GameHooks::Install() {
         log.Line(std::string("[gamehooks] front-end item refresh hook FAILED @ ") + frontEndRefreshAddr);
     }
 
-    void* cursorTarget = reinterpret_cast<void*>(game::FromRVA(game::kCursorRecenter));
-    char cursorAddr[32]{};
-    ::wsprintfA(cursorAddr, "0x%p", cursorTarget);
-    if (MH_CreateHook(cursorTarget, reinterpret_cast<void*>(&HookCursorRecenter),
-                      reinterpret_cast<void**>(&oCursorRecenter)) == MH_OK &&
-        MH_EnableHook(cursorTarget) == MH_OK) {
-        log.Line(std::string("[gamehooks] cursor recenter hooked @ ") + cursorAddr +
-                 " - queued game tasks drain here");
+    void* update = reinterpret_cast<void*>(game::FromRVA(0x1401a864c));
+    const unsigned char prefix[]={0x48,0x8b,0xc4,0x55,0x53,0x56,0x57,0x41,0x54,0x41,0x55,0x41};
+    if (!memcmp(update,prefix,sizeof prefix) &&
+        MH_CreateHook(update,reinterpret_cast<void*>(&HookClientUpdate),reinterpret_cast<void**>(&oClientUpdate))==MH_OK &&
+        MH_EnableHook(update)==MH_OK) {
+        log.Line("[gamehooks] client update hooked - queued game tasks drain after update");
+        EnableGameTasks();
     } else {
-        log.Line(std::string("[gamehooks] cursor recenter hook FAILED @ ") + cursorAddr);
+        log.Line("[gamehooks] client update hook FAILED");
     }
 }
 

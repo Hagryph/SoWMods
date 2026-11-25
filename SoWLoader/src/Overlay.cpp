@@ -842,7 +842,8 @@ void Overlay::DrawHub() {
         const float fTabPx = 15.0f * s, pad = 16.0f * sx, gap = 12.0f * sx, cellH = 35.0f * sy;
         const float navY = Y(28), hairY = Y(28 + 34);
         float cx = X(60);
-        for (int i = 0; i <= (int)vis.size(); ++i) {
+        const bool submenu = activeTab_ && pages[HagUI::Get().ResolvePage(vis[activeTab_-1])].parent>=0;
+        for (int i = 0; !submenu && i <= (int)vis.size(); ++i) {
             std::string label = (i == 0) ? "WELCOME" : pages[vis[i - 1]].title;
             for (auto& lc : label) lc = (char)::toupper((unsigned char)lc);
             const bool active = activeTab_ == i;
@@ -858,7 +859,7 @@ void Overlay::DrawHub() {
             if (active) dl->AddLine(ImVec2(cx, hairY), ImVec2(cx + cellW, hairY), uAccent, 2.0f * s);
             cx += cellW + gap;
         }
-        dl->AddLine(ImVec2(X(60), hairY), ImVec2(X(772), hairY), IM_COL32(0xE0, 0xB3, 0x4A, 41), 1.0f * s);
+        if (!submenu) dl->AddLine(ImVec2(X(60), hairY), ImVec2(X(772), hairY), IM_COL32(0xE0, 0xB3, 0x4A, 41), 1.0f * s);
 
         // ---- active page ----
         if (activeTab_ == 0) {   // content origin AS: x=60 y=86
@@ -876,26 +877,24 @@ void Overlay::DrawHub() {
             // registered page — 1:1 with the AS option page (buildOptionPage / makeCheckbox /
             // paintButton): header bold 21 at (60,86); rows from y+44, 40 apart.
             auto& hub = HagUI::Get();
-            if (!inSave) hub.ResetNavigation();
             const int currentPage = hub.ResolvePage(vis[activeTab_ - 1]);
             const HagUI::Page& pg = pages[currentPage];
-            float titleX = 60;
+            const float titleY = pg.parent>=0 ? 32.f : 86.f;
+            const float bottom = pg.parent>=0 ? 394.f : 434.f;
             if (pg.parent >= 0) {
-                ImGui::SetCursorScreenPos(ImVec2(X(60), Y(86)));
-                if (ImGui::ArrowButton("##back", ImGuiDir_Left)) hub.Back();
-                if (ImGui::IsItemHovered()) ImGui::SetTooltip("Back");
-                titleX = 88;
+                ImGui::SetCursorScreenPos(ImVec2(X(700), Y(406)));
+                if (ImGui::Button("Back",ImVec2(72*sx,28*sy))) hub.Back();
             }
-            AddTextCX(dl, fTab_, 21.0f * s, ImVec2(X(titleX), Y(86)), uText, pg.title.c_str(), XS);
+            AddTextCX(dl, fTab_, 21.0f * s, ImVec2(X(60), Y(titleY)), uText, pg.title.c_str(), XS);
             float headerRight = X(772);
-            float ry = 86 + 44;
+            float ry = titleY + 44;
             for (int i = 0; i < (int)pg.widgets.size(); ++i) {
                 const HagUI::Widget& wd = pg.widgets[i];
                 if (!HagUI::WidgetVisible(wd)) continue;
                 ImGui::PushID(i);
                 if (wd.type == HagUI::WProperties) {
-                    DrawPropertyEditor(wd, ImVec2(X(60), Y(ry)), ImVec2(712 * sx, (434 - ry) * sy), sx, sy, fBody_);
-                    ry = 434;
+                    DrawPropertyEditor(wd, ImVec2(X(60), Y(ry)), ImVec2(712 * sx, (bottom - ry) * sy), sx, sy, fBody_);
+                    ry = bottom;
                 } else if (wd.type == HagUI::WToggle) {
                     // full-width clickable row (AS: invisible hit rect w x 30, flips the box)
                     ImGui::SetCursorScreenPos(ImVec2(X(60), Y(ry)));
@@ -925,7 +924,7 @@ void Overlay::DrawHub() {
                     const float bh = 30.0f * sy;
                     const float titleH = fTab_ ? fTab_->CalcTextSizeA(21.0f * s, 3.4e38f, 0.0f, pg.title.c_str()).y : 21.0f * s;
                     const ImVec2 pa(header ? headerRight - bw : X(60),
-                                    header ? Y(86) + (titleH - bh) * 0.5f : Y(ry));
+                                    header ? Y(titleY) + (titleH - bh) * 0.5f : Y(ry));
                     const ImVec2 pb(pa.x + bw, pa.y + bh);
                     if (header) headerRight = pa.x - 12.0f * sx;
                     ImGui::SetCursorScreenPos(pa);
@@ -947,7 +946,7 @@ void Overlay::DrawHub() {
                     // list (header on facet 0, sub-header on facet 1). ImGui's child gives scrollbar/wheel.
                     const float listX = 60.0f, listW = 712.0f;
                     // extra breathing room above and below the filter row (search .. filter .. list)
-                    const float searchAS = ry, filterAS = ry + 38.0f, listTopAS = ry + 80.0f, listBotAS = 434.0f;
+                    const float searchAS = ry, filterAS = ry + 38.0f, listTopAS = ry + 80.0f, listBotAS = bottom;
                     ImGui::PushFont(fBody_, 15.0f * s);
                     // shape: rounded frames/popups, roomy padding, a visible gold scrollbar — applies to
                     // the search box, the facet combo buttons AND their popups (4 vars, popped at the end).
