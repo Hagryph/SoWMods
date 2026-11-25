@@ -40,9 +40,10 @@ int RewardPickers(P member,P reward,bool remove,P (&out)[128]);
 int ProjectTraits(P member,const P* pickers,int count,unsigned level,P rank,P (&active)[512],P* byPicker=nullptr);
 struct GenerationPlan {
     P army{},row{},originalSeed{},rank{};
-    unsigned level{},index{};
+    unsigned level{},generationLevel{},index{};
     recipe::Recipe requested;
     std::vector<P> grants,exclude;
+    std::set<P> requiredMarkers,forbiddenMarkers,automatic;
 };
 bool PlanGeneration(P target,P rank,const recipe::Catalog&,const recipe::Recipe&,GenerationPlan&,std::string& error);
 enum class ReplaceResult { Rejected, Replaced, ChangedUnexpectedly };

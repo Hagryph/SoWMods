@@ -30,6 +30,7 @@ struct ClassKit {
 struct Catalog {
     std::map<Id, unsigned> categories;
     std::map<Id,Id> weaknessGatedHateEntries; // native option row -> single Hate output
+    std::map<Id,std::set<Id>> hiddenDependencies,hiddenProducers;
     std::map<Id, std::vector<Picker>> producers;
     std::set<Id> definitions, classes, rarities;
     std::set<Id> epics;
@@ -40,6 +41,8 @@ struct Catalog {
     std::map<Id,Id> classOnlyPickers;
     std::set<Id> combatClasses;
     std::map<Id,Id> trees, types, baseGrants;
+    using RewardPools=std::map<Id,std::set<Id>>;
+    std::map<Id,RewardPools> classRewards;
     std::map<Id,std::vector<Id>> tribes;
     std::map<Id,std::vector<ClassKit>> kits;
     std::set<Id> managedPickers, managedTraits;
@@ -56,6 +59,15 @@ struct Recipe {
     bool operator==(const Recipe&) const = default;
 };
 struct Slot { Id picker{}, definition{}; };
+template<class Eligible>
+void addClassRewardDraws(const Catalog& db,const Recipe& r,engine::TraitRules& draws,Eligible eligible) {
+    for (Id owner:{r.base,r.specialization}) if (auto it=db.classRewards.find(owner);it!=db.classRewards.end())
+        for (const auto& [track,options]:it->second) {
+            std::set<Id> pool;
+            for (Id p:options) if (eligible(p)) pool.insert(p);
+            if (!pool.empty()) draws.sources.push_back({1,{std::move(pool)}});
+        }
+}
 inline void indexWeaknessGate(Catalog& db,Id entry,const std::vector<Id>& outputs,const std::vector<Id>& anyOf) {
     if (outputs.size()!=1) return;
     const auto output=db.categories.find(outputs.front());
@@ -109,6 +121,45 @@ inline bool fitsClass(const Catalog& db,Id base,Id specialization) {
     auto kits=db.kits.find(specialization);
     return type!=db.types.end() && type->second && kits!=db.kits.end() &&
         std::ranges::any_of(kits->second,[&](const ClassKit& kit){return kit.fits(type->second);});
+}
+inline bool markerInputs(const Catalog& db,const Recipe& r,const std::vector<Id>& grants,
+                         std::set<Id>& required,std::set<Id>& forbidden) {
+    required={r.base,r.specialization,r.rarity}; forbidden.clear();
+    for (Id p:grants) if (auto it=db.routes.find(p);it!=db.routes.end()) {
+        for (Id m:it->second.required) {
+            if ((db.combatClasses.contains(m) && m!=r.base) ||
+                (db.allSpecializations.contains(m) && m!=r.specialization) ||
+                (db.rarities.contains(m) && m!=r.rarity)) return false;
+            required.insert(m);
+        }
+        forbidden.insert(it->second.forbidden.begin(),it->second.forbidden.end());
+    }
+    return std::ranges::none_of(required,[&](Id id){return forbidden.contains(id);});
+}
+// Try the native inputs first. Only expand missing, non-UI prerequisites; the
+// final projection must still yield precisely the player's visible categories.
+template<class Accept>
+bool withHiddenGrants(const Catalog& db,std::vector<Id>& grants,unsigned& budget,Accept& accept) {
+    if (!budget || grants.size()>512) return false;
+    --budget;
+    if (accept(grants)) return true;
+    const size_t count=grants.size();
+    for (size_t i=0;i<count;++i) {
+        auto deps=db.hiddenDependencies.find(grants[i]);
+        if (deps==db.hiddenDependencies.end()) continue;
+        for (Id d:deps->second) {
+            auto routes=db.hiddenProducers.find(d);
+            if (db.categories.contains(d) || routes==db.hiddenProducers.end()) continue;
+            for (Id p:routes->second) {
+                if (!budget) return false;
+                if (std::ranges::find(grants,p)!=grants.end() || !fitsCore(db,grants,{p})) continue;
+                grants.push_back(p);
+                if (withHiddenGrants(db,grants,budget,accept)) return true;
+                grants.pop_back();
+            }
+        }
+    }
+    return false;
 }
 
 // A dormant slot is engine-managed too. Never erase it just because one of its

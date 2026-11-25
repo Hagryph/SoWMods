@@ -406,6 +406,7 @@ bool scopeDraws(recipe::Catalog& db,const recipe::Recipe& r,P armyRecord) {
         }
     }
     direct.insert(db.fixedClassInputs.begin(),db.fixedClassInputs.end());
+    recipe::addClassRewardDraws(db,r,draws,[&](P p){return !direct.contains(p) && draw(p);});
     for (const auto& pool:alternatives) draws.sources.push_back({1,{pool}});
     eachRecord(call<P>(0x141bbedc4,armyRecord),0x141bb66d4,0x141bb7318,[&](P list){lists.insert(list);});
     for (auto list:lists) addDrawList(list,markers,draws,draw);
@@ -651,25 +652,31 @@ bool makePlan(P target,P rank,const recipe::Catalog& db,const recipe::Recipe& r,
     auto flags=at<std::uint64_t>(target+0x508);
     unsigned cap=call<unsigned>(0x1403517e0,db.trees.at(r.base),int((!(flags&0x400) && (flags&(1ull<<27))) || (flags&(1ull<<28))),&capped);
     if (p.level>cap) {error="The selected class cannot retain this level.";return false;}
-    // Resolve records at the retained level without borrowing the old captain's slots.
+    p.generationLevel=(std::min)(cap,84u);
+    // Evaluate the same kit and level that the native builder will receive.
     alignas(16) unsigned char input[0x530]{};
     P m=reinterpret_cast<P>(input);
     at<unsigned char>(m+0x51a)=at<unsigned char>(target+0x51a);
     at<std::uint64_t>(m+0x508)=flags&(1ull<<27);
     auto fixed=recipe::coreInputs(db,r);
     P active[512]{};
-    int n=ProjectTraits(m,fixed.data(),int(fixed.size()),p.level,rank,active);
+    int n=ProjectTraits(m,fixed.data(),int(fixed.size()),p.generationLevel,rank,active);
     if(n<0){error="Could not resolve the automatic class kit.";return false;}
     const std::set<P> automatic(active,active+n);
+    p.automatic=automatic;
     unsigned budget=8192;
     bool ok=recipe::resolve(db,r,[&](const auto& picks){
         auto all=fixed;all.insert(all.end(),picks.begin(),picks.end());
-        int count=ProjectTraits(m,all.data(),int(all.size()),p.level,rank,active);
-        if(count<0 || !recipe::matches(db,r,active,count,automatic)) return false;
-        p.grants=std::move(all);return true;
+        auto accept=[&](const std::vector<P>& inputs){
+            if (!recipe::markerInputs(db,r,inputs,p.requiredMarkers,p.forbiddenMarkers)) return false;
+            int count=ProjectTraits(m,inputs.data(),int(inputs.size()),p.generationLevel,rank,active);
+            if(count<0 || !recipe::matches(db,r,active,count,automatic)) return false;
+            p.grants=inputs;return true;
+        };
+        return recipe::withHiddenGrants(db,all,budget,accept);
     },[&](const auto& picks){return recipe::fitsCore(db,fixed,picks);},&budget,nullptr,
       unsigned(std::ranges::count_if(automatic,[&](P v){return db.epics.contains(v);})));
-    if (!ok) {error="The requested trait inputs could not be resolved at the retained level.";return false;}
+    if (!ok) {error="The requested traits or their prerequisites are incompatible with this kit.";return false;}
     p.exclude=recipe::exclusions(db,p.grants);
     return true;
 }
@@ -685,12 +692,14 @@ ReplaceResult replace(P m,const GenerationPlan& p,const recipe::Catalog& db,cons
     const bool follower=!!(at<std::uint64_t>(m+0x508)&(1ull<<27));
     BuildParams params;
     const P b=params.ptr();
-    at<unsigned>(b+0x178)=p.level+1; at<unsigned char>(b+0x17d)=follower;
+    at<unsigned>(b+0x178)=p.generationLevel+1; at<unsigned char>(b+0x17d)=follower;
     call<void>(0x141c4edc0,b,db.trees.at(r.base));
     call<void>(0x141c4ee54,b,r.tribe);
     for(auto id:db.allSpecializations) if(id!=r.specialization) call<void>(0x141c62c44,b,id);
     for(auto [id,_]:db.rarityRecords) if(id!=r.rarity) call<void>(0x141c62c44,b,id);
-    call<void>(0x141c4ee48,b,r.specialization);call<void>(0x141c4ee48,b,r.rarity);
+    for (P marker:p.requiredMarkers) if (marker!=r.base) call<void>(0x141c4ee48,b,marker);
+    for (P marker:p.forbiddenMarkers)
+        if (!db.allSpecializations.contains(marker) && !db.rarityRecords.contains(marker)) call<void>(0x141c62c44,b,marker);
     for(P id:p.grants) call<void>(0x141c62aa4,b,id);
     for(P id:p.exclude) call<void>(0x141c62ab0,b,id);
     started=true;
@@ -698,9 +707,10 @@ ReplaceResult replace(P m,const GenerationPlan& p,const recipe::Catalog& db,cons
     std::vector<P> markers,active;
     if(at<P>(m+0x178)!=p.army || at<P>(m+0x268)!=p.row || at<unsigned>(m+0x174)!=p.index ||
        at<unsigned char>(m+0x51b)!=column || !!(at<std::uint64_t>(m+0x508)&(1ull<<27))!=follower ||
-       at<unsigned>(m+0x4b8)!=p.level || at<P>(m+0x188)!=db.trees.at(r.base) || at<P>(m+0x328)!=r.tribe ||
+       at<unsigned>(m+0x4b8)!=p.generationLevel || at<P>(m+0x188)!=db.trees.at(r.base) || at<P>(m+0x328)!=r.tribe ||
        at<P>(m+0x390)!=db.rarityRecords.at(r.rarity) || !records(m+0x1b0,8,markers) ||
-       std::ranges::find(markers,r.specialization)==markers.end() ||
+       !std::ranges::all_of(p.requiredMarkers,[&](P id){return std::ranges::find(markers,id)!=markers.end();}) ||
+       std::ranges::any_of(markers,[&](P id){return p.forbiddenMarkers.contains(id);}) ||
        std::ranges::any_of(markers,[&](P v){return (db.allSpecializations.contains(v) && v!=r.specialization) ||
            (db.rarityRecords.contains(v) && v!=r.rarity);}) || !records(m+0x198,8,active))
         return ReplaceResult::ChangedUnexpectedly;
@@ -718,17 +728,36 @@ ReplaceResult replace(P m,const GenerationPlan& p,const recipe::Catalog& db,cons
     std::set<P> automatic;
     for(P v:active) if(db.managedTraits.contains(v) || !db.categories.contains(v)) automatic.insert(v);
     std::vector<P> wanted;
-    unsigned budget=8192;
-    bool fits=recipe::resolve(db,r,[&](const auto& picks){
-        wanted=fixed;
-        for(P id:picks) if(std::ranges::find(wanted,id)==wanted.end()) wanted.push_back(id);
-        P projected[512]{};
-        int n=ProjectTraits(m,wanted.data(),int(wanted.size()),p.level,p.rank,projected);
-        return n>=0 && recipe::matches(db,r,projected,n,automatic);
-    },[&](const auto& picks){return permitsGrants(m,picks) && recipe::fitsCore(db,fixed,picks);},&budget);
-    if(!fits || !write(m,wanted) || !records(m+0x198,8,active) || !optionalResult(db,r,active))
+    wanted=fixed;
+    std::vector<P> additions;
+    for(P id:p.grants) if(std::ranges::find(wanted,id)==wanted.end()) {wanted.push_back(id);additions.push_back(id);}
+    P projected[512]{};
+    int n=ProjectTraits(m,wanted.data(),int(wanted.size()),p.generationLevel,p.rank,projected);
+    if(!permitsGrants(m,additions) || !recipe::fitsCore(db,fixed,additions) || n<0 ||
+       !recipe::matches(db,r,projected,n,automatic) || !write(m,wanted) ||
+       !records(m+0x198,8,active) || !optionalResult(db,r,active))
         return ReplaceResult::ChangedUnexpectedly;
     return ReplaceResult::Replaced;
+}
+bool restoreLevel(P m,const GenerationPlan& p) {
+    if (at<P>(m+0x178)!=p.army || at<unsigned>(m+0x174)!=p.index || at<P>(m+0x268)!=p.row) return false;
+    if (at<unsigned>(m+0x4b8)!=p.level) call<void>(game::kFactionMemberSetXPLevel,m,p.level);
+    return at<unsigned>(m+0x4b8)==p.level;
+}
+void refreshGeneratedTraits(P m,const GenerationPlan& p) {
+    // The XP setter can reevaluate level-gated slots. Refresh only the trait
+    // calculation at its generation level; do not dispatch another level-up.
+    at<unsigned>(m+0x4b8)=p.generationLevel;
+    __try {call<void>(game::kFactionMemberUpdateTraits,m,0u);}
+    __finally {at<unsigned>(m+0x4b8)=p.level;}
+}
+bool verifyRestored(P m,const GenerationPlan& p,const recipe::Catalog& db) {
+    std::vector<P> active;
+    auto matches=[&]{return records(m+0x198,8,active) && recipe::optionalResult(db,p.requested,active) &&
+        std::ranges::all_of(p.automatic,[&](P id){return std::ranges::find(active,id)!=active.end();});};
+    if (matches()) return true;
+    refreshGeneratedTraits(m,p);
+    return matches();
 }
 }
 bool PlanGeneration(P m,P rank,const recipe::Catalog& db,const recipe::Recipe& r,GenerationPlan& p,std::string& error) {
@@ -749,7 +778,13 @@ ReplaceResult ReplaceCaptain(P m,const GenerationPlan& p,const recipe::Catalog& 
     __try {
         __try {
             if (!beginHateScope(scope)) return ReplaceResult::Rejected;
-            return replace(m,p,db,r,write,started);
+            ReplaceResult result=ReplaceResult::Rejected;
+            bool restored=false;
+            __try {result=replace(m,p,db,r,write,started);}
+            __finally {if (started) restored=restoreLevel(m,p);}
+            if (result==ReplaceResult::Replaced && (!restored || !verifyRestored(m,p,db)))
+                return ReplaceResult::ChangedUnexpectedly;
+            return result;
         } __finally {hateScope=previous;}
     }
     __except(EXCEPTION_EXECUTE_HANDLER) {return started?ReplaceResult::ChangedUnexpectedly:ReplaceResult::Rejected;}

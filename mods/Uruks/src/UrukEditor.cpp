@@ -7,6 +7,7 @@
 #include <Windows.h>
 #include <algorithm>
 #include <atomic>
+#include <bit>
 #include <cstdio>
 #include <cstring>
 #include <map>
@@ -238,7 +239,16 @@ std::string TraitLabel(Ptr trait,LookupText lookup=GameText) {
     auto key=Text(CellHash(trait,0xf51aff36,0,4));
     char label[1024]{};
     if (!key.empty() && CopyLabel(key.c_str(),lookup,label) && key!=label && ("["+key+"]")!=label)
-        return label;
+    {
+        std::string text=label;
+        for (size_t i=0;(i=text.find("{Color_",i))!=std::string::npos;) {
+            auto end=text.find('}',i);
+            if (end==std::string::npos) break;
+            text.erase(i,end-i+1);
+        }
+        for (size_t i;(i=text.find("</font>"))!=std::string::npos;) text.erase(i,7);
+        return text.empty()?ReadableId(id):text;
+    }
     return ReadableId(id);
 }
 std::string PickerLabel(Ptr picker) {
@@ -309,6 +319,29 @@ void RecordField(Snapshot& snapshot, const Catalog& catalog, const char* label, 
         field.choices.push_back({record.address, record.name, record.address == current});
 }
 
+// Class progression uses XP reward tracks, separately from the ordinary trait draw lists.
+void LoadClassRewards(recipe::Catalog& db,Ptr reward,const std::vector<Ptr>& owners,bool base) {
+    if (owners.empty()) return;
+    for (Ptr setup:Links(reward,0xcca3a85c)) for (Ptr track:Links(setup,0x11407c64))
+        for (Ptr tier:Links(track,0x31775628)) {
+            const float chance=std::bit_cast<float>(uint32_t(CellHash(tier,0x5cd1372c,0,2)));
+            if (!(chance>0)) continue;
+            for (Ptr list:Links(tier,0x4c13006d)) {
+                const auto rewards=Links(list,0x0a535c57);
+                for (Ptr item:rewards) for (Ptr group:Links(item,0x5b7f9956)) {
+                    const auto picks=Links(group,0x7abf91f5);
+                    if (chance>=1 && rewards.size()==1 && picks.size()==1) continue;
+                    for (Ptr p:picks) {
+                        for (Ptr owner:owners) db.classRewards[owner][track].insert(p);
+                        if (!base || DemoTraitId(RecordName(p))) continue;
+                        for (Ptr e:Links(p,0x6bd57b1d)) for (Ptr d:Links(e,0xbcb47686))
+                            if (db.definitions.contains(d) && UrukTraitDefinition(RecordName(d)))
+                                db.categories.try_emplace(d,2);
+                    }
+                }
+            }
+        }
+}
 bool LoadRecipeCatalog(const Catalog& catalog,recipe::Catalog& db,Ptr army) {
     const auto nodes=catalog.find("Interface/Menu/MenuTreeNode/TraitGroup"),
         defs=catalog.find("Faction/Traits/Definitions"), pickers=catalog.find("Faction/Traits/Picker"),
@@ -353,7 +386,7 @@ bool LoadRecipeCatalog(const Catalog& catalog,recipe::Catalog& db,Ptr army) {
             if (raw!=catalog.end()) {
                 auto champions=std::ranges::find(raw->second,"PickerListRaw_Champion"+suffix,&Record::name);
                 if (champions!=raw->second.end()) for (auto picker:Links(champions->address,0x7abf91f5)) {
-                    db.classOnlyPickers[picker]=id; db.managedPickers.insert(picker);
+                    db.classOnlyPickers[picker]=id;
                 }
             }
             auto block=std::ranges::find(markers->second,"RoleMarker_SpecializationNever_"+suffix,&Record::name);
@@ -382,7 +415,14 @@ bool LoadRecipeCatalog(const Catalog& catalog,recipe::Catalog& db,Ptr army) {
         }
     }
     if (auto it=catalog.find("Faction/Rewards/Definitions");it!=catalog.end()) for (const auto& [id,name]:it->second) {
+        if (name.starts_with("BaseClass_")) {
+            std::vector<Ptr> owners;
+            for (Ptr predicate:Links(id,0xdd4ea5f7)) for (Ptr type:Links(predicate,0x014ba459))
+                for (auto [marker,baseType]:db.types) if (baseType==type) owners.push_back(marker);
+            LoadClassRewards(db,id,owners,true);
+        }
         if (!name.starts_with("AdvancedClass_")) continue;
+        LoadClassRewards(db,id,Links(id,0x53373e4d),false);
         for (auto spec:Links(id,0x53373e4d)) if (db.classes.contains(spec)) {
             auto& kit=db.kits[spec].emplace_back();
             kit.drawLists=Links(id,0xe4d587ea);
@@ -401,6 +441,14 @@ bool LoadRecipeCatalog(const Catalog& catalog,recipe::Catalog& db,Ptr army) {
             }
         }
     }
+    // Some class-restricted combat abilities have no Army-screen UI group.
+    // ScopeClassDraws still has to find an optional source for the selected kit.
+    for (const auto& [id,name]:pickers->second) {
+        if (!std::ranges::any_of(Links(id,0x4cf9fd36),[&](Ptr m){return db.combatClasses.contains(m);})) continue;
+        for (Ptr e:Links(id,0x6bd57b1d)) for (Ptr d:Links(e,0xbcb47686))
+            if (db.definitions.contains(d) && UrukTraitDefinition(RecordName(d)) && CellHash(d,0xa15e0193,0))
+                db.categories.try_emplace(d,2);
+    }
     for (const auto& [id,name]:pickers->second) {
         recipe::Picker route{id,Links(id,0xb2e40fc1),Links(id,0x4cf9fd36),Links(id,0x0fedbe24)};
         if (auto binding=db.classOnlyPickers.find(id);binding!=db.classOnlyPickers.end()) route.required.push_back(binding->second);
@@ -409,10 +457,17 @@ bool LoadRecipeCatalog(const Catalog& catalog,recipe::Catalog& db,Ptr army) {
         bool hiddenOutput=false;
         for (auto e:Links(id,0x6bd57b1d)) {
             auto traits=Links(e,0xbcb47686);
-            recipe::indexWeaknessGate(db,e,traits,Links(e,0xb05e2ca4));
+            auto requiresAny=Links(e,0xb05e2ca4);
+            recipe::indexWeaknessGate(db,e,traits,requiresAny);
+            for (auto dep:requiresAny) if (!db.categories.contains(dep) && db.definitions.contains(dep) &&
+                UrukTraitDefinition(RecordName(dep))) db.hiddenDependencies[id].insert(dep);
             for (auto trait:traits) {
                 if (db.categories.contains(trait)) outputs.insert(trait);
-                else hiddenOutput=true;
+                else {
+                    hiddenOutput=true;
+                    if (db.definitions.contains(trait) && UrukTraitDefinition(RecordName(trait)))
+                        db.hiddenProducers[trait].insert(id);
+                }
             }
         }
         if (!hiddenOutput && !outputs.empty()) db.optionalOnly.insert(id);

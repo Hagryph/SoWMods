@@ -51,6 +51,7 @@ int main() {
             return strcmp(key,"IntRes_Trait_Test")==0 ? L"Frostsch\u00e4den" : nullptr;
         };
         Check(TraitLabel(localized.header.at(),lookup)=="Frostsch\xc3\xa4" "den");
+        Check(TraitLabel(localized.header.at(),[](const char*){return L"{Color_Epic}Epic Determination</font>";})=="Epic Determination");
         Check(TraitLabel(localized.header.at(),[](const char*){return L"[ERROR: StringDatabase Not Initialized]";})=="Test Mixed Case");
         Check(TraitLabel(localized.header.at(),[](const char*){return L"IntRes_Trait_Test";})=="Test Mixed Case");
         Check(TraitLabel(trait.header.at(),lookup)=="Test Ability");
@@ -211,6 +212,49 @@ int main() {
         Discard(nullptr);
         // Constrained generation is independent of the old captain's trait list.
         recipe::Catalog db;
+        {
+            FakeRecord reward("BaseClass_Defender"),setup("Traits_Defender"),track("Wrecker"),tier(""),list("Wrecker"),
+                grant("Wrecker"),group(""),picker("Picker_Wrecker"),option(""),ability("Wrecker");
+            auto link=[](FakeRecord& from,unsigned hash,FakeRecord& to){
+                from.Field("",to.header.at());Put<uint32_t>(from.descriptors.at(),hash);
+            };
+            link(reward,0xcca3a85c,setup);link(setup,0x11407c64,track);link(track,0x31775628,tier);
+            tier.descriptors.bytes.resize(32);tier.values.bytes.resize(16);
+            link(tier,0x4c13006d,list);
+            Put<uint8_t>(tier.header.at(),2);
+            Put<uint32_t>(tier.descriptors.at(16),0x5cd1372c);Put<uint8_t>(tier.descriptors.at(26),2);
+            Put<uint16_t>(tier.descriptors.at(28),1);Put<uint16_t>(tier.descriptors.at(30),1);
+            Put<float>(tier.values.at(8),0.05f);
+            link(list,0x0a535c57,grant);link(grant,0x5b7f9956,group);link(group,0x7abf91f5,picker);
+            link(picker,0x6bd57b1d,option);link(option,0xbcb47686,ability);
+            recipe::Catalog c;c.definitions.insert(ability.header.at());
+            LoadClassRewards(c,reward.header.at(),{10},true);
+            Check(c.categories.at(ability.header.at())==2);
+            recipe::Recipe r;r.base=11;
+            engine::TraitRules draws;
+            auto eligible=[&](Ptr p){draws.groups[p]={};return true;};
+            recipe::addClassRewardDraws(c,r,draws,eligible);Check(draws.sources.empty());
+            r.base=10;recipe::addClassRewardDraws(c,r,draws,eligible);Check(draws.permits({picker.header.at()}));
+            Put<float>(tier.values.at(8),1.0f);
+            recipe::Catalog fixed;LoadClassRewards(fixed,reward.header.at(),{10},true);Check(fixed.classRewards.empty());
+        }
+        {
+            recipe::Catalog prereq;
+            prereq.hiddenDependencies={{1,{90}},{2,{91}},{3,{90}}};
+            prereq.hiddenProducers={{90,{2}},{91,{3}}};
+            std::vector<Ptr> inputs{1};
+            unsigned budget=16;
+            auto needsThree=[](const auto& all){return all.size()==3;};
+            Check(recipe::withHiddenGrants(prereq,inputs,budget,needsThree) && inputs==std::vector<Ptr>({1,2,3}));
+            inputs={1};prereq.categories[91]=0;budget=16;
+            Check(!recipe::withHiddenGrants(prereq,inputs,budget,needsThree) && inputs==std::vector<Ptr>({1}));
+            std::set<Ptr> required,forbidden;
+            recipe::Recipe req;req.base=10;req.specialization=11;req.rarity=12;
+            prereq.routes[1]={1,{},{99},{98}};
+            Check(recipe::markerInputs(prereq,req,inputs,required,forbidden) && required.contains(99) && forbidden.contains(98));
+            prereq.routes[1].forbidden.push_back(req.specialization);
+            Check(!recipe::markerInputs(prereq,req,inputs,required,forbidden));
+        }
         {
             recipe::Catalog gates;
             gates.categories={{101,1},{102,1},{103,5},{104,0},{105,3}};
