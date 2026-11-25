@@ -179,6 +179,11 @@ void HagUI::AddConditionalButton(int page, const char* label, void (*onClick)(),
     w.visible = visible;
     pages_[page].widgets.push_back(std::move(w));
 }
+void HagUI::AddHeaderButton(int page, const char* label, void (*onClick)(), bool (*visible)()) {
+    if (page < 0 || page >= (int)pages_.size()) return;
+    AddConditionalButton(page, label, onClick, visible);
+    pages_[page].widgets.back().type = WHeaderButton;
+}
 bool HagUI::WidgetVisible(const Widget& widget) {
     if (!widget.visible) return true;
     __try {
@@ -266,7 +271,7 @@ void HagUI::PollInput(Overlay& r) {
                 Widget& w = pages_[tab_ - 1].widgets[sel_];
                 if (WidgetVisible(w)) {
                     if (w.type == WToggle && w.toggle)       *w.toggle = !*w.toggle;
-                    else if (w.type == WButton && w.onClick)  w.onClick();
+                    else if ((w.type == WButton || w.type == WHeaderButton) && w.onClick) w.onClick();
                 }
             }
         }
@@ -375,6 +380,17 @@ void HagUI::DrawHub(Overlay& r) {
         for (int i = 0; i < (int)pg.widgets.size(); ++i) {
             Widget& w = pg.widgets[i];
             if (!WidgetVisible(w)) continue;
+            if (w.type == WHeaderButton) {
+                float width, height;
+                r.MeasureText(w.text, P(18), width, height, kSerif, true);
+                const float right = X(pxi + cwid);
+                const float top = Y(cyTop - 38);
+                const bool hover = hit(right - width - S(24), top, width + S(24), S(30));
+                if (hover && click_ && w.onClick) w.onClick();
+                r.DrawText(right - width - S(12), top + S(4), w.text, P(18),
+                           hover ? C(kText) : C(kAccent), kSerif, true);
+                continue;
+            }
             const bool hov = w.type != WLabel &&
                              hit(X(pxi - 14), Y(ry - 6), S(cwid + 28), S(40));
             if (hov) {

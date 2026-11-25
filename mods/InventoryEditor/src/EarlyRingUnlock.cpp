@@ -148,14 +148,14 @@ void Unlock() { Queue(true); }
 }
 
 void AddEarlyRingUnlock(int page, HagUIAPI* ui, void (*log)(const char*)) {
-    if (!ui || ui->abiVersion < 7) return;
+    if (!ui || ui->abiVersion < 8) return;
     if (!InstallRingGrantGuard()) {
         if (log) log("Early ring unavailable: native duplicate-grant guard could not be installed.");
         return;
     }
     g_ui = ui;
     g_log = log;
-    ui->AddConditionalButton(page, "Early Unlock Ring", &Unlock, &Visible);
+    ui->AddHeaderButton(page, "Early Unlock Ring", &Unlock, &Visible);
     if (log) log("Early ring action registered; unlock state comes from the loaded save.");
 }
 }  // namespace inventory_editor

@@ -13,7 +13,7 @@
 
 extern "C" {
 
-constexpr std::uint32_t HAGUI_ABI_VERSION = 7;
+constexpr std::uint32_t HAGUI_ABI_VERSION = 8;
 
 typedef void (*HagUI_GameTaskFn)(void* ctx);
 typedef void (*HagUI_PageOpenFn)(int page);
@@ -56,6 +56,8 @@ struct HagUIAPI {
     // Nonzero identity for the currently loaded world; changes on each world load.
     // Zero at the main menu. Queued tasks can reject work from an earlier save.
     std::uint64_t (*SaveSession)();
+    // v8: conditional action on the title line, right-aligned; consumes no content row.
+    void (*AddHeaderButton)(int page, const char* label, void (*onClick)(), bool (*visible)());
 };
 
 // Exported by the loader DLL. Returns null if the requested ABI version is unsupported.

@@ -25,6 +25,7 @@ public:
     void AddToggle(int page, const char* label, bool* value);
     void AddButton(int page, const char* label, void (*onClick)());
     void AddConditionalButton(int page, const char* label, void (*onClick)(), bool (*visible)());
+    void AddHeaderButton(int page, const char* label, void (*onClick)(), bool (*visible)());
     struct Widget;
     static bool WidgetVisible(const Widget& widget);
     void AddList(int page, const char* const* items, const char* const* cats, int count);
@@ -37,7 +38,7 @@ public:
     void RunFirstOpenInSave();
 
     // Read access for the renderer (Overlay::DrawHub): tabs exist ONLY for registered pages.
-    enum WType { WLabel = 0, WToggle = 1, WButton = 2, WList = 3 };
+    enum WType { WLabel = 0, WToggle = 1, WButton = 2, WList = 3, WHeaderButton = 4 };
     // One filterable dimension: its distinct values + a live multi-select mask (parallel to opts).
     struct Facet {
         std::string name;

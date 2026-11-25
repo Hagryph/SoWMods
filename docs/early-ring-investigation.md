@@ -8,7 +8,7 @@ and the later story grant still require an in-game compatibility test.
 
 ## Current UI
 
-`Early Unlock Ring` appears above the item list in F8 -> Item Spawner when the
+`Early Unlock Ring` appears right-aligned beside the title in F8 -> Item Spawner when the
 loaded character is eligible and either required ability unlock is missing. It
 hides after the native unlock records are detected, including after a normal story
 grant or loading an already-unlocked save. All ring-specific behavior is in

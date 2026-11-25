@@ -833,6 +833,7 @@ void Overlay::DrawHub() {
             // paintButton): header bold 21 at (60,86); rows from y+44, 40 apart.
             const HagUI::Page& pg = pages[vis[activeTab_ - 1]];
             AddTextCX(dl, fTab_, 21.0f * s, ImVec2(X(60), Y(86)), uText, pg.title.c_str(), XS);
+            float headerRight = X(772);
             float ry = 86 + 44;
             for (int i = 0; i < (int)pg.widgets.size(); ++i) {
                 const HagUI::Widget& wd = pg.widgets[i];
@@ -858,10 +859,17 @@ void Overlay::DrawHub() {
                         dl->AddPolyline(pts, 3, uAccent, 0, 2.0f * s);
                     }
                     txt(fBody_, 17.0f * s, 60 + 36, ry + 3, uText, wd.text.c_str());
-                } else if (wd.type == HagUI::WButton) {
+                } else if (wd.type == HagUI::WButton || wd.type == HagUI::WHeaderButton) {
                     // gold button (AS paintButton): rr7, vgrad a18->6 border a42; hover a34/14/78
                     const float lw = measureW(fTab_, 15.0f * s, wd.text.c_str());
-                    const ImVec2 pa(X(60), Y(ry)), pb(X(60) + lw + 32.0f * sx, Y(ry) + 30.0f * sy);
+                    const bool header = wd.type == HagUI::WHeaderButton;
+                    const float bw = lw + 32.0f * sx;
+                    const float bh = 30.0f * sy;
+                    const float titleH = fTab_ ? fTab_->CalcTextSizeA(21.0f * s, 3.4e38f, 0.0f, pg.title.c_str()).y : 21.0f * s;
+                    const ImVec2 pa(header ? headerRight - bw : X(60),
+                                    header ? Y(86) + (titleH - bh) * 0.5f : Y(ry));
+                    const ImVec2 pb(pa.x + bw, pa.y + bh);
+                    if (header) headerRight = pa.x - 12.0f * sx;
                     ImGui::SetCursorScreenPos(pa);
                     ImGui::InvisibleButton("##btn", ImVec2(pb.x - pa.x, pb.y - pa.y));
                     const bool hov = ImGui::IsItemHovered();
@@ -1268,7 +1276,7 @@ void Overlay::DrawHub() {
                     txt(fBody_, 17.0f * s, 60, ry + 3, uDim, wd.text.c_str());
                 }
                 ImGui::PopID();
-                ry += 40;
+                if (wd.type != HagUI::WHeaderButton) ry += 40;
             }
             if (pg.widgets.empty())
                 txt(fBody_, 17.0f * s, 60, ry, uDim, "This page has no options yet.");
