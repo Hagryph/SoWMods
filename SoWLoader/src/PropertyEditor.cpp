@@ -134,12 +134,20 @@ void DrawPropertyEditor(const HagUI::Widget& widget, ImVec2 position, ImVec2 siz
         ImGui::OpenPopup(widget.popupTitle.c_str());
         widget.editingField = 0;
     }
+    if (widget.popupTitle.empty()) { ImGui::PopFont(); return; }
     ImVec2 display=ImGui::GetIO().DisplaySize;
     ImGui::SetNextWindowSize(widget.largePreview ?
         ImVec2((std::min)(display.x*.92f,940*sx),(std::min)(display.y*.9f,660*sy)) :
         ImVec2((std::min)(size.x,600*sx),(std::min)(size.y,405*sy)));
     if (widget.largePreview) ImGui::SetNextWindowPos(ImVec2(display.x*.5f,display.y*.5f),ImGuiCond_Always,ImVec2(.5f,.5f));
-    if (!widget.popupTitle.empty() && ImGui::BeginPopupModal(widget.popupTitle.c_str(), nullptr, ImGuiWindowFlags_NoResize)) {
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding,ImVec2(16*sx,12*sy));
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding,ImVec2(12*sx,5*sy));
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing,ImVec2(8*sx,8*sy));
+    if (ImGui::BeginPopupModal(widget.popupTitle.c_str(), nullptr, ImGuiWindowFlags_NoResize)) {
+        const char* error="Selection expired or another operation is pending.";
+        const float gap=ImGui::GetStyle().ItemSpacing.y;
+        const float footer=ImGui::GetFrameHeight()+gap+(widget.applyFailed ?
+            ImGui::CalcTextSize(error,nullptr,false,ImGui::GetContentRegionAvail().x).y+gap : 0.f);
         HagUI_PopupState detail{};
         if (popup.state) popup.state(widget.context, widget.actionField, widget.selectedChoice, &detail);
         if (detail.generator) {
@@ -153,7 +161,9 @@ void DrawPropertyEditor(const HagUI::Widget& widget, ImVec2 position, ImVec2 siz
         } else {
         ImGui::SetNextItemWidth(-1);
         ImGui::InputTextWithHint("##choices", "Search engine records...", widget.choiceSearch, sizeof(widget.choiceSearch));
-        if (ImGui::BeginChild("##values", ImVec2(0, detail.preview[0] ? 96 * sy : -64 * sy))) {
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding,ImVec2(10*sx,8*sy));
+        if (ImGui::BeginChild("##values", ImVec2(0, (detail.preview[0] || widget.largePreview) ? 96 * sy : -footer),
+                              ImGuiChildFlags_AlwaysUseWindowPadding)) {
             for (const auto& choice : widget.choices) {
                 if (!Matches(choice.label, widget.choiceSearch)) continue;
                 ImGui::PushID(static_cast<int>(choice.id));
@@ -163,12 +173,15 @@ void DrawPropertyEditor(const HagUI::Widget& widget, ImVec2 position, ImVec2 siz
                 if (ImGui::Selectable(choice.label, widget.selectedChoice ? widget.selectedChoice == choice.id : choice.selected))
                     widget.selectedChoice = choice.id;
                 ImGui::EndDisabled();
-                if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) ImGui::SetTooltip("%s", option.unavailable?option.status:choice.label);
+                if ((option.unavailable || ImGui::CalcTextSize(choice.label).x>ImGui::GetItemRectSize().x) &&
+                    ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled | ImGuiHoveredFlags_DelayNormal))
+                    ImGui::SetTooltip("%s", option.unavailable?option.status:choice.label);
                 ImGui::PopID();
             }
             if (widget.choices.empty()) ImGui::TextDisabled("No compatible engine records.");
         }
         ImGui::EndChild();
+        ImGui::PopStyleVar();
         }
         char message[192]{};
         int scene=0;
@@ -179,7 +192,7 @@ void DrawPropertyEditor(const HagUI::Widget& widget, ImVec2 position, ImVec2 siz
             if (scene) { activeScene=widget.scene; sceneContext=widget.context; sceneUsed=true; }
         }
         if (detail.generator || detail.preview[0] || scene) {
-            if (ImGui::BeginChild("Preview", ImVec2(0,-60*sy), ImGuiChildFlags_Borders)) {
+            if (ImGui::BeginChild("Preview", ImVec2(0,-footer), ImGuiChildFlags_Borders)) {
                 ImGui::TextDisabled(scene ? "Army preview" : "Preview");
                 if (scene==2 && captureScene) {
                     float aspect=1;
@@ -203,7 +216,7 @@ void DrawPropertyEditor(const HagUI::Widget& widget, ImVec2 position, ImVec2 siz
             }
             ImGui::EndChild();
         }
-        if (widget.applyFailed) ImGui::TextWrapped("Selection expired or another operation is pending.");
+        if (widget.applyFailed) ImGui::TextWrapped("%s",error);
         ImGui::BeginDisabled(!widget.selectedChoice || detail.busy);
         if (ImGui::Button("Apply")) {
             if (source.apply(widget.context,widget.actionField,widget.selectedChoice)) {
@@ -222,6 +235,7 @@ void DrawPropertyEditor(const HagUI::Widget& widget, ImVec2 position, ImVec2 siz
         }
         ImGui::EndPopup();
     }
+    ImGui::PopStyleVar(3);
     ImGui::PopFont();
 }
 }
