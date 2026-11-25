@@ -89,6 +89,7 @@ struct Snapshot {
 };
 struct Draft {
     bool fromTemplate=false;
+    std::set<Ptr> importedHints;
     std::map<Kind,std::pair<uint64_t,Choice>> edits;
     bool dirty() const { return !edits.empty(); }
     bool permits(Kind k,uint64_t field) const {
@@ -391,6 +392,13 @@ bool LoadRecipeCatalog(const Catalog& catalog,recipe::Catalog& db,Ptr army) {
             if (!added && entry->second!=it->second) return false;
         }
     }
+    std::map<std::string,Ptr> hints;
+    for (const auto& [id,name]:defs->second)
+        if (name.starts_with("Resistant_") && db.categories.contains(id) && db.categories.at(id)==7)
+            hints.emplace(name.substr(sizeof("Resistant_")-1),id);
+    for (const auto& [id,name]:defs->second)
+        if (name.starts_with("Immune_") && db.categories.contains(id) && db.categories.at(id)==0)
+            if (auto it=hints.find(name.substr(sizeof("Immune_")-1));it!=hints.end()) db.resistanceHint[id]=it->second;
     auto raw=catalog.find("Faction/Traits/PickerListRaw");
     for (const auto& [id,name]:markers->second) {
         auto bind=[&](const std::string& suffix){
@@ -845,6 +853,7 @@ bool StageTemplate(const Snapshot& snap,const recipe::Recipe& r,Draft& draft) {
     }
     if (BuildRecipe(next)!=r || !r.complete()) return false;
     next.fromTemplate=true;
+    next.importedHints.insert(r.traits[7].begin(),r.traits[7].end());
     draft=std::move(next);return true;
 }
 bool TemplateFromMember(Ptr m,Snapshot& snap,Draft& draft,const Draft* retune) {
@@ -882,7 +891,9 @@ bool TemplateFromMember(Ptr m,Snapshot& snap,Draft& draft,const Draft* retune) {
     }
     snap.status="Template settings staged. No captain changed.";
     if (skipped) snap.status+=" Skipped "+std::to_string(skipped)+" incompatible choices.";
-    return StageTemplate(snap,r,draft);
+    if (!StageTemplate(snap,r,draft)) return false;
+    if (retune) std::erase_if(draft.importedHints,[&](Ptr id){return !retune->importedHints.contains(id);});
+    return true;
 }
 std::string KitText(const recipe::Recipe& r) {
     return "base="+RecordName(r.base)+", advanced="+RecordName(r.specialization)+", tribe="+RecordName(r.tribe)+
@@ -1167,7 +1178,13 @@ bool ReadChoice(void*, uint64_t id, int index, HagUI_Choice* out) {
     if (Selector(field->kind))
         if (auto it=g_draft.edits.find(field->kind);it!=g_draft.edits.end())
             out->selected=field->choices[index].value==it->second.second.value;
-    strncpy_s(out->label, field->choices[index].label.c_str(), _TRUNCATE);
+    std::string label=field->choices[index].label;
+    if (field->kind==Kind::Immunities) {
+        const auto& hints=g_snapshot.recipeCatalog.resistanceHint;
+        auto it=hints.find(field->choices[index].value);
+        if (it!=hints.end() && g_draft.importedHints.contains(it->second)) label+=" (replaces imported resistance)";
+    }
+    strncpy_s(out->label,label.c_str(),_TRUNCATE);
     return true;
 }
 const Choice* ChoiceById(const Field& f,uint64_t id) {
@@ -1305,6 +1322,7 @@ struct InputCheck {
     Key target;
     uint64_t session{},baseline{},field{};
     recipe::Recipe staged;
+    std::set<Ptr> importedHints;
     std::set<Ptr> allowed;
     bool valid=false,ready=false;
 };
@@ -1330,10 +1348,15 @@ void CheckInputs(void* arg) {
         auto rank=CellHash(Read<Ptr>(t.member+0x268),0x40c579dc,0);
         engine::GenerationPlan plan;
         std::string error;
-        valid=engine::PlanGeneration(t.member,rank,db,r,plan,error,check->session);
+        auto validSelection=[&] {
+            auto effective=r;
+            if (bucket==0) recipe::upgradeImportedHints(db,effective,check->importedHints);
+            return engine::PlanGeneration(t.member,rank,db,effective,plan,error,check->session);
+        };
+        valid=validSelection();
         for (Ptr id:choices) {
             r.traits[bucket].push_back(id);
-            if (engine::PlanGeneration(t.member,rank,db,r,plan,error,check->session)) allowed.insert(id);
+            if (validSelection()) allowed.insert(id);
             r.traits[bucket].pop_back();
         }
         break;
@@ -1356,15 +1379,18 @@ bool Compatible(const Field& f,uint64_t candidate,const uint64_t* picks,int n) {
         if (!r.complete()) return false;
         r.traits[int(f.kind)-int(Kind::Immunities)]=std::move(set);
         const auto& db=g_snapshot.recipeCatalog;
+        auto effective=r;
+        if (f.kind==Kind::Immunities) recipe::upgradeImportedHints(db,effective,g_draft.importedHints);
         auto fixed=recipe::coreInputs(db,r);
         unsigned budget=8192;
-        if (!recipe::resolve(db,r,[](const auto&){return true;},[&](const auto& picked){
+        if (!recipe::resolve(db,effective,[](const auto&){return true;},[&](const auto& picked){
             return recipe::fitsCore(db,fixed,picked);
         },&budget)) return false;
         auto& row=r.traits[int(f.kind)-int(Kind::Immunities)];
         if (candidate) row.pop_back();
         auto same=[&]{return inputCheck && inputCheck->field==f.id && inputCheck->session==g_snapshot.session &&
-            inputCheck->baseline==g_snapshot.baseline && inputCheck->target==g_snapshot.selected;};
+            inputCheck->baseline==g_snapshot.baseline && inputCheck->target==g_snapshot.selected &&
+            inputCheck->importedHints==g_draft.importedHints;};
         if (!candidate && same() && inputCheck->ready && !row.empty()) {
             auto last=row.back();row.pop_back();
             if (r==inputCheck->staged && inputCheck->allowed.contains(last)) return true;
@@ -1375,6 +1401,7 @@ bool Compatible(const Field& f,uint64_t candidate,const uint64_t* picks,int n) {
         auto check=std::make_shared<InputCheck>();
         check->field=f.id;check->target=g_snapshot.selected;check->baseline=g_snapshot.baseline;
         check->session=g_snapshot.session;check->staged=std::move(r);
+        check->importedHints=g_draft.importedHints;
         auto job=std::make_unique<std::shared_ptr<InputCheck>>(check);
         inputCheck=check;
         if (g_ui->QueueGameTask(CheckInputs,job.get())) job.release();
@@ -1396,6 +1423,19 @@ bool SetApply(void*,uint64_t id,const uint64_t* picks,int n) {
         c.pickers.push_back(f->choices[picks[i]-1].value);
     }
     g_draft.stage(*f,c);
+    if (f->kind==Kind::Hints) g_draft.importedHints.clear(); // the player explicitly accepted this list
+    if (f->kind==Kind::Immunities && !g_draft.importedHints.empty()) {
+        auto r=BuildRecipe(g_draft);
+        auto& hints=r.traits[7];
+        const auto count=hints.size();
+        recipe::upgradeImportedHints(g_snapshot.recipeCatalog,r,g_draft.importedHints);
+        if (count!=hints.size()) {
+            auto& hintChoice=g_draft.edits.at(Kind::Hints).second;
+            hintChoice.pickers=hints;hintChoice.label=std::to_string(hints.size())+" selected";
+            std::erase_if(g_draft.importedHints,[&](Ptr id){return std::ranges::find(hints,id)==hints.end();});
+            g_snapshot.status="Replaced "+std::to_string(count-hints.size())+" imported resistance hint(s) with immunity.";
+        }
+    }
     if (Bucket(f->kind)) for (auto& field:g_snapshot.fields) if (field.kind==Kind::Regenerate) field.choices.clear();
     return true;
 }

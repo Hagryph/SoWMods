@@ -415,6 +415,27 @@ int main() {
         };
         checked(immunity,20);
         Check(SetApply(nullptr,immunity,first,1) && !SetOption(nullptr,bonus,1,nullptr,0));
+        {
+            auto previous=g_draft;
+            auto& catalog=g_snapshot.recipeCatalog;
+            auto hints=make(Kind::Hints,"Hints",{{90,"Resistance"},{91,"Other"}});
+            catalog.resistanceHint[20]=90;
+            catalog.categories[90]=catalog.categories[91]=7;
+            catalog.producers[90]={{92,{8,9},{},{}}};
+            catalog.producers[91]={{93,{},{},{}}};
+            auto templateRecipe=BuildRecipe(g_draft);
+            templateRecipe.traits[0].clear();templateRecipe.traits[7]={90,91};
+            Check(StageTemplate(g_snapshot,templateRecipe,g_draft));
+            Check(ReadChoice(nullptr,immunity,0,&choice) && std::string(choice.label).find("replaces")!=std::string::npos);
+            checked(immunity,20);
+            Check(BuildRecipe(g_draft)==templateRecipe); // opening or cancelling does not change the template
+            Check(SetApply(nullptr,immunity,first,1));
+            Check(BuildRecipe(g_draft).traits[7]==std::vector<Ptr>{91} && BuildRecipe(g_draft).traits[0]==std::vector<Ptr>{20});
+            Check(StageTemplate(g_snapshot,templateRecipe,g_draft));
+            g_draft.importedHints.clear(); // manually chosen resistance remains a hard conflict
+            Check(!SetOption(nullptr,immunity,1,nullptr,0) && !queuedContext && !SetApply(nullptr,immunity,first,1));
+            g_draft=std::move(previous);
+        }
         Check(!Apply(nullptr,spec,2) && !g_draft.ready());
         Check(Apply(nullptr,rare,2) && !queuedContext);
         Check(!g_draft.edits.contains(Kind::Immunities));

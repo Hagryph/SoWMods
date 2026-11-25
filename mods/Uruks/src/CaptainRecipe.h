@@ -32,6 +32,7 @@ struct RoleKit {
 };
 struct Catalog {
     std::map<Id, unsigned> categories;
+    std::map<Id,Id> resistanceHint; // immunity -> lower tier in the same damage family
     std::map<Id,Id> weaknessGatedHateEntries; // native option row -> single Hate output
     std::map<Id,std::set<Id>> hiddenDependencies,hiddenProducers;
     std::map<Id, std::vector<Picker>> producers;
@@ -69,6 +70,14 @@ struct Recipe {
     bool operator==(const Recipe&) const = default;
 };
 struct Slot { Id picker{}, definition{}; };
+inline void upgradeImportedHints(const Catalog& db,Recipe& r,const std::set<Id>& imported) {
+    if (imported.empty()) return;
+    auto& hints=r.traits[7];
+    for (Id immunity:r.traits[0]) {
+        auto it=db.resistanceHint.find(immunity);
+        if (it!=db.resistanceHint.end() && imported.contains(it->second)) std::erase(hints,it->second);
+    }
+}
 // One captain has one role. Ordinary draws may still supply any of the other picks.
 template<class Accept>
 bool withRole(const Catalog& db,const std::vector<Id>& classPicks,Accept accept) {
