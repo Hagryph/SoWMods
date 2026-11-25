@@ -13,6 +13,7 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <string_view>
 #include <vector>
 #include <set>
 
@@ -121,6 +122,16 @@ int VectorSize(Ptr vector, size_t stride, int limit = 4096) {
     if (end < begin || (end - begin) % stride || (end - begin) / stride > static_cast<size_t>(limit)) return 0;
     return static_cast<int>((end - begin) / stride);
 }
+bool DemoTraitId(std::string_view id) {
+    while (!id.empty()) {
+        const auto end=id.find('_');
+        const auto token=id.substr(0,end);
+        if (token.size()==4 && _strnicmp(token.data(),"DEMO",4)==0) return true;
+        if (end==std::string_view::npos) break;
+        id.remove_prefix(end+1);
+    }
+    return false;
+}
 Catalog LoadCatalog(Ptr database = 0) {
     Catalog catalog;
     if (!database) database = Read<Ptr>(game::FromRVA(game::kGameDatabase));
@@ -142,6 +153,7 @@ Catalog LoadCatalog(Ptr database = 0) {
             const Ptr record = table + j * 0x28;
             if (Read<Ptr>(record + 0x18) != category) continue;
             auto recordName = RecordName(record);
+            if (name=="Faction/Traits/Picker" && DemoTraitId(recordName)) continue;
             if (!recordName.empty()) records.push_back({record, std::move(recordName)});
         }
         std::sort(records.begin(), records.end(), [](const auto& a, const auto& b) { return a.name < b.name; });
@@ -217,20 +229,26 @@ std::string ReadableId(const std::string& id) {
     return out;
 }
 std::string TraitLabel(Ptr trait,LookupText lookup=GameText) {
+    auto id=RecordName(trait);
+    if (DemoTraitId(id)) return {};
     // Type-4 Army display key, distinct from the adjacent description and hint keys.
     auto key=Text(CellHash(trait,0xf51aff36,0,4));
     char label[1024]{};
     if (!key.empty() && CopyLabel(key.c_str(),lookup,label) && key!=label && ("["+key+"]")!=label)
         return label;
-    return ReadableId(RecordName(trait));
+    return ReadableId(id);
 }
 std::string PickerLabel(Ptr picker) {
+    auto id=RecordName(picker);
+    if (DemoTraitId(id)) return {};
     std::vector<std::string> labels;
+    bool hasOutput=false;
     for (auto entry:Links(picker,0x6bd57b1d)) for (auto trait:Links(entry,0xbcb47686)) {
+        hasOutput=true;
         auto label=TraitLabel(trait);
         if (!label.empty() && std::ranges::find(labels,label)==labels.end()) labels.push_back(std::move(label));
     }
-    if (labels.empty()) return ReadableId(RecordName(picker));
+    if (labels.empty()) return hasOutput ? std::string{} : ReadableId(id);
     auto result=labels.front();
     for (size_t i=1;i<labels.size();++i) result+=" / "+labels[i];
     return result;
@@ -303,6 +321,8 @@ bool LoadRecipeCatalog(const Catalog& catalog,recipe::Catalog& db,Ptr army) {
     }
     for (const auto& [id,name]:defs->second) {
         db.definitions.insert(id);
+        // Recognize existing native traits without offering demo definitions in a recipe.
+        if (DemoTraitId(name)) continue;
         for (auto g:Links(id,0xc402530b)) if (auto it=groups.find(g);it!=groups.end()) {
             if (RecordName(g)=="UIGroup_Epics") db.epics.insert(id);
             auto [entry,added]=db.categories.emplace(id,it->second);
@@ -484,8 +504,10 @@ void Capture(Snapshot& snapshot, const Catalog& catalog) {
     Add(snapshot,"Appearance generator",RecordName(Read<Ptr>(Read<Ptr>(member+0x2d8)+0x170)),Kind::Appearance);
     auto& traits=Add(snapshot,"Trait list","0 selected",Kind::Traits);
     if (snapshot.supported && engine::ReadTraitRules(member,snapshot.traitRules)) {
-        for (const auto& [p,groups]:snapshot.traitRules.groups)
-            if (InCatalog(catalog,"Faction/Traits/Picker",p)) traits.choices.push_back({p,PickerLabel(p)});
+        for (const auto& [p,groups]:snapshot.traitRules.groups) if (InCatalog(catalog,"Faction/Traits/Picker",p)) {
+            auto label=PickerLabel(p);
+            if (!label.empty()) traits.choices.push_back({p,std::move(label)});
+        }
         std::sort(traits.choices.begin(),traits.choices.end(),[](const Choice& a,const Choice& b){return a.label<b.label;});
     } else {
         snapshot.traitRules={};
@@ -614,7 +636,10 @@ bool Roll(Ptr m, Kind k, Ptr role, const Catalog& catalog, Choice& c) {
         for (bool remove:{false,true}) {
             Ptr possible[128]{};
             int n=engine::RewardPickers(m,c.advance.reward,remove,possible);
-            for (int i=0;i<n;++i) c.preview+=(remove?"\nMay remove: ":"\nMay gain: ")+PickerLabel(possible[i]);
+            for (int i=0;i<n;++i) {
+                auto label=PickerLabel(possible[i]);
+                if (!label.empty()) c.preview+=(remove?"\nMay remove: ":"\nMay gain: ")+label;
+            }
         }
         c.value=c.ticket; return true;
     }

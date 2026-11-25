@@ -54,6 +54,11 @@ int main() {
         Check(TraitLabel(localized.header.at(),[](const char*){return L"[ERROR: StringDatabase Not Initialized]";})=="Test Mixed Case");
         Check(TraitLabel(localized.header.at(),[](const char*){return L"IntRes_Trait_Test";})=="Test Mixed Case");
         Check(TraitLabel(trait.header.at(),lookup)=="Test Ability");
+        FakeRecord demo("DEMO_ImmuneToCurse"), demoPicker("Picker_dEmO_ImmuneToCurse"), curse("Immune_Curse");
+        Check(TraitLabel(demo.header.at(),lookup).empty());
+        Check(PickerLabel(demoPicker.header.at()).empty());
+        Check(TraitLabel(curse.header.at(),lookup)=="Immune Curse");
+        Check(!DemoTraitId("Picker_Demoralize"));
         picker.Field("ExclusiveGroup", 123);
         Check(Cell(picker.header.at(), "ExclusiveGroup") == 123);
         Check(Cell(picker.header.at(), "ExclusiveGroup", 1) == 0);
@@ -67,6 +72,10 @@ int main() {
         Put(category.at(0x38), picker.header.at());
         Put(picker.header.at(0x18), category.at());
         Check(LoadCatalog(database.at()).at(categoryName).size() == 1);
+        Put(category.at(0x38), demoPicker.header.at());
+        Put(demoPicker.header.at(0x18), category.at());
+        Check(LoadCatalog(database.at()).at(categoryName).empty());
+        Put(category.at(0x38), picker.header.at());
         Memory member(0x528), slots(0x20), appearance(0x1c0);
         Put(member.at(0x178), army.header.at());
         Put(member.at(0x268), army.header.at());
