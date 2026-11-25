@@ -8,22 +8,28 @@ Spawned, dead and temporary captains cannot be edited.
 ## Regenerate Captain (HagUI ABI 13)
 
 Open **Uruks > Regenerate Captain**, select the captain to replace, then choose
-an advanced class and rarity. The eight Army checklists start empty. An empty
-category means **none**, not random. Select **Replacement > Generate** to check
-the recipe and prepare a fresh profile at the selected captain's level. Apply
+the base class, advanced class, tribe and rarity. The last selector prepares
+a private profile at the selected captain's level. Core, class and tribal
+grants are automatic; there is no Class Traits checklist. The seven optional
+checklists start empty. Empty means **no extra picks**, not an empty class kit.
+Changing a selector clears optional picks and prepares a new kit.
+Select **Replacement > Generate** to check the assembled profile. Apply
 accepts that preview; editing the recipe invalidates it. Only **Save Uruk**
 requests an in-place replacement. No second Army slot or custom save file is used.
 
 Choices are trait definitions linked to the Army menu's UI groups, not picker
 names or samples from previous rolls. The editor checks alternative picker
-routes, exclusive groups, class markers and rarity limits. Final generation
+routes, exclusive groups, class markers and rarity limits. The next optional
+pick is checked against the fixed profile and current choices on the game thread. Final generation
 also checks the actual profile: a picker with several possible outputs has to
 resolve to the requested definition at this seat and level. A rejected **profile**
 does not remove that trait from the catalog.
 
-The preflight constructs private member storage, generates a combat tree,
-personality, look, role, markers and natural picker list, and keeps non-Army
-slots (including dormant ones). It replays the merged list through the
+The preflight uses the chosen faction combat tree and tribe, generates a
+personality, look, role, markers and natural picker list, and keeps unmanaged
+non-Army slots (including dormant ones). It takes class grants from compatible
+advanced-class reward records and tribal attacks from the selected tribe;
+native marker gates still apply. It replays the merged list through the
 explicit-grant builder before offering Apply. The live build uses the native
 same-seat replacement path, retaining level and affiliation; catch-up XP rewards
 are suppressed only for the replacement being built. Normal later level-ups
@@ -72,19 +78,8 @@ and a fingerprint of the original captain state before generating or saving.
 Two different engine paths apply. Initial generation is not the limit on what a
 captain can earn.
 
-1. **Trait list** starts with zero selections (or reopens the staged list).
-   Options come from the pre-draw source walk in 0x141BB876C / 0x141BB84E0.
-   The editor enumerates authored grants and one-of lists, then (if enabled)
-   role, tribe, and faction default lists. It checks native marker predicates,
-   builder exclusions, positive-weight table and quantity rows, and the upper
-   reachable quantity without calling the RNG. The checklist tests exclusive
-   groups and finds an assignment to eligible lists: each list supplies at most
-   its capacity and uses only one alternative table. Neither an equipped trait
-   nor a previously drawn combination is evidence for or against eligibility.
-   Apply stages the replacement list, including an explicitly empty list;
-   Cancel preserves the previous draft. An authored builder does not lock the
-   list. Save Uruk re-reads the rules before changing a writable captain; a real trait lock
-   or recorded reward history blocks saving, not opening the checklist.
+1. Use **Regenerate Captain** to assemble optional traits around an automatic
+   kit. The inspector does not expose a second raw picker list.
 2. **Level-up reward** previews a one-level advancement. The native XP path
    (0x14034F9F0) collects scheduled lists (0x1403513DC), picks a weighted reward
    (0x140350500), tests eligibility (0x140105AEC) and applies it (0x140351AF8).

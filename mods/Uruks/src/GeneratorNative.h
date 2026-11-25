@@ -14,6 +14,7 @@ struct Look {
     bool operator==(const Look&) const = default;
 };
 bool Supported();
+bool TribeAvailable(P tribe);
 bool GenerateName(P member, std::uint32_t& id, char (&label)[256]);
 P GenerateTitle(P member);
 bool Appearance(P member, P role, std::uint64_t roll, Look& result, const Look* commit);
@@ -40,8 +41,17 @@ struct GenerationPlan {
     P tree{},personality{},role{},tribe{},seed{},army{},row{},originalSeed{};
     unsigned level{},index{};
     std::vector<P> markers,pickers,active;
+    std::vector<P> fixed;
+    std::set<P> automatic,removed;
+    std::map<P,std::set<P>> eligible;
+    std::set<P> singles,hidden;
+    P remap{},rank{};
+    unsigned char intel{};
+    bool follower{};
+    std::vector<std::array<P,4>> missionSlots;
 };
-bool PlanGeneration(P target,P rank,const recipe::Catalog&,const recipe::Recipe&,GenerationPlan&,std::string& error);
+bool FitsProfile(const recipe::Catalog&,const recipe::Recipe&,const GenerationPlan&);
+bool PlanGeneration(P target,P rank,const recipe::Catalog&,const recipe::Recipe&,GenerationPlan&,std::string& error,const GenerationPlan* profile=nullptr);
 enum class ReplaceResult { Rejected, Replaced, ChangedUnexpectedly };
 using WritePickers=bool(*)(P,const std::vector<P>&);
 ReplaceResult ReplaceCaptain(P target,const GenerationPlan&,const recipe::Catalog&,const recipe::Recipe&,WritePickers);

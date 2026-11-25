@@ -17,6 +17,13 @@ struct Picker {
     Id id{};
     std::vector<Id> groups, required, forbidden;
 };
+struct ClassKit {
+    std::set<Id> allowedTypes, blockedTypes, forbiddenMarkers, removed;
+    std::vector<std::vector<Id>> requiredAny, grants;
+    bool fits(Id type) const {
+        return !blockedTypes.contains(type) && (allowedTypes.empty() || allowedTypes.contains(type));
+    }
+};
 struct Catalog {
     std::map<Id, unsigned> categories;
     std::map<Id, std::vector<Picker>> producers;
@@ -28,10 +35,17 @@ struct Catalog {
     std::map<Id,Id> rarityRecords;
     std::map<Id,Id> classOnlyPickers;
     std::set<Id> combatClasses;
+    std::map<Id,Id> trees, types, baseGrants;
+    std::map<Id,std::vector<Id>> tribes;
+    std::map<Id,std::vector<ClassKit>> kits;
+    std::set<Id> managedPickers, managedTraits;
 };
 struct Recipe {
     Id specialization{}, rarity{};
     std::array<std::vector<Id>,nodes.size()> traits;
+    Id base{},tribe{};
+    bool complete() const { return base && specialization && rarity && tribe; }
+    bool operator==(const Recipe&) const = default;
 };
 struct Slot { Id picker{}, definition{}; };
 
@@ -41,7 +55,7 @@ inline bool retained(const Catalog& db, const std::vector<Slot>& slots, std::vec
     result.clear();
     for (auto [picker,trait]:slots) {
         if (!picker || (trait && !db.definitions.contains(trait))) return false;
-        if (!db.categories.contains(trait)) result.push_back(picker);
+        if (!db.categories.contains(trait) && !db.managedPickers.contains(picker) && !db.managedTraits.contains(trait)) result.push_back(picker);
     }
     return true;
 }
@@ -49,24 +63,33 @@ inline bool retained(const Catalog& db, const std::vector<Slot>& slots, std::vec
 // A definition can have several producers. Conflicts on one producer must not
 // hide a definition that another producer can legally supply.
 template<class Accept,class Extend>
-bool resolve(const Catalog& db,const Recipe& recipe,Accept accept,Extend extend,unsigned* remaining=nullptr) {
+bool resolve(const Catalog& db,const Recipe& recipe,Accept accept,Extend extend,unsigned* remaining=nullptr,
+             const std::map<Id,std::set<Id>>* eligible=nullptr,unsigned automaticEpics=0) {
     if ((recipe.specialization && !db.classes.contains(recipe.specialization)) ||
-        (recipe.rarity && !db.rarities.contains(recipe.rarity))) return false;
-    std::vector<const std::vector<Picker>*> rows;
+        (recipe.rarity && !db.rarities.contains(recipe.rarity)) ||
+        (recipe.base && !db.trees.contains(recipe.base)) ||
+        (recipe.tribe && !db.tribes.contains(recipe.tribe))) return false;
+    if (recipe.base && recipe.specialization) {
+        auto k=db.kits.find(recipe.specialization);
+        if (k==db.kits.end() || !db.types.contains(recipe.base) ||
+            !std::ranges::any_of(k->second,[&](const ClassKit& kit){return kit.fits(db.types.at(recipe.base));})) return false;
+    }
+    std::vector<std::pair<Id,const std::vector<Picker>*>> rows;
     std::set<Id> distinct;
-    unsigned epics=0;
+    unsigned epics=automaticEpics;
     for (unsigned i=0;i<nodes.size();++i) for (auto trait:recipe.traits[i]) {
         auto group=db.categories.find(trait);
         auto options=db.producers.find(trait);
-        if (group==db.categories.end() || group->second!=i || options==db.producers.end() ||
+        if (i==2 || db.managedTraits.contains(trait) || group==db.categories.end() || group->second!=i || options==db.producers.end() ||
             !distinct.insert(trait).second) return false;
-        rows.push_back(&options->second);
+        rows.emplace_back(trait,&options->second);
         epics+=db.epics.contains(trait);
     }
     if (auto cap=db.epicCaps.find(recipe.rarity);cap!=db.epicCaps.end() && epics>cap->second) return false;
-    std::stable_sort(rows.begin(),rows.end(),[](auto a,auto b){ return a->size()<b->size(); });
+    std::stable_sort(rows.begin(),rows.end(),[](auto a,auto b){ return a.second->size()<b.second->size(); });
     std::set<Id> groups,used,required,forbidden;
     if (recipe.specialization) required.insert(recipe.specialization);
+    if (recipe.base) required.insert(recipe.base);
     if (recipe.rarity) required.insert(recipe.rarity);
     std::vector<Id> picks;
     auto walk=[&](auto&& self,size_t at)->bool {
@@ -75,9 +98,11 @@ bool resolve(const Catalog& db,const Recipe& recipe,Accept accept,Extend extend,
             --*remaining;
         }
         if (at==rows.size()) return accept(picks);
-        for (const auto& p:*rows[at]) {
+        auto [trait,routes]=rows[at];
+        if (eligible && !eligible->contains(trait)) return false;
+        for (const auto& p:*routes) {
             if (remaining && !*remaining) return false;
-            if (used.contains(p.id) || std::ranges::any_of(p.groups,[&](Id g){return groups.contains(g);}) ||
+            if ((eligible && !eligible->at(trait).contains(p.id)) || db.managedPickers.contains(p.id) || used.contains(p.id) || std::ranges::any_of(p.groups,[&](Id g){return groups.contains(g);}) ||
                 std::ranges::any_of(p.required,[&](Id m){return forbidden.contains(m) ||
                     std::ranges::any_of(required,[&](Id other){return other!=m &&
                         ((db.combatClasses.contains(m) && db.combatClasses.contains(other)) ||
@@ -101,12 +126,16 @@ template<class Accept>
 bool resolve(const Catalog& db,const Recipe& recipe,Accept accept) {
     return resolve(db,recipe,accept,[](const auto&){return true;});
 }
-inline bool matches(const Catalog& db,const Recipe& wanted,const Id* active,size_t count) {
+inline bool matches(const Catalog& db,const Recipe& wanted,const Id* active,size_t count,const std::set<Id>& automatic={}) {
     std::array<std::set<Id>,nodes.size()> actual;
     for (size_t i=0;i<count;++i) {
         if (!db.definitions.contains(active[i])) return false;
-        if (auto it=db.categories.find(active[i]);it!=db.categories.end()) actual[it->second].insert(active[i]);
+        if (!automatic.contains(active[i])) {
+            if (db.managedTraits.contains(active[i])) return false;
+            if (auto it=db.categories.find(active[i]);it!=db.categories.end()) actual[it->second].insert(active[i]);
+        }
     }
+    for (auto id:automatic) if (!count || std::find(active,active+count,id)==active+count) return false;
     for (unsigned i=0;i<nodes.size();++i)
         if (actual[i]!=std::set<Id>(wanted.traits[i].begin(),wanted.traits[i].end())) return false;
     return true;
