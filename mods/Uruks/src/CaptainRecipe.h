@@ -27,6 +27,9 @@ struct ClassKit {
         return !blockedTypes.contains(type) && (allowedTypes.empty() || allowedTypes.contains(type));
     }
 };
+struct RoleKit {
+    std::vector<Id> grants, markers, weapons;
+};
 struct Catalog {
     std::map<Id, unsigned> categories;
     std::map<Id,Id> weaknessGatedHateEntries; // native option row -> single Hate output
@@ -49,6 +52,13 @@ struct Catalog {
     std::set<Id> optionalOnly;
     std::map<Id,Picker> routes;
     std::optional<engine::TraitRules> classDraws;
+    std::map<Id,RoleKit> roles;
+    std::map<Id,std::vector<Id>> traitWeapons;
+    std::map<Id,std::vector<Id>> pairedWeapons;
+    std::map<Id,std::set<unsigned>> weaponSlots;
+    std::set<Id> bothHands;
+    std::map<Id,Id> roleLists; // eligible role -> native source list for this army/tree
+    engine::TraitRules ordinaryDraws;
     std::set<Id> fixedClassInputs;
 };
 struct Recipe {
@@ -59,6 +69,85 @@ struct Recipe {
     bool operator==(const Recipe&) const = default;
 };
 struct Slot { Id picker{}, definition{}; };
+// One captain has one role. Ordinary draws may still supply any of the other picks.
+template<class Accept>
+bool withRole(const Catalog& db,const std::vector<Id>& classPicks,Accept accept) {
+    if (db.ordinaryDraws.permits(classPicks)) return accept(Id{});
+    for (auto [role,list]:db.roleLists) {
+        const auto& grants=db.roles.at(role).grants;
+        auto remaining=classPicks;
+        std::erase_if(remaining,[&](Id id){return std::ranges::find(grants,id)!=grants.end();});
+        if (remaining.size()!=classPicks.size() && db.ordinaryDraws.permits(remaining) && accept(role)) return true;
+    }
+    return false;
+}
+using WeaponSlots=std::map<unsigned,std::set<Id>>;
+using Loadout=std::map<unsigned,Id>; // zero reserves a hand that must remain empty
+// Items in one source are alternatives per slot. Independent requirements intersect.
+inline bool requireWeapons(WeaponSlots& plan,const WeaponSlots& source) {
+    for (const auto& [slot,items]:source) {
+        if (items.empty()) return false;
+        auto [it,added]=plan.try_emplace(slot,items);
+        if (!added) std::erase_if(it->second,[&](Id item){return !items.contains(item);});
+        if (it->second.empty()) return false;
+    }
+    return true;
+}
+template<class Allowed>
+bool lockWeapons(const Catalog& db,const WeaponSlots& clauses,Allowed allowed,Loadout& out) {
+    Loadout chosen;
+    auto attach=[&](auto&& self,unsigned slot,Id item)->bool {
+        if (chosen.contains(slot)) return chosen.at(slot)==item;
+        if (clauses.contains(slot) && !clauses.at(slot).contains(item)) return false;
+        chosen[slot]=item;
+        if (!item) return true;
+        if (!allowed(item)) return false;
+        auto pairs=db.pairedWeapons.find(item);
+        if (pairs!=db.pairedWeapons.end()) for (Id other:pairs->second) {
+            auto s=db.weaponSlots.find(other);
+            if (s==db.weaponSlots.end() || s->second.size()!=1 || !self(self,*s->second.begin(),other)) return false;
+        }
+        if (slot!=0 || !db.bothHands.contains(item)) return true;
+        if (pairs!=db.pairedWeapons.end() && chosen.contains(9) &&
+            std::ranges::find(pairs->second,chosen.at(9))!=pairs->second.end()) return true;
+        return self(self,9,0);
+    };
+    auto solve=[&](auto&& self,auto it)->bool {
+        if (it==clauses.end()) return true;
+        for (Id item:it->second) {
+            auto before=chosen;
+            if (attach(attach,it->first,item) && self(self,std::next(it))) return true;
+            chosen.swap(before);
+        }
+        return false;
+    };
+    if (!solve(solve,clauses.begin())) return false;
+    out=std::move(chosen);return true;
+}
+inline bool permitsSlot(const Catalog& db,const Loadout& locked,Id item) {
+    auto slots=db.weaponSlots.find(item);
+    if (slots==db.weaponSlots.end()) return true;
+    for (unsigned slot:slots->second) {
+        if (auto it=locked.find(slot);it!=locked.end() && it->second!=item) return false;
+        if (slot==0 && db.bothHands.contains(item) && locked.contains(9) && locked.at(9)) {
+            auto pairs=db.pairedWeapons.find(item);
+            if (pairs==db.pairedWeapons.end() || std::ranges::find(pairs->second,locked.at(9))==pairs->second.end()) return false;
+        }
+    }
+    return true;
+}
+inline bool permitsGeneratedWeapon(const Catalog& db,const Loadout& locked,Id item) {
+    if (!db.pairedWeapons.contains(item)) return permitsSlot(db,locked,item);
+    std::set<Id> visited;
+    auto check=[&](auto&& self,Id id)->bool {
+        if (!visited.insert(id).second) return true;
+        if (!permitsSlot(db,locked,id)) return false;
+        auto p=db.pairedWeapons.find(id);
+        return p==db.pairedWeapons.end() ||
+            std::ranges::all_of(p->second,[&](Id paired){return self(self,paired);});
+    };
+    return check(check,item);
+}
 template<class Eligible>
 void addClassRewardDraws(const Catalog& db,const Recipe& r,engine::TraitRules& draws,Eligible eligible) {
     for (Id owner:{r.base,r.specialization}) if (auto it=db.classRewards.find(owner);it!=db.classRewards.end())
@@ -206,7 +295,10 @@ bool resolve(const Catalog& db,const Recipe& recipe,Accept accept,Extend extend,
             if (!*remaining) return false;
             --*remaining;
         }
-        if (at==rows.size()) return accept(picks);
+        if (at==rows.size()) {
+            if constexpr (requires {accept(picks,classPicks);}) return accept(picks,classPicks);
+            else return accept(picks);
+        }
         auto [trait,routes]=rows[at];
         if (eligible && !eligible->contains(trait)) return false;
         for (const auto& p:*routes) {
@@ -258,11 +350,11 @@ inline std::vector<Id> exclusions(const Catalog& db,const std::vector<Id>& grant
         std::ranges::find(grants,id)==grants.end()) result.push_back(id);
     return result;
 }
-inline bool optionalResult(const Catalog& db,const Recipe& r,const std::vector<Id>& active) {
+inline bool optionalResult(const Catalog& db,const Recipe& r,const std::vector<Id>& active,const std::set<Id>& automatic={}) {
     std::array<std::set<Id>,nodes.size()> actual;
     for (auto id:active) {
         auto group=db.categories.find(id);
-        if (group!=db.categories.end() && !db.managedTraits.contains(id))
+        if (group!=db.categories.end() && !db.managedTraits.contains(id) && !automatic.contains(id))
             actual[group->second].insert(id);
     }
     for (size_t i=0;i<nodes.size();++i)

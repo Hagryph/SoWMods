@@ -327,6 +327,34 @@ int main() {
             draft.traits[2]={82};draft.traits[0]={86};Check(recipe::resolve(kit,draft,legal));
             Check(recipe::optionalResult(kit,draft,{81,82,86}) && !recipe::optionalResult(kit,draft,{81,82,85}));
         }
+        {
+            recipe::Catalog gear;
+            gear.weaponSlots={{10,{0}},{11,{0}},{12,{0}},{13,{0}},{20,{9}},{21,{9}},{30,{2}}};
+            gear.bothHands={10,12};gear.pairedWeapons={{12,{20}},{13,{21}},{20,{12}}};
+            recipe::Loadout lock;
+            auto allowed=[](Ptr){return true;};
+            Check(recipe::lockWeapons(gear,{{9,{20}}},allowed,lock) && lock==recipe::Loadout{{0,12},{9,20}});
+            Check(recipe::permitsGeneratedWeapon(gear,lock,12) && !recipe::permitsGeneratedWeapon(gear,lock,13));
+            Check(recipe::lockWeapons(gear,{{9,{21}}},allowed,lock) && lock==recipe::Loadout{{9,21}});
+            Check(recipe::permitsGeneratedWeapon(gear,lock,11) && recipe::permitsGeneratedWeapon(gear,lock,13) &&
+                !recipe::permitsGeneratedWeapon(gear,lock,10) && !recipe::permitsGeneratedWeapon(gear,lock,12));
+            Check(recipe::lockWeapons(gear,{{0,{10}}},allowed,lock) && lock==recipe::Loadout{{0,10},{9,0}});
+            Check(!recipe::permitsGeneratedWeapon(gear,lock,21) && recipe::permitsGeneratedWeapon(gear,lock,30));
+            Check(recipe::lockWeapons(gear,{{0,{10,11}},{9,{21}}},allowed,lock) &&
+                lock==recipe::Loadout{{0,11},{9,21}});
+            Check(!recipe::lockWeapons(gear,{{0,{10}},{9,{21}}},allowed,lock));
+            Check(recipe::lockWeapons(gear,{{0,{11}}},allowed,lock) && lock.size()==1 &&
+                recipe::permitsGeneratedWeapon(gear,lock,21) && !recipe::permitsGeneratedWeapon(gear,lock,20));
+            Check(recipe::lockWeapons(gear,{},allowed,lock) && lock.empty());
+            recipe::WeaponSlots clauses{{0,{10,11}}};
+            Check(recipe::requireWeapons(clauses,{{0,{11,12}}}) && clauses.at(0)==std::set<Ptr>{11});
+            Check(!recipe::requireWeapons(clauses,{{0,{12}}}));
+            gear.ordinaryDraws.groups[1]={};gear.ordinaryDraws.sources={{1,{{1}}}};
+            gear.roles[5].grants={2,3};gear.roles[6].grants={4};gear.roleLists={{5,99},{6,99}};
+            Check(recipe::withRole(gear,{1},[](Ptr role){return !role;}));
+            Check(recipe::withRole(gear,{1,2,3},[](Ptr role){return role==5;}));
+            Check(!recipe::withRole(gear,{2,4},[](Ptr){return true;}));
+        }
         g_snapshot.recipeCatalog=db;
         auto make=[&](Kind k,const char* label,std::vector<Choice> c){
             auto& f=Add(g_snapshot,label,"",k);f.choices=std::move(c);return f.id;

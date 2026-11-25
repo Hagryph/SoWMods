@@ -349,6 +349,29 @@ bool LoadRecipeCatalog(const Catalog& catalog,recipe::Catalog& db,Ptr army) {
         markers=catalog.find("Faction/Traits/Marker");
     if (nodes==catalog.end() || defs==catalog.end() || pickers==catalog.end() || markers==catalog.end()) return false;
     std::map<Ptr,unsigned> groups;
+    if (auto items=catalog.find("Inventory/Items");items!=catalog.end()) {
+        for (const auto& [id,name]:items->second) {
+            for (Ptr look:Links(CellHash(id,0x25399090,0),0x798691ce)) {
+                auto slot=CellHash(look,0x765efa31,0,3,10);
+                if (slot<10) db.weaponSlots[id].insert(unsigned(slot));
+            }
+            if (db.weaponSlots.contains(id)) for (Ptr grip:Links(id,0xdb3cd9ad))
+                if (RecordName(grip)=="HandGrip_Both") db.bothHands.insert(id);
+        }
+        for (const auto& [id,name]:items->second) for (Ptr other:Links(id,0xe512b887))
+            if (db.weaponSlots.contains(other)) db.pairedWeapons[id].push_back(other);
+    }
+    auto weapons=[&](Ptr source) {
+        std::vector<Ptr> result;
+        for (Ptr item:Links(source,0xa15e0193))
+            if (db.weaponSlots.contains(item)) result.push_back(item);
+        return result;
+    };
+    if (auto roles=catalog.find("Faction/Roles/Definitions");roles!=catalog.end())
+        for (const auto& [id,name]:roles->second) if (name.starts_with("Role_") && !DemoTraitId(name)) {
+            auto grants=Links(id,0x66fc592b);
+            if (!grants.empty()) db.roles.emplace(id,recipe::RoleKit{std::move(grants),Links(id,0xe0f81767),weapons(id)});
+        }
     for (unsigned i=0;i<recipe::nodes.size();++i) {
         auto row=std::ranges::find(nodes->second,recipe::nodes[i],&Record::name);
         if (row==nodes->second.end()) return false;
@@ -358,6 +381,8 @@ bool LoadRecipeCatalog(const Catalog& catalog,recipe::Catalog& db,Ptr army) {
     }
     for (const auto& [id,name]:defs->second) {
         db.definitions.insert(id);
+        auto items=weapons(id);
+        if (!items.empty()) db.traitWeapons.emplace(id,std::move(items));
         // Keep native records recognizable even when they aren't Uruk editor choices.
         if (!UrukTraitDefinition(name)) continue;
         for (auto g:Links(id,0xc402530b)) if (auto it=groups.find(g);it!=groups.end()) {
@@ -622,7 +647,7 @@ bool ApplyNative(Ptr member, Kind kind, Ptr expected, uint32_t slot, Ptr value) 
         }
         if (kind == Kind::Equipment) {
             if (Read<Ptr>(member + 0x48) || slot >= 10 || !engine::WeaponAllowed(member,value) ||
-                !Signature(game::kFactionMemberGiveItem, "\x48\x8b\xc4", 3)) return false;
+                !engine::EquipmentGrantReady()) return false;
             Ptr old = Read<Ptr>(member + 0x50 + slot * 8);
             if (Read<Ptr>(old + 0x38) != expected) return false;
             reinterpret_cast<bool(__fastcall*)(Ptr, Ptr, Ptr, uint8_t, Ptr)>(game::FromRVA(game::kFactionMemberGiveItem))(
@@ -839,7 +864,7 @@ bool TemplateFromMember(Ptr m,Snapshot& snap,Draft& draft,const Draft* retune) {
     if (!retune) for (auto id:active) if (auto bucket=db.categories.find(id);bucket!=db.categories.end() &&
         db.producers.contains(id) && !automatic.contains(id)) r.traits[bucket->second].push_back(id);
     const Ptr rank=CellHash(Read<Ptr>(m+0x268),0x40c579dc,0);
-    auto valid=[&]{engine::GenerationPlan plan;std::string error;return engine::PlanGeneration(m,rank,db,r,plan,error);};
+    auto valid=[&]{engine::GenerationPlan plan;std::string error;return engine::PlanGeneration(m,rank,db,r,plan,error,snap.session);};
     size_t skipped=0;
     if (!valid()) {
         auto pending=r.traits;r.traits={};
@@ -869,6 +894,15 @@ bool GenerationReport(const Task& task,const Catalog& catalog,Ptr m,const std::s
         "\r\nResult: "+outcome+"\r\nPicked kit: "+KitText(wanted)+"\r\n";
     recipe::Catalog db;
     bool catalogOK=m && LoadRecipeCatalog(catalog,db,task.selected.army);
+    auto action=task.draft.edits.find(Kind::Regenerate);
+    if (action!=task.draft.edits.end()) if (auto plan=action->second.second.generation) {
+        report+="Role: "+(plan->role?RecordName(plan->role):std::string("automatic"))+"\r\n";
+        for (auto [slot,item]:plan->weapons) {
+            Ptr instance=m?Read<Ptr>(m+0x50+8*slot):0;
+            report+="Weapon slot "+std::to_string(slot)+": reserved "+(item?RecordName(item):"empty")+
+                ", observed "+(!m?"unknown":instance?RecordName(Read<Ptr>(instance+0x38)):"empty")+"\r\n";
+        }
+    }
     if (catalogOK) report+="Observed kit: "+KitText(MemberKit(m,db))+", level="+std::to_string(Read<unsigned>(m+0x4b8)+1)+"\r\n";
     std::vector<Ptr> active;
     bool observed=m && MemberRecords(m+0x198,active);
@@ -967,11 +1001,14 @@ void RunTask(Task* task) {
                 const auto r=BuildRecipe(task->draft);
                 ok=Writable(m) && LoadRecipeCatalog(catalog,db,task->selected.army) &&
                     engine::ScopeClassDraws(db,r,task->selected.army) &&
-                    engine::PlanGeneration(m,CellHash(Read<Ptr>(m+0x268),0x40c579dc,0),db,r,*plan,snapshot.status);
+                    engine::PlanGeneration(m,CellHash(Read<Ptr>(m+0x268),0x40c579dc,0),db,r,*plan,snapshot.status,task->session);
                 if (ok) {
                     candidate.ticket=g_nextField.fetch_add(1);
                     candidate.label="Generation settings";
                     candidate.preview=it->label+"\nLevel "+std::to_string(plan->level+1);
+                    if (plan->role) candidate.preview+="\nRequired role: "+RecordName(plan->role);
+                    for (auto [slot,item]:plan->weapons)
+                        candidate.preview+="\nWeapon slot "+std::to_string(slot)+": "+(item?RecordName(item):"reserved empty");
                     for (const auto& [kind,edit]:task->draft.edits) if (Selector(kind))
                         candidate.preview+="\n"+edit.second.label;
                     for (const auto& [kind,edit]:task->draft.edits) if (Bucket(kind)) for (auto id:edit.second.pickers)
@@ -1293,10 +1330,10 @@ void CheckInputs(void* arg) {
         auto rank=CellHash(Read<Ptr>(t.member+0x268),0x40c579dc,0);
         engine::GenerationPlan plan;
         std::string error;
-        valid=engine::PlanGeneration(t.member,rank,db,r,plan,error);
+        valid=engine::PlanGeneration(t.member,rank,db,r,plan,error,check->session);
         for (Ptr id:choices) {
             r.traits[bucket].push_back(id);
-            if (engine::PlanGeneration(t.member,rank,db,r,plan,error)) allowed.insert(id);
+            if (engine::PlanGeneration(t.member,rank,db,r,plan,error,check->session)) allowed.insert(id);
             r.traits[bucket].pop_back();
         }
         break;

@@ -418,6 +418,37 @@ bool scopeDraws(recipe::Catalog& db,const recipe::Recipe& r,P armyRecord) {
     for (const auto& pool:alternatives) draws.sources.push_back({1,{pool}});
     eachRecord(call<P>(0x141bbedc4,armyRecord),0x141bb66d4,0x141bb7318,[&](P list){lists.insert(list);});
     for (auto list:lists) addDrawList(list,markers,draws,draw);
+    db.ordinaryDraws=draws;
+    // The same army/tree role tables used by the ordinary captain generator.
+    // Keep all grants from one role in ONE alternative, never one source per role.
+    TraitSource roleSource{512,{}};
+    Context check{};
+    at<P>(check.ptr()+0x148)=db.types.at(r.base);
+    at<P>(check.ptr()+0x150)=r.tribe;
+    P config=call<P>(0x140684dc8,armyRecord,db.trees.at(r.base));
+    if (config) eachRecord(config,0x141bd73bc,0x141bd75ac,[&](P list){
+        eachRecord(list,0x140350d84,0x140350d68,[&](P role){
+            auto it=db.roles.find(role);
+            if (it==db.roles.end() || db.roleLists.contains(role)) return;
+            const auto& kit=it->second;
+            if (auto never=db.neverClass.find(r.specialization);never!=db.neverClass.end() &&
+                std::ranges::find(kit.markers,never->second)!=kit.markers.end()) return;
+            float weight=1;
+            if (!call<bool>(0x141bdb4f0,check.ptr(),role,&weight)) return;
+            std::set<P> options;
+            for (P id:kit.grants) if (db.routes.contains(id) && !db.managedPickers.contains(id)) {
+                std::set<P> required,forbidden;
+                if (!recipe::markerInputs(db,r,{id},required,forbidden)) continue;
+                options.insert(id);
+                draws.groups.emplace(id,db.routes.at(id).groups);
+            }
+            if (!options.empty()) {
+                db.roleLists.emplace(role,list);
+                roleSource.tables.push_back(std::move(options));
+            }
+        });
+    });
+    if (!roleSource.tables.empty()) draws.sources.push_back(std::move(roleSource));
     recipe::classifyClassDraws(db,std::move(draws),direct);
     return true;
 }
@@ -625,6 +656,52 @@ struct BuildParams {
     BuildParams() {call<P>(0x141c62054,ptr());}
     ~BuildParams() {call<void>(0x141c628d0,ptr());}
 };
+// Present one real role to the native eligibility/weight evaluator. The source
+// field descriptor is copied, not the GameDB record mutated. The accumulated
+// weight is the eligibility result; the random selection is immaterial.
+bool roleHasWeight(P ctx,P list,P role) {
+    if (!list || at<unsigned char>(list)!=1 || (at<unsigned char>(list+1)&16)) return false;
+    alignas(8) unsigned char header[40],field[16];
+    P record=reinterpret_cast<P>(header),f=reinterpret_cast<P>(field);
+    std::memcpy(header,(void*)list,sizeof header);
+    std::memcpy(field,(void*)at<P>(list+8),sizeof field);
+    if (at<unsigned>(f)!=0x0c7a758d || (at<unsigned char>(f+10)&63)!=10) return false;
+    at<unsigned short>(f+12)=1;at<unsigned short>(f+14)=0;
+    at<P>(record+8)=f;at<P>(record+16)=reinterpret_cast<P>(&role);
+    P localSeed=1;
+    struct Weight {float total{};unsigned pad{};P seed;} weight{0,0,reinterpret_cast<P>(&localSeed)};
+    call<P>(0x141bd8144,ctx,record,&weight,P(0));
+    return std::isfinite(weight.total) && weight.total>0;
+}
+bool roleWitness(P target,P tree,P list,P role,const GenerationPlan& p) {
+    // Reconstruct only the pre-role model inputs of the normal builder. No
+    // faction member, inventory, or campaign seat is allocated or modified.
+    alignas(16) unsigned char scratch[0x530]{};
+    P m=reinterpret_cast<P>(scratch),model=0;
+    at<P>(m+0x168)=p.roleSeed;at<P>(m+0x188)=tree;
+    at<P>(m+0x270)=p.personality;at<P>(m+0x278)=call<P>(0x14057710c,tree);
+    call<void>(0x1402eb490,&model);
+    if (!model) return false;
+    bool ok=false;
+    __try {
+        Context params;
+        call<void>(0x140577190,params.ptr());
+        __try {
+            call<void>(0x141bea190,params.ptr(),m);
+            call<void>(0x1404c5194,model,params.ptr());
+        } __finally {call<void>(0x141821734,params.ptr());}
+        Context c;
+        call<P>(0x141bd6a48,c.ptr(),army(target),p.army,model,tree,p.personality,
+            call<float>(0x1404e3e5c,p.roleSeed),1,p.requested.tribe,P(0),p.row,P(0));
+        __try {
+            ok=roleHasWeight(c.ptr(),list,role);
+            // The ordinary role generator retries without tribe preference;
+            // this does not change the tribe passed to the captain builder.
+            if (!ok) {at<P>(c.ptr()+0x150)=0;ok=roleHasWeight(c.ptr(),list,role);}
+        } __finally {call<void>(0x141b59d2c,c.ptr());}
+    } __finally {call<void>(0x1402ed9d4,&model);}
+    return ok;
+}
 bool records(P vector,unsigned stride,std::vector<P>& out) {
     P b=at<P>(vector),e=at<P>(vector+8);
     if (e<b || (e-b)%stride || (e-b)/stride>512) return false;
@@ -646,6 +723,69 @@ bool permitsGrants(P m,const std::vector<P>& picks) {
         if (overflow) return false;
     }
     return true;
+}
+bool planWeapons(const recipe::Catalog& db,const P* active,int count,P role,P m,recipe::Loadout& result) {
+    recipe::WeaponSlots clauses;
+    auto require=[&](const std::vector<P>& items,bool mandatory){
+        recipe::WeaponSlots source;
+        for (P item:items) {
+            auto slots=db.weaponSlots.find(item);
+            if (slots!=db.weaponSlots.end() && slots->second.size()==1 && WeaponAllowed(m,item))
+                source[*slots->second.begin()].insert(item);
+        }
+        return (!mandatory || !source.empty()) && recipe::requireWeapons(clauses,source);
+    };
+    if (role && !require(db.roles.at(role).weapons,false)) return false;
+    for (int i=0;i<count;++i)
+        if (auto it=db.traitWeapons.find(active[i]);it!=db.traitWeapons.end() && !require(it->second,true)) return false;
+    return recipe::lockWeapons(db,clauses,[&](P id){return WeaponAllowed(m,id);},result);
+}
+P equippedRecord(P inv,unsigned slot) {
+    const P instance=at<P>(inv+8*slot);
+    return instance?at<P>(instance+0x38):0;
+}
+bool equipmentMatches(P m,const recipe::Loadout& locked) {
+    for (auto [slot,item]:locked) if (slot>=10 || equippedRecord(m+0x50,slot)!=item) return false;
+    return true;
+}
+struct GearScope {
+    P member;const recipe::Catalog& db;const recipe::Loadout& locked;
+    bool populated=false;
+    bool owns(P inv,P m) const {return member==m && inv==m+0x50;}
+};
+thread_local GearScope* gearScope=nullptr;
+using PopulateFn=P(*)(P,P,P);
+using GiveFn=bool(*)(P,P,P,unsigned char,P);
+PopulateFn nativePopulate=nullptr;
+GiveFn nativeGive=nullptr;
+bool giveInFreeSlot(P inv,P m,P item,unsigned char source,P look) {
+    if (auto* s=gearScope;s && s->owns(inv,m)) {
+        if (!recipe::permitsGeneratedWeapon(s->db,s->locked,item)) return false;
+        for (auto [slot,id]:s->locked)
+            if (id && id==item && equippedRecord(inv,slot)==id) return true;
+    }
+    return nativeGive(inv,m,item,source,look);
+}
+P populateWithReservations(P inv,P m,P look) {
+    if (auto* s=gearScope;s && s->owns(inv,m)) {
+        // Native inventory reset has just finished; no kit has rolled equipment yet.
+        for (auto [slot,item]:s->locked) if (item && equippedRecord(inv,slot)!=item)
+            nativeGive(inv,m,item,8,look);
+        s->populated=equipmentMatches(m,s->locked);
+    }
+    return nativePopulate(inv,m,look);
+}
+bool installGearLocks() {
+    if (nativePopulate && nativeGive) return true;
+    const P a=game::FromRVA(0x141c10ab0),b=game::FromRVA(game::kFactionMemberGiveItem);
+    if (at<uint64_t>(a)!=0x4808588948c48b48ULL || at<uint64_t>(b)!=0x4408588948c48b48ULL) return false;
+    auto pop=reinterpret_cast<void*>(a),give=reinterpret_cast<void*>(b);
+    if (MH_CreateHook(pop,reinterpret_cast<void*>(&populateWithReservations),reinterpret_cast<void**>(&nativePopulate))!=MH_OK) return false;
+    if (MH_CreateHook(give,reinterpret_cast<void*>(&giveInFreeSlot),reinterpret_cast<void**>(&nativeGive))==MH_OK) {
+        if (MH_EnableHook(give)==MH_OK && MH_EnableHook(pop)==MH_OK) return true;
+        MH_RemoveHook(give);
+    }
+    MH_RemoveHook(pop);nativeGive=nullptr;nativePopulate=nullptr;return false;
 }
 constexpr P treeCapAddress=0x1403517e0;
 using TreeCapFn=unsigned(*)(P,bool,bool*);
@@ -672,7 +812,7 @@ void buildAtClassCap(P member,P ctx,P params,unsigned char intel,P row,P tree) {
     } __finally {generatingTree=previous;}
 }
 // Build the ordinary input packet. Unspecified fields keep the native constructor defaults.
-bool makePlan(P target,P rank,const recipe::Catalog& db,const recipe::Recipe& r,GenerationPlan& p,std::string& error) {
+bool makePlan(P target,P rank,const recipe::Catalog& db,const recipe::Recipe& r,GenerationPlan& p,std::string& error,uint64_t session) {
     if (!Supported() || !target || !rank || !r.complete() || !TribeAvailable(r.tribe)) {
         error="The selected captain or kit is unavailable."; return false;
     }
@@ -690,6 +830,7 @@ bool makePlan(P target,P rank,const recipe::Catalog& db,const recipe::Recipe& r,
     alignas(16) unsigned char input[0x530]{};
     P m=reinterpret_cast<P>(input);
     at<unsigned char>(m+0x51a)=at<unsigned char>(target+0x51a);
+    at<P>(m+0x188)=tree;
     at<std::uint64_t>(m+0x508)=flags&(1ull<<27);
     auto fixed=recipe::coreInputs(db,r);
     P active[512]{};
@@ -698,15 +839,57 @@ bool makePlan(P target,P rank,const recipe::Catalog& db,const recipe::Recipe& r,
     const std::set<P> automatic(active,active+n);
     p.automatic=automatic;
     unsigned budget=8192;
-    bool ok=recipe::resolve(db,r,[&](const auto& picks){
-        auto all=fixed;all.insert(all.end(),picks.begin(),picks.end());
+    bool ok=recipe::resolve(db,r,[&](const auto& picks,const auto& classPicks){
+      return recipe::withRole(db,classPicks,[&](P role){
+        auto bundle=fixed;
+        if (role) for (P id:db.roles.at(role).grants) {
+            std::set<P> need,deny;
+            if (!db.routes.contains(id) || !recipe::markerInputs(db,r,{id},need,deny)) continue;
+            if (std::ranges::find(bundle,id)==bundle.end()) {
+                if (!recipe::fitsCore(db,bundle,{id})) return false;
+                bundle.push_back(id);
+            }
+        }
+        if (!recipe::fitsCore(db,bundle,picks)) return false;
+        auto requiredOutputs=automatic;
+        if (role) {
+            int size=ProjectTraits(m,bundle.data(),int(bundle.size()),p.generationLevel,rank,active);
+            if (size<0) return false;
+            requiredOutputs.insert(active,active+size);
+            for (const auto& row:r.traits) for (auto trait:row) requiredOutputs.erase(trait);
+        }
+        auto all=bundle;
+        for (P id:picks) if (std::ranges::find(all,id)==all.end()) all.push_back(id);
         auto accept=[&](const std::vector<P>& inputs){
             if (!recipe::markerInputs(db,r,inputs,p.requiredMarkers,p.forbiddenMarkers)) return false;
+            if (role) for (P marker:db.roles.at(role).markers) if (p.forbiddenMarkers.contains(marker) ||
+                (db.allSpecializations.contains(marker) && marker!=r.specialization) ||
+                (db.combatClasses.contains(marker) && marker!=r.base) ||
+                (db.rarities.contains(marker) && marker!=r.rarity)) return false;
             int count=ProjectTraits(m,inputs.data(),int(inputs.size()),p.generationLevel,rank,active);
-            if(count<0 || !recipe::matches(db,r,active,count,automatic)) return false;
-            p.grants=inputs;return true;
+            if(count<0 || !recipe::matches(db,r,active,count,requiredOutputs) ||
+               std::count_if(active,active+count,[&](P id){return db.epics.contains(id);})>db.epicCaps.at(r.rarity)) return false;
+            if (!planWeapons(db,active,count,role,m,p.weapons)) return false;
+            if (role) {
+                if (!p.personality) {
+                    // All option checks and the staged generation must validate the same native identity.
+                    const std::array<P,9> key{session,target,p.army,p.originalSeed,tree,r.tribe,r.specialization,r.rarity,p.row};
+                    thread_local std::array<P,9> last{};
+                    thread_local P seed{},personality{};
+                    if (last!=key || !personality) {
+                        BuildParams sample;
+                        seed=at<P>(sample.ptr()+0x170);
+                        personality=call<P>(0x141bda7ac,p.army,tree,sample.ptr()+0xf8,sample.ptr()+0x110);
+                        last=key;
+                    }
+                    p.roleSeed=seed;p.personality=personality;
+                }
+                if (!p.personality || !roleWitness(target,tree,db.roleLists.at(role),role,p)) return false;
+            }
+            p.role=role;p.grants=inputs;p.automatic=requiredOutputs;return true;
         };
         return recipe::withHiddenGrants(db,all,budget,accept);
+      });
     },[&](const auto& picks){return recipe::fitsCore(db,fixed,picks);},&budget,nullptr,
       unsigned(std::ranges::count_if(automatic,[&](P v){return db.epics.contains(v);})));
     if (!ok) {error="The requested traits or their prerequisites are incompatible with this kit.";return false;}
@@ -725,6 +908,13 @@ ReplaceResult replace(P m,const GenerationPlan& p,const recipe::Catalog& db,cons
     const bool follower=!!(at<std::uint64_t>(m+0x508)&(1ull<<27));
     BuildParams params;
     const P b=params.ptr();
+    if (p.role) {
+        if (!db.roleLists.contains(p.role) || !p.personality ||
+            !roleWitness(m,db.trees.at(r.base),db.roleLists.at(p.role),p.role,p)) return ReplaceResult::Rejected;
+        at<P>(b+0x170)=p.roleSeed;
+        call<void>(0x141c62b24,b,p.personality);
+        at<P>(b+0x148)=p.role; // native builder's single fixed-role input
+    }
     at<unsigned>(b+0x178)=p.generationLevel+1; at<unsigned char>(b+0x17d)=follower;
     call<void>(0x141c4edc0,b,db.trees.at(r.base));
     call<void>(0x141c4ee54,b,r.tribe);
@@ -748,7 +938,9 @@ ReplaceResult replace(P m,const GenerationPlan& p,const recipe::Catalog& db,cons
        std::ranges::any_of(markers,[&](P v){return (db.allSpecializations.contains(v) && v!=r.specialization) ||
            (db.rarityRecords.contains(v) && v!=r.rarity);}) || !records(m+0x198,8,active))
         return ReplaceResult::ChangedUnexpectedly;
-    if(optionalResult(db,r,active)) return ReplaceResult::Replaced;
+    if ((p.role && at<P>(m+0x318)!=p.role) || (!p.weapons.empty() && (!gearScope || !gearScope->populated)) ||
+        !equipmentMatches(m,p.weapons)) return ReplaceResult::ChangedUnexpectedly;
+    if(optionalResult(db,r,active,p.automatic)) return ReplaceResult::Replaced;
     // Direct grants and later rewards do not consult the weighted-draw exclusion list.
     // Only reconcile optional slots if the finished native result actually differs.
     std::vector<P> native,fixed;
@@ -756,10 +948,10 @@ ReplaceResult replace(P m,const GenerationPlan& p,const recipe::Catalog& db,cons
     const P slots=at<P>(m+0x1e0);
     for(size_t i=0;i<native.size();++i) {
         P v=at<P>(slots+32*i+8);
-        if (!db.categories.contains(v) || db.managedTraits.contains(v) || db.managedPickers.contains(native[i]))
+        if (p.automatic.contains(v) || !db.categories.contains(v) || db.managedTraits.contains(v) || db.managedPickers.contains(native[i]))
             fixed.push_back(native[i]);
     }
-    std::set<P> automatic;
+    std::set<P> automatic=p.automatic;
     for(P v:active) if(db.managedTraits.contains(v) || !db.categories.contains(v)) automatic.insert(v);
     std::vector<P> wanted;
     wanted=fixed;
@@ -769,7 +961,7 @@ ReplaceResult replace(P m,const GenerationPlan& p,const recipe::Catalog& db,cons
     int n=ProjectTraits(m,wanted.data(),int(wanted.size()),p.generationLevel,p.rank,projected);
     if(!permitsGrants(m,additions) || !recipe::fitsCore(db,fixed,additions) || n<0 ||
        !recipe::matches(db,r,projected,n,automatic) || !write(m,wanted) ||
-       !records(m+0x198,8,active) || !optionalResult(db,r,active))
+       !records(m+0x198,8,active) || !optionalResult(db,r,active,p.automatic))
         return ReplaceResult::ChangedUnexpectedly;
     return ReplaceResult::Replaced;
 }
@@ -787,31 +979,39 @@ void refreshGeneratedTraits(P m,const GenerationPlan& p) {
 }
 bool verifyRestored(P m,const GenerationPlan& p,const recipe::Catalog& db) {
     std::vector<P> active;
-    auto matches=[&]{return records(m+0x198,8,active) && recipe::optionalResult(db,p.requested,active) &&
+    auto matches=[&]{return (!p.role || at<P>(m+0x318)==p.role) && equipmentMatches(m,p.weapons) &&
+        records(m+0x198,8,active) && recipe::optionalResult(db,p.requested,active,p.automatic) &&
         std::ranges::all_of(p.automatic,[&](P id){return std::ranges::find(active,id)!=active.end();});};
     if (matches()) return true;
     refreshGeneratedTraits(m,p);
     return matches();
 }
 }
-bool PlanGeneration(P m,P rank,const recipe::Catalog& db,const recipe::Recipe& r,GenerationPlan& p,std::string& error) {
+bool EquipmentGrantReady() {
+    return nativeGive || at<uint64_t>(game::FromRVA(game::kFactionMemberGiveItem))==0x4408588948c48b48ULL;
+}
+bool PlanGeneration(P m,P rank,const recipe::Catalog& db,const recipe::Recipe& r,GenerationPlan& p,std::string& error,uint64_t session) {
     HateGateScope scope{db,r};
     auto* previous=hateScope;
     __try {
         __try {
             if (!beginHateScope(scope)) {error="Cannot apply the selected Hate's weakness exception.";return false;}
-            return makePlan(m,rank,db,r,p,error);
+            return makePlan(m,rank,db,r,p,error,session);
         } __finally {hateScope=previous;}
     }
     __except(EXCEPTION_EXECUTE_HANDLER) {error="Could not prepare the native generation inputs.";return false;}
 }
 ReplaceResult ReplaceCaptain(P m,const GenerationPlan& p,const recipe::Catalog& db,const recipe::Recipe& r,WritePickers write) {
     bool started=false;
+    GearScope gear{m,db,p.weapons};
+    auto* previousGear=gearScope;
     HateGateScope scope{db,r,m ? m+0x198 : 0};
     auto* previous=hateScope;
     __try {
         __try {
             if (!beginHateScope(scope)) return ReplaceResult::Rejected;
+            if (!p.weapons.empty() && !installGearLocks()) return ReplaceResult::Rejected;
+            gearScope=p.weapons.empty()?nullptr:&gear;
             ReplaceResult result=ReplaceResult::Rejected;
             bool restored=false;
             __try {result=replace(m,p,db,r,write,started);}
@@ -819,7 +1019,7 @@ ReplaceResult ReplaceCaptain(P m,const GenerationPlan& p,const recipe::Catalog& 
             if (result==ReplaceResult::Replaced && (!restored || !verifyRestored(m,p,db)))
                 return ReplaceResult::ChangedUnexpectedly;
             return result;
-        } __finally {hateScope=previous;}
+        } __finally {gearScope=previousGear;hateScope=previous;}
     }
     __except(EXCEPTION_EXECUTE_HANDLER) {return started?ReplaceResult::ChangedUnexpectedly:ReplaceResult::Rejected;}
 }

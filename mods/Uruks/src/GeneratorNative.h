@@ -32,6 +32,7 @@ bool NameAvailable(P member, std::uint32_t id);
 bool SetName(P member, std::uint32_t id);
 int LevelCap(P member);
 bool WeaponAllowed(P member, P item);
+bool EquipmentGrantReady();
 int KitItems(P member,P (&items)[512]);
 bool WeaponLook(P member,P item,unsigned& slot,P& look);
 struct StageLease { P army{}, actor{}, privateLook{}; unsigned index{}; std::uint64_t seed{}; };
@@ -50,11 +51,13 @@ int ProjectTraits(P member,const P* pickers,int count,unsigned level,P rank,P (&
 struct GenerationPlan {
     P army{},row{},originalSeed{},rank{};
     unsigned level{},generationLevel{},index{};
+    P role{},roleSeed{},personality{};
+    recipe::Loadout weapons;
     recipe::Recipe requested;
     std::vector<P> grants,exclude;
     std::set<P> requiredMarkers,forbiddenMarkers,automatic;
 };
-bool PlanGeneration(P target,P rank,const recipe::Catalog&,const recipe::Recipe&,GenerationPlan&,std::string& error);
+bool PlanGeneration(P target,P rank,const recipe::Catalog&,const recipe::Recipe&,GenerationPlan&,std::string& error,uint64_t session);
 enum class ReplaceResult { Rejected, Replaced, ChangedUnexpectedly };
 using WritePickers=bool(*)(P,const std::vector<P>&);
 ReplaceResult ReplaceCaptain(P target,const GenerationPlan&,const recipe::Catalog&,const recipe::Recipe&,WritePickers);

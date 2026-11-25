@@ -66,6 +66,13 @@ optional active traits. It does not copy identity, cosmetics, equipment or fixed
 kit grants, and does not modify the captain. Edit the draft, Generate, Apply,
 then Save Uruk. Changing a template selector retains compatible optional picks.
 
+The generator leaves the role random unless the selected class traits need a
+specific role. One role must satisfy all picks that the class cannot supply.
+Required weapons reserve their slots before the game fills the captain's
+inventory. A two-handed weapon reserves both hands; single-handed weapons
+leave the other hand available for compatible native kit items. The save
+report records reserved slots alongside the equipment actually observed.
+
 Generator saves append a timestamped report to
 `%LOCALAPPDATA%\SoWLoader\logs\Uruks-generation.log`. It compares requested
 traits to the Army seat after the save attempt and lists other active traits
