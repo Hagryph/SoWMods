@@ -150,7 +150,7 @@ bool InstallRecruitmentHooks() {
             MH_RemoveHook(hooks[i].target);
         }
         g_option = nullptr; g_level = nullptr; g_brand = nullptr;
-        Log("Recruitment hook setup failed; rolled back all UrukEditor hooks");
+        Log("Recruitment hook setup failed; rolled back all Uruks hooks");
         return false;
     }
     Log("Installed recruitment option level bypass and post-recruit level normalization");

@@ -1,4 +1,4 @@
-# UrukEditor
+# Uruks
 
 Standalone global submod. First option: **Ignore Recruitment Level**.
 
@@ -15,7 +15,7 @@ are not normalized. Native level/stat refresh is used instead of writing XP fiel
 
 ## Configuration
 
-Installed path: `<game>/mods/cfg/UrukEditor.ini`.
+Installed path: `<game>/mods/cfg/Uruks.ini`.
 
 ```ini
 [Recruitment]
@@ -25,12 +25,12 @@ IgnoreRecruitmentLevel=0
 Default is off. The HagUI toggle writes this global configuration immediately and
 applies to all saves. It does not store settings in a save file. The Loader creates
 the INI on typed option registration and retains existing valid values. Runtime status and completed
-level adjustments are logged to `%LOCALAPPDATA%/SoWLoader/logs/UrukEditor.log`.
+level adjustments are logged to `%LOCALAPPDATA%/SoWLoader/logs/Uruks.log`.
 
 ## Build
 
 Build the loader first to provide the static MinHook dependency, then run
-`mods/build_mods.ps1 -Only UrukEditor`. HagUI ABI v9 is required for the persistent,
+`mods/build_mods.ps1 -Only Uruks`. HagUI ABI v9 is required for the persistent,
 callback-backed setting toggle, plus Loader Config API v1. Older mods retain their append-only API layout.
 
 ## Native References

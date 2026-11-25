@@ -12,7 +12,7 @@ sowmod::Option<bool> g_ignoreLevel;
 }
 
 void Log(const char* message) {
-    ::OutputDebugStringA("[UrukEditor] ");
+    ::OutputDebugStringA("[Uruks] ");
     ::OutputDebugStringA(message);
     ::OutputDebugStringA("\n");
     wchar_t base[MAX_PATH]{};
@@ -22,7 +22,7 @@ void Log(const char* message) {
     ::CreateDirectoryW(root.c_str(), nullptr);
     const std::wstring logs = root + L"\\logs";
     ::CreateDirectoryW(logs.c_str(), nullptr);
-    HANDLE file = ::CreateFileW((logs + L"\\UrukEditor.log").c_str(), FILE_APPEND_DATA,
+    HANDLE file = ::CreateFileW((logs + L"\\Uruks.log").c_str(), FILE_APPEND_DATA,
         FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
     if (file == INVALID_HANDLE_VALUE) return;
     SYSTEMTIME time{};
@@ -52,7 +52,7 @@ bool IgnoreRecruitmentLevel() {
 
 void SetIgnoreRecruitmentLevel(bool enabled) {
     if (!g_config.Update(g_ignoreLevel, enabled)) {
-        Log("Could not save mods/cfg/UrukEditor.ini; setting unchanged");
+        Log("Could not save mods/cfg/Uruks.ini; setting unchanged");
         return;
     }
     Log(enabled ? "Ignore Recruitment Level enabled" : "Ignore Recruitment Level disabled");

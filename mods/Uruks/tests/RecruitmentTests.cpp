@@ -29,5 +29,5 @@ int main() {
     Check(!uruk::ShouldNormalizeRecruit(true, true, false, true, true, 9, 9), "Equal-level recruit changed");
     Check(!uruk::ShouldNormalizeRecruit(true, true, false, true, true, 4, 9), "Lower-level recruit lost vanilla bonuses");
     Check(uruk::ShouldNormalizeRecruit(true, true, false, true, true, 1, 0), "Level-one player was treated as missing");
-    std::puts("UrukEditor recruitment policy tests passed");
+    std::puts("Uruks recruitment policy tests passed");
 }
