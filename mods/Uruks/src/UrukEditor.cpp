@@ -1018,6 +1018,8 @@ bool Commit(Ptr m,const Task& task,const Catalog& catalog,std::string& status) {
         auto result=engine::ReplaceCaptain(m,*c->generation,db,r,SaveTraits);
         if (result==engine::ReplaceResult::SeatUnavailable)
             status="Cannot safely replace this seat while it is referenced or has command relationships. No replacement made.";
+        else if (result==engine::ReplaceResult::AttachmentUnavailable)
+            status="Cannot transfer this captain's attachment to the same Army seat. No replacement made.";
         else if (result==engine::ReplaceResult::CleanupFailed)
             status="Captain replaced, but the engine failed to release the previous member. Restart before continuing.";
         else if (result==engine::ReplaceResult::Replaced)

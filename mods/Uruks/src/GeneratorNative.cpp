@@ -1076,12 +1076,37 @@ bool verifyRestored(P m,const GenerationPlan& p,const recipe::Catalog& db) {
     return matches();
 }
 bool detachedNode(P n) {return at<P>(n)==n && at<P>(n+8)==n;}
+bool registeredAttachment(P m,P target) {
+    const P handle=m+0x4d0,node=handle+8;
+    if (at<P>(handle)!=game::FromRVA(0x141db4fe0) || at<P>(handle+0x18)!=handle ||
+        at<P>(handle+0x20)!=target) return false;
+    if (!target) return detachedNode(node);
+    if (at<P>(target)!=game::FromRVA(0x141dbc8a8)) return false;
+    const P head=target+8;
+    for (P prev=head,next=at<P>(head),i=0; next && next!=head && i<512; ++i) {
+        if (at<P>(next+8)!=prev) return false;
+        if (next==node) return at<P>(node) && at<P>(at<P>(node)+8)==node;
+        prev=next;next=at<P>(next);
+    }
+    return false;
+}
+bool attachmentFitsSeat(P m,P target) {
+    if (!registeredAttachment(m,target)) return false;
+    if (!target) return true;
+    // The native attachment walker (141bf0264) resolves each participant's
+    // army/index pair at +0x28, not a cached FactionMember pointer.
+    P b=at<P>(target+0x18),e=at<P>(target+0x20);
+    if (!b || e<b || (e-b)%0x40 || (e-b)/0x40>512) return false;
+    for (;b!=e;b+=0x40) if (at<P>(b+0x28)==at<P>(m+0x178) &&
+        at<unsigned>(b+0x30)==at<unsigned>(m+0x174) && call<P>(0x140595d04,b)==m) return true;
+    return false;
+}
 P seatOwner(P m,const GenerationPlan& p) {
     if (!m || at<P>(m)!=game::FromRVA(game::kFactionMemberVtable) ||
         at<P>(m+0x168)!=p.originalSeed || at<unsigned>(m+0x174)!=p.index ||
         at<P>(m+0x178)!=p.army || at<P>(m+0x268)!=p.row || at<unsigned>(m+0x4b8)!=p.level ||
         at<P>(m+0x48) || at<P>(m+0x190) || (at<uint64_t>(m+0x508)&(4|(1ull<<37))) ||
-        !detachedNode(m+8) || at<P>(m+0x4f0) || at<int>(m+0x2d0)!=-1 ||
+        !detachedNode(m+8) || at<int>(m+0x2d0)!=-1 ||
         at<P>(m+0x2e8)!=at<P>(m+0x2f0)) return 0;
     P ctx=army(m),pool=ctx?at<P>(ctx+0x20):0;
     if (!pool) return 0;
@@ -1115,6 +1140,8 @@ ReplaceResult ReplaceCaptain(P m,const GenerationPlan& p,const recipe::Catalog& 
     __try {
         __try {
             if (!Supported() || !seatOwner(m,p)) return ReplaceResult::SeatUnavailable;
+            const P attachment=at<P>(m+0x4f0);
+            if (!attachmentFitsSeat(m,attachment)) return ReplaceResult::AttachmentUnavailable;
             call<void>(0x1419ed468,&owned);
             if (!owned) return ReplaceResult::Rejected;
             gear.member=owned;
@@ -1126,12 +1153,25 @@ ReplaceResult ReplaceCaptain(P m,const GenerationPlan& p,const recipe::Catalog& 
                 restoreLevel(owned,p) && verifyRestored(owned,p,db);
             // On the game thread. Keep the pool's intrusive-list position, then
             // exchange unique ownership as in the native member loader (140f9a276).
+            bool attachmentFailed=false;
             published=detail::publishCandidate(m,owned,valid,[&]{return reinterpret_cast<P*>(seatOwner(m,p));},
-                [](P old,P candidate) {
+                [&](P old,P candidate) {
                     if (!detachedNode(candidate+0x18)) return false;
+                    if (!attachmentFitsSeat(old,attachment) || !registeredAttachment(candidate,0)) {
+                        attachmentFailed=true;return false;
+                    }
+                    if (attachment) {
+                        // Native member-copy operation: register the new observer.
+                        // Destroying whichever member is not published detaches only its own node.
+                        call<void>(0x141bb6d98,candidate+0x4d0,old+0x4d0);
+                        if (!registeredAttachment(old,attachment) || !registeredAttachment(candidate,attachment)) {
+                            attachmentFailed=true;return false;
+                        }
+                    }
                     if (!detachedNode(old+0x18)) call<void>(0x140f9a2c0,old+0x18,candidate+0x18);
                     return true;
                 });
+            if (attachmentFailed) return ReplaceResult::AttachmentUnavailable;
             return published?ReplaceResult::Replaced:valid?ReplaceResult::SeatUnavailable:ReplaceResult::Rejected;
         } __finally {
             gearScope=previousGear;hateScope=previous;

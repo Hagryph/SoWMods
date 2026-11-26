@@ -69,7 +69,7 @@ struct GenerationPlan {
     std::set<P> requiredMarkers,forbiddenMarkers,automatic,blockedClassRewards;
 };
 bool PlanGeneration(P target,P rank,const recipe::Catalog&,const recipe::Recipe&,GenerationPlan&,std::string& error,uint64_t session);
-enum class ReplaceResult { Rejected, Replaced, ChangedUnexpectedly, SeatUnavailable, CleanupFailed };
+enum class ReplaceResult { Rejected, Replaced, ChangedUnexpectedly, SeatUnavailable, CleanupFailed, AttachmentUnavailable };
 using WritePickers=bool(*)(P,const std::vector<P>&);
 ReplaceResult ReplaceCaptain(P target,const GenerationPlan&,const recipe::Catalog&,const recipe::Recipe&,WritePickers);
 int OrderCheck(P member,P contract,unsigned level,P title,unsigned name,const P* active,int count,P& reason);
