@@ -1,5 +1,4 @@
-// Item spawner - reads the live Inventory.Item descriptor and surfaces spawnable item rows in HagUI.
-// Clicking an item spawns a world pickup, which the player collects through the game's own loot path.
+// Spawn world pickups through the game's loot path.
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 
@@ -17,23 +16,14 @@
 #include <tuple>
 
 #include "GameOffsets.h"
-#include "HagUIAPI.h"    // ../../shared
 #include "SoWModAPI.h"   // ../../shared
 #include "ModActions.h"
 #include "EarlyRingUnlock.h"
 
 namespace {
-HagUIAPI* g_ui = nullptr;
-bool (*g_queueGameTask)(HagUI_GameTaskFn fn, void* ctx) = nullptr;
 
 struct Row { std::string category, slot, set, rarity, variant, record, display; };
 
-struct SpawnTask {
-    std::uintptr_t itemRow = 0;
-    int count = 0;
-    char requested[128]{};
-    char resolved[128]{};
-};
 
 std::string Hex(std::uintptr_t v) {
     char b[32]{};
@@ -519,101 +509,14 @@ bool SpawnWorldDrop(std::uintptr_t itemRow) {
     return ok;
 }
 
-void RunSpawnTask(void* ctx) {
-    SpawnTask* task = static_cast<SpawnTask*>(ctx);
-    if (!task) return;
-
-    int spawned = 0;
-    for (int i = 0; i < task->count; ++i) {
-        if (!SpawnWorldDrop(task->itemRow)) break;
-        ++spawned;
-    }
-    Log(std::string("spawn world-drop ") + task->requested + " -> " + task->resolved +
-        " spawned=" + std::to_string(spawned) + "/" + std::to_string(task->count));
-    delete task;
-}
-
-void SpawnItem(const char* id, int count) {
-    if (!id || count <= 0) return;
-    if (count > kMaxWorldDropsPerClick) {
-        Log("spawn count capped from " + std::to_string(count) + " to " +
-            std::to_string(kMaxWorldDropsPerClick) + " world drops");
-        count = kMaxWorldDropsPerClick;
-    }
-
-    std::string resolved;
-    const std::uintptr_t itemRow = ResolveItemRow(id, resolved);
-    if (!itemRow) {
-        Log(std::string("no Inventory.Item mapping for ") + id);
-        return;
-    }
-
-    auto* task = new (std::nothrow) SpawnTask{};
-    if (!task) {
-        Log("spawn queue allocation failed");
-        return;
-    }
-    task->itemRow = itemRow;
-    task->count = count;
-    CopyAscii(task->requested, sizeof(task->requested), id);
-    CopyAscii(task->resolved, sizeof(task->resolved), resolved);
-
-    if (!g_queueGameTask || !g_queueGameTask(&RunSpawnTask, task)) {
-        delete task;
-        Log(std::string("spawn queue failed ") + id + " -> " + resolved);
-        return;
-    }
-    Log(std::string("spawn queued world-drop ") + id + " -> " + resolved +
-        " count=" + std::to_string(count));
-}
-
-void BuildPageOnFirstOpen(int page) {
-    if (!g_ui || page < 0) return;
-    const std::vector<Row> rows = LoadRuntimeRows();
-    if (rows.empty()) {
-        g_ui->AddLabel(page, "Live Inventory.Item rows are not available.");
-        Log("live Inventory.Item list unavailable or empty");
-        return;
-    }
-
-    static const char* kFacets[] = { "Category", "Slot", "Set", "Rarity", "Variant" };
-    const int nf = (int)(sizeof(kFacets) / sizeof(kFacets[0]));
-
-    std::vector<std::string> displays;
-    std::vector<std::string> ids;
-    std::vector<std::string> values;
-    displays.reserve(rows.size());
-    ids.reserve(rows.size());
-    values.reserve(rows.size() * nf);
-    for (const auto& r : rows) {
-        displays.push_back(r.display);
-        ids.push_back(r.record);
-        values.push_back(r.category);
-        values.push_back(r.slot);
-        values.push_back(r.set);
-        values.push_back(r.rarity);
-        values.push_back(r.variant);
-    }
-    std::vector<const char*> dp, ip, vp;
-    dp.reserve(displays.size());
-    ip.reserve(ids.size());
-    vp.reserve(values.size());
-    for (const auto& s : displays) dp.push_back(s.c_str());
-    for (const auto& s : ids) ip.push_back(s.c_str());
-    for (const auto& s : values) vp.push_back(s.c_str());
-    g_ui->AddFacetedActionList(page, kFacets, nf, dp.data(), ip.data(),
-                               (int)displays.size(), vp.data(), &SpawnItem);
-    Log("filled tab (page " + std::to_string(page) + ") with " +
-        std::to_string(displays.size()) + " live Inventory.Item rows");
-}
 }  // namespace
 
 // This mod's single tab is auto-named after this.
 extern "C" __declspec(dllexport) const char* SoWMod_Name() { return "Item Spawner"; }
-extern "C" __declspec(dllexport) bool SoWMod_RegisterActions(const sowmod::actions::Registrar* r) {
+extern "C" __declspec(dllexport) bool SoWMod_RegisterActionsV2(const sowmod::actions::Registrar* r) {
     using namespace sowmod::actions;
     static constexpr Input spawn[]={{"item","Item",Choice},{"count","Count",Integer,"1",1,kMaxWorldDropsPerClick}};
-    return r && r->version==1 && r->Add({"spawn","Spawn item",true,spawn,2,
+    return r && r->version==SchemaVersion && r->Add({"spawn","Spawn item",true,spawn,2,
         [](const char* const* v,Emit emit,void* ctx){
             auto rows=LoadRuntimeRows();
             if(std::ranges::find(rows,v[0],&Row::record)==rows.end()){emit(ctx,"unknown spawnable item");return false;}
@@ -631,17 +534,8 @@ extern "C" __declspec(dllexport) bool SoWMod_RegisterActions(const sowmod::actio
 // only in-game (hidden at the main menu). See shared/SoWModAPI.h.
 extern "C" __declspec(dllexport) int SoWMod_Scope() { return SOWMOD_LOCAL; }
 
-// The loader created this mod's ONE tab and hands us its page. We fill only that page.
-extern "C" __declspec(dllexport) void SoWMod_Init(int page) {
-    auto get = reinterpret_cast<HagUI_GetAPI_t>(
-        ::GetProcAddress(::GetModuleHandleW(L"steam_api64.dll"), "HagUI_GetAPI"));
-    HagUIAPI* ui = get ? get(HAGUI_ABI_VERSION) : nullptr;
-    if (!ui) { Log("HagUI unavailable"); return; }
-    g_ui = ui;
-    g_queueGameTask = ui->QueueGameTask;
-    inventory_editor::AddEarlyRingUnlock(page, ui, [](const char* message) { Log(message); });
-    ui->SetPageOnFirstOpenInSave(page, &BuildPageOnFirstOpen);
-    Log("registered live Inventory.Item first-open builder for page " + std::to_string(page));
+extern "C" __declspec(dllexport) void SoWMod_Init(int) {
+    if (!inventory_editor::InitEarlyRingUnlock()) Log("Native ring grant guard unavailable");
 }
 
 BOOL APIENTRY DllMain(HMODULE h, DWORD reason, LPVOID) {

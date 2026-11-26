@@ -1,4 +1,5 @@
 #include "ModManager.h"
+#include "CampaignLoad.h"
 #include "ModActions.h"
 #include "ModConfigService.h"
 #include "Log.h"
@@ -37,6 +38,11 @@ void ModManager::LoadAll() {
     if (loaded_) return;
     loaded_ = true;
     auto& log = Log::Get();
+    std::vector<actions::Command> builtins;
+    if(actions::RegisterMod("loader",RegisterCampaignActions,builtins)){
+        const int page=HagUI::Get().RegisterPage("Loader");
+        HagUI::Get().AddActionForms(page,"loader");
+    }
 
     const std::wstring dir = ModsDir();
     ::CreateDirectoryW(dir.c_str(), nullptr);   // make the drop-folder if absent, so it's discoverable
@@ -54,7 +60,7 @@ void ModManager::LoadAll() {
     std::sort(dlls.begin(), dlls.end());
 
     const std::string ndir = Narrow(dir);
-    if (dlls.empty()) { log.Line("[mods] no mod DLLs in " + ndir + " (drop *.dll there)"); return; }
+    if (dlls.empty()) { log.Line("[mods] no mod DLLs in " + ndir); actions::StartPipe(); return; }
     { char l[160]; ::wsprintfA(l, "[mods] loading %d mod(s) from %s (filename order):", (int)dlls.size(), ndir.c_str()); log.Good(l); }
 
     int idx = 0;
@@ -72,7 +78,7 @@ void ModManager::LoadAll() {
         std::string prefix=nn.substr(0,nn.size()-4);
         std::transform(prefix.begin(),prefix.end(),prefix.begin(),[](unsigned char c){return static_cast<char>(std::tolower(c));});
         std::vector<actions::Command> commands;
-        auto registration=reinterpret_cast<sowmod::actions::Register>(GetProcAddress(mod,"SoWMod_RegisterActions"));
+        auto registration=reinterpret_cast<sowmod::actions::Register>(GetProcAddress(mod,"SoWMod_RegisterActionsV2"));
         if (!actions::RegisterMod(prefix,registration,commands)) {
             log.Error("[mods] "+nn+": missing or invalid action registration; skipping initialization");
             continue;

@@ -2,9 +2,9 @@
 
 Standalone global submod. First option: **Ignore Recruitment Level**.
 
-The **Uruk Editor** sub-screen provides a two-column captain inspector and native,
-engine-record-backed editing. See [coverage and limitations](../../docs/uruk-editor.md).
-Requires Loader/HagUI ABI v11. Apply stages a popup choice; only Save Uruk changes the captain.
+Under **Captains**, Inspect reads the selected seat; **Generator** provides preview and save.
+The loader renders these forms from the [registered actions](../../docs/mod-actions.md).
+Creating a preview leaves the captain unchanged. Only **Save generated captain** commits it.
 Build only; do not deploy beside the old
 UrukEditor.dll, since both DLLs would install the same recruitment hooks.
 
@@ -28,7 +28,7 @@ Installed path: `<game>/mods/cfg/Uruks.ini`.
 IgnoreRecruitmentLevel=0
 ```
 
-Default is off. The HagUI toggle writes this global configuration immediately and
+Default is off. Running **Ignore recruitment level** writes this global configuration and
 applies to all saves. It does not store settings in a save file. The Loader creates
 the INI on typed option registration and retains existing valid values. Runtime status and completed
 level adjustments are logged to `%LOCALAPPDATA%/SoWLoader/logs/Uruks.log`.
@@ -36,8 +36,7 @@ level adjustments are logged to `%LOCALAPPDATA%/SoWLoader/logs/Uruks.log`.
 ## Build
 
 Build the loader first to provide the static MinHook dependency, then run
-`mods/build_mods.ps1 -Only Uruks`. HagUI ABI v11 and Loader Config API v1 are required.
-Older mods retain their append-only API layout.
+`mods/build_mods.ps1 -Only Uruks`. The V2 action schema and Loader Config API v1 are required.
 
 ## Native References
 
@@ -60,11 +59,11 @@ players. An actual above-level recruitment encounter still needs in-game testing
 
 ### Generator templates and save reports
 
-In **Regenerate Captain**, **Take Over Template** replaces the draft settings
+In **Generate captain preview**, **Take Over Template** replaces the draft settings
 with the selected captain's class, advanced class, tribe, rarity, and compatible
 optional active traits. It does not copy identity, cosmetics, equipment or fixed
-kit grants, and does not modify the captain. Edit the draft, Generate, Apply,
-then Save Uruk. Changing a template selector retains compatible optional picks.
+kit grants, and does not modify the captain. Edit the draft, generate a preview,
+then use **Save generated captain** to commit its ticket.
 
 The generator leaves the role random unless the selected class traits need a
 specific role. One role must satisfy all picks that the class cannot supply.

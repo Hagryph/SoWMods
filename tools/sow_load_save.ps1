@@ -1,42 +1,22 @@
-# sow_load_save.ps1 - drive Shadow of War from title/main menu to loading the selected save.
-#
-# StartAt Title:    Space -> main menu, Space on START -> save selection, Space on selected save -> load.
-# StartAt MainMenu: Space on START -> save selection, Space on selected save -> load.
-param(
-    [string]$ProcessName = 'ShadowOfWar',
-    [ValidateSet('Title', 'MainMenu')]
-    [string]$StartAt = 'Title',
-    [int]$TitleToMainMenuMs = 3500,
-    [int]$MainMenuToSaveSelectMs = 3000,
-    [int]$HoldMs = 40,
-    [switch]$Background
-)
-$ErrorActionPreference = 'Stop'
-
-$keyTool = Join-Path $PSScriptRoot 'send_keys_window.ps1'
-$useForeground = -not $Background.IsPresent
-
-function Send-GameKeys {
-    param([string[]]$KeyList)
-    if ($useForeground) {
-        & $keyTool -ProcessName $ProcessName -Keys $KeyList -HoldMs $HoldMs -Foreground | Write-Output
-    } else {
-        & $keyTool -ProcessName $ProcessName -Keys $KeyList -HoldMs $HoldMs | Write-Output
-    }
-}
-
-if ($StartAt -eq 'Title') {
-    Write-Output '[sow] title prompt -> main menu'
-    Send-GameKeys -KeyList @('SPACE')
-    Start-Sleep -Milliseconds $TitleToMainMenuMs
-} else {
-    Write-Output '[sow] already at main menu'
-}
-
-Write-Output '[sow] main menu START -> save selection'
-Send-GameKeys -KeyList @('SPACE')
-Start-Sleep -Milliseconds $MainMenuToSaveSelectMs
-
-Write-Output '[sow] selected save -> load'
-Send-GameKeys -KeyList @('SPACE')
-Write-Output '[sow] load requested'
+# Continue the existing campaign through the loader. No window input or capture.
+param([ValidateRange(10,300)][int]$TimeoutSeconds=150)
+$ErrorActionPreference='Stop'
+$client=Join-Path $PSScriptRoot '../HagIPC/tools/mod-action.ps1'
+$until=[datetime]::UtcNow.AddSeconds($TimeoutSeconds)
+do {
+    $reply=& $client 'run loader.load_save'
+    if($reply -eq 'err A save is already loaded.'){return (& $client 'run loader.load_status')}
+    if($reply -eq 'err Waiting for the active player profile at the title screen.'){
+        $state=& $client 'run loader.load_status'
+        if($state.StartsWith('ok World loaded;')){return $state}
+        Start-Sleep -Milliseconds 500
+    } else {break}
+} while([datetime]::UtcNow -lt $until)
+if(!$reply.StartsWith('ok ')){throw $reply}
+do {
+    $state=& $client 'run loader.load_status'
+    if($state.StartsWith('ok World loaded;')){return $state}
+    if($state -notmatch '^ok (Queued|Starting|Waiting)'){throw $state}
+    Start-Sleep -Milliseconds 400
+} while([datetime]::UtcNow -lt $until)
+throw 'Timed out waiting for a campaign session.'

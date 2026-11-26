@@ -2,6 +2,16 @@
 #include <cstdint>
 
 namespace sowmod::actions {
+inline constexpr unsigned SchemaVersion=2;
+using Emit=void(*)(void*,const char*);
+using Choices=bool(*)(unsigned field,const char* const* values,const char* search,Emit,void*);
+enum Refresh : unsigned { OnOpen=1, OnInputs=2, AfterRun=4, Periodic=8 };
+struct Source {
+    Choices pull=nullptr;
+    unsigned when=OnOpen;
+    std::uint32_t dependencies=0; // bit i watches input i
+    unsigned intervalMs=0;
+};
 enum Type : unsigned { Text, Integer, Boolean, Choice, MultiChoice };
 struct Input {
     const char* key;
@@ -10,11 +20,10 @@ struct Input {
     const char* initial=nullptr; // nullptr = required, otherwise IPC may omit it
     int min=0,max=0;
     const char* options=nullptr; // comma-separated stable IDs, or use Choices below
+    Source source{}; // choices: available IDs; scalar: current value
 };
-using Emit=void(*)(void*,const char*);
 // Strings are borrowed for the duration of the call only. No STL objects cross DLLs.
 using Run=bool(*)(const char* const* values,Emit,void*);
-using Choices=bool(*)(unsigned field,const char* const* values,const char* search,Emit,void*);
 struct Action {
     const char* key;
     const char* label;
@@ -23,6 +32,9 @@ struct Action {
     unsigned count;
     Run run;
     Choices choices=nullptr;
+    const char* menu=nullptr; // slash-separated submenu labels relative to this mod
+    Run preset=nullptr; // optional subfunction: emit key=value lines to populate the draft
+    const char* presetLabel=nullptr;
 };
 struct Registrar {
     unsigned version;

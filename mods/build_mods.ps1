@@ -15,6 +15,8 @@ $ErrorActionPreference = 'Stop'
 $root  = $PSScriptRoot
 $cmake = 'C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe'
 
+& $cmake -P (Join-Path $root '../tools/HeadlessMods.cmake')
+if ($LASTEXITCODE -ne 0) { throw "Submod UI guard failed" }
 $installRoot = Split-Path $GameDir -Parent    # ...\ShadowOfWar
 $modsOut = Join-Path $installRoot 'mods'      # ...\ShadowOfWar\mods
 New-Item -ItemType Directory -Force $modsOut | Out-Null

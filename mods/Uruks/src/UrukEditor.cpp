@@ -1,3 +1,4 @@
+#include "ModRuntime.h"
 #include "UrukEditor.h"
 #include "GameOffsets.h"
 #include "Settings.h"
@@ -110,13 +111,6 @@ struct Draft {
         edits[f.kind]={f.id,c};
     }
 };
-Draft g_draft;
-uint64_t g_generationRequest=0;
-HagUIAPI* g_ui = nullptr;
-std::mutex g_mutex;
-Snapshot g_snapshot;
-std::atomic<bool> g_pending{false};
-std::atomic<bool> g_loadFailed{false};
 std::atomic<uint64_t> g_nextField{1};
 
 int VectorSize(Ptr vector, size_t stride, int limit = 4096) {
@@ -1060,529 +1054,12 @@ bool Commit(Ptr m,const Task& task,const Catalog& catalog,std::string& status) {
     if (title && !ApplyNative(m,Kind::Role,0,0,role)) return false;
     return !name || engine::SetName(m,unsigned(name->value));
 }
-bool Current();
-void RunTask(Task* task) {
-    if (!g_ui || !task->session || g_ui->SaveSession()!=task->session) return;
-    try {
-        Snapshot snapshot;
-        snapshot.session=task->session; snapshot.selected=task->selected;
-        snapshot.targets=Targets(); snapshot.supported=engine::Supported();
-        if (task->op==Op::Refresh && !task->selected.army) {
-            Ptr army; unsigned index;
-            if (engine::StageSelection(army,index)) for (const auto& t:snapshot.targets)
-                if (t.key.army==army && t.key.index==index) { snapshot.selected=t.key; break; }
-        }
-        auto it=std::find_if(snapshot.targets.begin(),snapshot.targets.end(),[&](const auto& t){return t.key==snapshot.selected;});
-        Ptr m=it==snapshot.targets.end()?0:it->member;
-        const Catalog catalog=LoadCatalog();
-        Draft imported;
-        if (task->op!=Op::Refresh && (!m || Stamp(m)!=task->baseline)) {
-            snapshot.status="Captain changed. Draft discarded; no edits saved.";
-        } else if (task->op==Op::Generate) {
-            Choice candidate;
-            bool ok=false;
-            if (task->kind==Kind::Regenerate) {
-                auto plan=std::make_shared<engine::GenerationPlan>();
-                recipe::Catalog db;
-                const auto r=BuildRecipe(task->draft);
-                ok=Writable(m) && LoadRecipeCatalog(catalog,db,task->selected.army) &&
-                    engine::ScopeClassDraws(db,r,task->selected.army) &&
-                    engine::PlanGeneration(m,CellHash(Read<Ptr>(m+0x268),0x40c579dc,0),db,r,*plan,snapshot.status,task->session);
-                if (ok) {
-                    candidate.ticket=g_nextField.fetch_add(1);
-                    candidate.label="Generation settings";
-                    candidate.preview=it->label+"\nLevel "+std::to_string(plan->level+1);
-                    if (plan->role) candidate.preview+="\nRequired role: "+RecordName(plan->role);
-                    if (plan->encounter.reward) candidate.preview+="\nEncounter reward: "+RecordName(plan->encounter.reward);
-                    for (auto [slot,item]:plan->weapons)
-                        candidate.preview+="\nWeapon slot "+std::to_string(slot)+": "+(item?RecordName(item):"reserved empty");
-                    for (const auto& [kind,edit]:task->draft.edits) if (Selector(kind))
-                        candidate.preview+="\n"+edit.second.label;
-                    for (const auto& [kind,edit]:task->draft.edits) if (Bucket(kind)) for (auto id:edit.second.pickers)
-                        candidate.preview+="\n"+TraitLabel(id);
-                    candidate.generation=std::move(plan);
-                }
-            } else {
-                ok=Roll(m,task->kind,DraftRole(m,task->draft),catalog,candidate);
-                if (ok) AppendOrderReport(candidate,task->kind,m,task->draft,catalog);
-            }
-            std::lock_guard lock(g_mutex);
-            if (task->request!=g_generationRequest || g_snapshot.session!=g_ui->SaveSession() || g_snapshot.session!=task->session) return;
-            for (auto& f:g_snapshot.fields) if (f.id==task->field) {
-                f.choices.clear();
-                if (ok) {
-                    f.choices.push_back(std::move(candidate));
-                }
-                g_snapshot.status=ok?"Apply to draft or cancel.":snapshot.status.empty()?"No compatible profile. Try generating again.":snapshot.status;
-            }
-            return;
-        } else if (task->op==Op::Save) {
-            bool saved=Commit(m,*task,catalog,snapshot.status);
-            if (m && task->draft.edits.contains(Kind::Regenerate)) {
-                snapshot.targets=Targets();
-                m=0;
-                for (const auto& target:snapshot.targets) if (target.key.army==task->selected.army && target.key.index==task->selected.index) {
-                    m=target.member; snapshot.selected=target.key; break;
-                }
-            }
-            if (snapshot.status.empty()) snapshot.status=saved?"Saved to the captain.":"Save rejected by the engine. Captain state refreshed.";
-            Log(snapshot.status.c_str());
-        }
-        if (task->op==Op::Save && task->draft.edits.contains(Kind::Regenerate) &&
-            !GenerationReport(*task,catalog,m,snapshot.status)) snapshot.status+=" Could not write generation log.";
-        Capture(snapshot,catalog);
-        if (m && Stamp(m)==task->baseline && (task->op==Op::Template || task->op==Op::RetuneTemplate) &&
-            !TemplateFromMember(m,snapshot,imported,task->op==Op::RetuneTemplate?&task->draft:nullptr)) {
-            std::lock_guard lock(g_mutex);
-            g_snapshot.status="Cannot import this kit. Previous settings kept.";
-            return;
-        }
-        snapshot.baseline=m?Stamp(m):0;
-        if (!snapshot.status.empty()) Add(snapshot,"Last operation",snapshot.status);
-        if (g_ui->SaveSession()==task->session) {
-            std::lock_guard lock(g_mutex);
-            g_snapshot=std::move(snapshot); g_draft=std::move(imported);
-        }
-    } catch (...) { g_loadFailed=true; Log("Uruk editor operation failed"); }
-}
-void GuardedRun(Task* task) {
-    __try { RunTask(task); }
-    __except(GetExceptionCode()==EXCEPTION_ACCESS_VIOLATION?EXCEPTION_EXECUTE_HANDLER:EXCEPTION_CONTINUE_SEARCH) {
-        g_loadFailed=true;
-        Log("Uruk editor native access failed; refresh can be retried");
-    }
-}
-void Run(void* context) {
-    std::unique_ptr<Task> task(static_cast<Task*>(context));
-    GuardedRun(task.get());
-    g_pending=false;
-}
-bool Queue(std::unique_ptr<Task> task) {
-    if (g_pending.exchange(true)) return false;
-    g_loadFailed=false;
-    if (!g_ui->QueueGameTask(Run, task.get())) { g_loadFailed=true; g_pending.store(false); return false; }
-    task.release();
-    return true;
-}
-void Refresh(void*) {
-    auto task = std::make_unique<Task>();
-    task->session = g_ui->SaveSession();
-    { std::lock_guard lock(g_mutex); if (g_snapshot.session == task->session) {
-        if (g_draft.dirty()) return;
-        task->selected = g_snapshot.selected;
-    } }
-    if (task->session) Queue(std::move(task));
-}
-bool Current() { return g_snapshot.session != 0 && g_snapshot.session == g_ui->SaveSession(); }
-bool Enabled(const Field& f) {
-    if (g_pending || !g_draft.permits(f.kind,f.id)) return false;
-    if (f.kind==Kind::Traits) return true;
-    if (Selector(f.kind)) return g_snapshot.mayGenerate && !f.choices.empty() &&
-        (f.kind!=Kind::Class || g_draft.edits.contains(Kind::Base));
-    if (Bucket(f.kind)) return g_snapshot.mayGenerate && BuildRecipe(g_draft).complete();
-    if (f.kind==Kind::Regenerate) return g_snapshot.mayGenerate && BuildRecipe(g_draft).complete();
-    if (Generator(f.kind)) return g_snapshot.mayGenerate &&
-        (f.kind!=Kind::Advance || g_snapshot.mayAdvance);
-    return !f.choices.empty();
-}
-int recipePage;
-bool PageField(void* page,const Field& f) {
-    if (f.kind==Kind::Regenerate && g_ui->abiVersion>=14 && g_ui->SetEditorFooterGenerator) return false;
-    return f.kind!=Kind::Traits && (f.kind==Kind::Target || f.kind==Kind::View || (RecipeField(f.kind)==(page==&recipePage)));
-}
-int Count(void* page) { std::lock_guard lock(g_mutex); return Current() ? int(std::ranges::count_if(g_snapshot.fields,[&](const Field& f){return PageField(page,f);})) : 1; }
-bool ReadField(void* page, int index, HagUI_Property* property) {
-    if (!property || index < 0) return false;
-    std::lock_guard lock(g_mutex);
-    if (!Current()) {
-        if (index) return false;
-        *property = {};
-        strcpy_s(property->label, "State");
-        strcpy_s(property->value, g_pending.load() ? "Loading captain state..." : g_loadFailed.load() ?
-            "Captain refresh failed. Press Refresh to retry." : "Refresh after loading a save.");
-        return true;
-    }
-    auto found=std::ranges::find_if(g_snapshot.fields,[&](const Field& f){return PageField(page,f) && index--==0;});
-    if (found==g_snapshot.fields.end()) return false;
-    const auto& field = *found;
-    *property = {};
-    property->id = field.id;
-    strncpy_s(property->label, field.label.c_str(), _TRUNCATE);
-    strncpy_s(property->value, field.value.c_str(), _TRUNCATE);
-    if (auto d=g_draft.edits.find(field.kind); d!=g_draft.edits.end() && d->second.first==field.id)
-        strncpy_s(property->value,(d->second.second.label+" (unsaved)").c_str(),_TRUNCATE);
-    if (g_draft.missing(field.kind)) strcpy_s(property->value,"Regeneration required for the new title");
-    property->editable = Enabled(field);
-    if (!property->editable) strncpy_s(property->readOnlyReason, g_pending.load() ? "Pending game-thread operation" :
-        !g_draft.permits(field.kind,field.id) ? "Save or discard the current draft first" :
-        field.kind == Kind::Picker ? "Part of a generated set. Use Trait generator." :
-        field.kind==Kind::Class && !g_draft.edits.contains(Kind::Base) ? "Select a base class first." :
-        field.kind==Kind::Regenerate || Bucket(field.kind) ? "Select class, advanced class, tribe and rarity to prepare the automatic kit." :
-        Generator(field.kind) ? "Requires a supported, living, unspawned procedural captain" :
-        field.kind == Kind::View ? "Engine-managed field" :
-        field.kind == Kind::Equipment ? "No compatible records from this captain's kit, or captain currently spawned" :
-        "No compatible records or trait changes locked by the engine", _TRUNCATE);
-    return true;
-}
-const Field* Find(uint64_t id) {
-    if (!Current()) return nullptr;
-    auto it = std::find_if(g_snapshot.fields.begin(), g_snapshot.fields.end(), [id](const auto& f) { return f.id == id; });
-    return it == g_snapshot.fields.end() ? nullptr : &*it;
-}
-int ChoiceCount(void*, uint64_t id) { std::lock_guard lock(g_mutex); auto field = Find(id); return field ? static_cast<int>(field->choices.size()) : 0; }
-bool FitsSelector(const Field& f,const Choice& c) {
-    const auto& db=g_snapshot.recipeCatalog;
-    if (f.kind==Kind::Base) return db.trees.contains(c.value);
-    if (f.kind==Kind::Tribe) return db.tribes.contains(c.value);
-    if (f.kind==Kind::Rarity) return db.rarities.contains(c.value);
-    auto base=g_draft.edits.find(Kind::Base);
-    return f.kind==Kind::Class && base!=g_draft.edits.end() &&
-        db.classes.contains(c.value) && recipe::fitsClass(db,base->second.second.value,c.value);
-}
-bool ReadChoice(void*, uint64_t id, int index, HagUI_Choice* out) {
-    std::lock_guard lock(g_mutex);
-    auto field = Find(id);
-    if (!out || !field || index < 0 || index >= static_cast<int>(field->choices.size())) return false;
-    *out = {};
-    out->id = field->choices[index].ticket ? field->choices[index].ticket : index + 1;
-    out->selected = field->choices[index].selected;
-    if (field->kind==Kind::Traits || Bucket(field->kind)) if (auto it=g_draft.edits.find(field->kind);it!=g_draft.edits.end()) {
-        const auto& picks=it->second.second.pickers;
-        out->selected=std::find(picks.begin(),picks.end(),field->choices[index].value)!=picks.end();
-    }
-    if (Selector(field->kind) && !FitsSelector(*field,field->choices[index])) return false;
-    if (Selector(field->kind))
-        if (auto it=g_draft.edits.find(field->kind);it!=g_draft.edits.end())
-            out->selected=field->choices[index].value==it->second.second.value;
-    strncpy_s(out->label, field->choices[index].label.c_str(), _TRUNCATE);
-    return true;
-}
-const Choice* ChoiceById(const Field& f,uint64_t id) {
-    if (!id) return nullptr;
-    if (Generator(f.kind)) return !f.choices.empty() && f.choices.front().ticket==id?&f.choices.front():nullptr;
-    return id<=f.choices.size()?&f.choices[size_t(id-1)]:nullptr;
-}
-std::unique_ptr<Task> DraftTask(Op op);
-bool Apply(void*,uint64_t id,uint64_t choiceId) {
-    std::lock_guard lock(g_mutex);
-    const Field* f=Find(id);
-    if (!f || !Enabled(*f)) return false;
-    const Choice* c=ChoiceById(*f,choiceId);
-    if (!c || c->disabled) return false;
-    if (f->kind==Kind::Traits || Bucket(f->kind)) return false;
-    if (Selector(f->kind) && !FitsSelector(*f,*c)) return false;
-    if (RecipeField(f->kind) && !Selector(f->kind)) {
-        Draft next=g_draft;
-        next.stage(*f,*c);
-        if (!recipe::resolve(g_snapshot.recipeCatalog,BuildRecipe(next),[](const auto&){return true;})) return false;
-    }
-    if (f->kind==Kind::Target) {
-        if (c->value>=g_snapshot.targets.size()) return false;
-        auto t=std::make_unique<Task>();
-        t->session=g_snapshot.session; t->selected=g_snapshot.targets[c->value].key;
-        return Queue(std::move(t));
-    }
-    if (Selector(f->kind) && g_draft.fromTemplate) {
-        auto t=DraftTask(Op::RetuneTemplate);
-        t->draft.stage(*f,*c);
-        const auto r=BuildRecipe(t->draft);
-        if (f->kind==Kind::Base && !recipe::fitsClass(g_snapshot.recipeCatalog,r.base,r.specialization)) {
-            t->draft.edits.erase(Kind::Class);
-            g_draft=std::move(t->draft);
-            g_snapshot.status="Select an advanced class to check the remaining template choices.";
-            return true;
-        }
-        if (r.complete()) return Queue(std::move(t));
-        g_draft=std::move(t->draft);return true;
-    }
-    g_draft.stage(*f,*c);
-    if (Selector(f->kind)) {
-        std::erase_if(g_draft.edits,[](const auto& e){return Bucket(e.first);});
-        auto spec=g_draft.edits.find(Kind::Class);
-        if (f->kind==Kind::Base && spec!=g_draft.edits.end() &&
-            !recipe::fitsClass(g_snapshot.recipeCatalog,c->value,spec->second.second.value)) g_draft.edits.erase(spec);
-        g_snapshot.status.clear();
-    }
-    if (RecipeField(f->kind) && f->kind!=Kind::Regenerate)
-        for (auto& field:g_snapshot.fields) if (field.kind==Kind::Regenerate) field.choices.clear();
-    if (f->kind==Kind::Role) for (auto& other:g_snapshot.fields)
-        if (other.kind==Kind::Name || other.kind==Kind::Appearance) other.choices.clear();
-    return true;
-}
-void State(void* page,uint64_t id,uint64_t choice,HagUI_PopupState* out) {
-    *out={};
-    std::lock_guard lock(g_mutex);
-    out->busy=g_pending.load();
-    if (!Current()) return;
-    out->dirty=g_draft.dirty(); out->busy=g_pending;
-    out->canSave=g_draft.ready() && !out->busy;
-    bool composing=g_draft.dirty() && RecipeField(g_draft.edits.begin()->first);
-    if (g_draft.dirty() && composing!=(page==&recipePage)) out->canSave=false;
-    strncpy_s(out->status,composing && !id && !g_draft.ready() && g_snapshot.status.empty()?"Generate and apply a replacement first.":
-        !composing && g_draft.dirty()&&!g_draft.ready()?"Regenerate and apply the marked fields.":g_snapshot.status.c_str(),_TRUNCATE);
-    if (g_draft.edits.count(Kind::Traits) && g_snapshot.traitSaveBlock) {
-        out->canSave=false;
-        strncpy_s(out->status,g_snapshot.traitSaveBlock,_TRUNCATE);
-    }
-    if (auto f=Find(id)) {
-        out->generator=Generator(f->kind); out->needsRepair=g_draft.missing(f->kind);
-        if (auto c=ChoiceById(*f,choice)) {
-            if (Selector(f->kind)) {
-                if (!FitsSelector(*f,*c)) {out->unavailable=true; strcpy_s(out->status,"Conflicts with the selected kit.");}
-                else if (BuildRecipe(g_draft).complete()) strcpy_s(out->status,g_draft.fromTemplate?
-                    "Keeps compatible template choices.":"Applying a selector clears optional picks.");
-            }
-            if (c->disabled) {out->unavailable=true; strncpy_s(out->status,c->disabled,_TRUNCATE);}
-            strncpy_s(out->preview,c->preview.c_str(),_TRUNCATE);
-            std::copy_n(c->look.palette,17,out->palette);
-        }
-    }
-}
-std::unique_ptr<Task> DraftTask(Op op) {
-    auto t=std::make_unique<Task>();
-    t->op=op; t->session=g_snapshot.session; t->selected=g_snapshot.selected;
-    t->baseline=g_snapshot.baseline; t->draft=g_draft;
-    return t;
-}
-bool Generate(void*,uint64_t id) {
-    std::lock_guard lock(g_mutex);
-    auto f=Find(id);
-    if (!f || !Generator(f->kind) || !Enabled(*f)) return false;
-    auto t=DraftTask(Op::Generate); t->kind=f->kind; t->field=id; t->request=++g_generationRequest;
-    return Queue(std::move(t));
-}
-bool CanTakeTemplate() {
-    std::lock_guard lock(g_mutex);
-    return Current() && !g_pending && g_snapshot.selected.army && g_snapshot.mayGenerate;
-}
-void TakeTemplate() {
-    std::lock_guard lock(g_mutex);
-    if (Current() && !g_pending && g_snapshot.selected.army && g_snapshot.mayGenerate)
-        Queue(DraftTask(Op::Template));
-}
-std::uint64_t FooterGenerator(void*) {
-    std::lock_guard lock(g_mutex);
-    if (Current()) for (auto& f:g_snapshot.fields) if (f.kind==Kind::Regenerate && Enabled(f)) return f.id;
-    return 0;
-}
-void Save(void* page) {
-    std::lock_guard lock(g_mutex);
-    if (!Current() || !g_draft.ready() || g_pending) return;
-    if (RecipeField(g_draft.edits.begin()->first)!=(page==&recipePage)) return;
-    if (g_draft.edits.count(Kind::Traits) && g_snapshot.traitSaveBlock) return;
-    auto t=DraftTask(Op::Save);
-    if (auto e=g_draft.edits.find(Kind::Equipment); e!=g_draft.edits.end()) {
-        auto f=Find(e->second.first);
-        if (!f) return;
-        t->expected=f->expected; t->slot=f->slot;
-    }
-    Queue(std::move(t));
-}
-void Discard(void*) {
-    std::lock_guard lock(g_mutex);
-    if (g_pending) return;
-    g_draft={};
-    for (auto& f:g_snapshot.fields) if (Generator(f.kind)) f.choices.clear();
-    g_snapshot.status="Draft discarded.";
-}
-bool HandlesSet(void*,uint64_t id) {
-    std::lock_guard lock(g_mutex); auto f=Find(id); return f && (f->kind==Kind::Traits || Bucket(f->kind));
-}
-struct InputCheck {
-    Key target;
-    uint64_t session{},baseline{},field{};
-    recipe::Recipe staged;
-    std::set<Ptr> allowed;
-    bool valid=false,ready=false;
-};
-std::shared_ptr<InputCheck> inputCheck;
-// Evaluate native picker records on the game thread, without running the captain builder.
-void CheckInputs(void* arg) {
-    std::unique_ptr<std::shared_ptr<InputCheck>> job(static_cast<std::shared_ptr<InputCheck>*>(arg));
-    const auto check=*job;
-    recipe::Catalog db; std::vector<Ptr> choices; size_t bucket;
-    {
-        std::lock_guard lock(g_mutex);
-        auto f=Find(check->field);
-        if (!f || inputCheck!=check || g_snapshot.session!=check->session || !Bucket(f->kind)) return;
-        db=g_snapshot.recipeCatalog;
-        bucket=int(f->kind)-int(Kind::Immunities);
-        for (const auto& c:f->choices) choices.push_back(c.value);
-    }
-    std::set<Ptr> allowed;
-    bool valid=false;
-    for (const auto& t:Targets()) if (t.key==check->target && Stamp(t.member)==check->baseline) {
-        auto r=check->staged;
-        if (!engine::ScopeClassDraws(db,r,t.key.army)) break;
-        auto rank=CellHash(Read<Ptr>(t.member+0x268),0x40c579dc,0);
-        engine::GenerationPlan plan;
-        std::string error;
-        valid=engine::PlanGeneration(t.member,rank,db,r,plan,error,check->session);
-        for (Ptr id:choices) {
-            r.traits[bucket].push_back(id);
-            if (engine::PlanGeneration(t.member,rank,db,r,plan,error,check->session)) allowed.insert(id);
-            r.traits[bucket].pop_back();
-        }
-        break;
-    }
-    std::lock_guard lock(g_mutex);
-    if (inputCheck==check && Current() && g_snapshot.session==check->session) {
-        check->ready=true;check->valid=valid;check->allowed=std::move(allowed);
-    }
-}
-bool Compatible(const Field& f,uint64_t candidate,const uint64_t* picks,int n) {
-    if (n<0 || n>512 || (n && !picks) || (candidate && candidate>f.choices.size())) return false;
-    std::vector<Ptr> set;
-    for (int i=0;i<n;++i) {
-        if (!picks[i] || picks[i]>f.choices.size()) return false;
-        set.push_back(f.choices[picks[i]-1].value);
-    }
-    if (candidate) set.push_back(f.choices[candidate-1].value);
-    if (Bucket(f.kind)) {
-        auto r=BuildRecipe(g_draft);
-        if (!r.complete()) return false;
-        r.traits[int(f.kind)-int(Kind::Immunities)]=std::move(set);
-        const auto& db=g_snapshot.recipeCatalog;
-        auto fixed=recipe::coreInputs(db,r);
-        unsigned budget=8192;
-        if (!recipe::resolve(db,r,[](const auto&){return true;},[&](const auto& picked){
-            return recipe::fitsCore(db,fixed,picked);
-        },&budget)) return false;
-        auto& row=r.traits[int(f.kind)-int(Kind::Immunities)];
-        if (candidate) row.pop_back();
-        auto same=[&]{return inputCheck && inputCheck->field==f.id && inputCheck->session==g_snapshot.session &&
-            inputCheck->baseline==g_snapshot.baseline && inputCheck->target==g_snapshot.selected;};
-        if (!candidate && same() && inputCheck->ready && !row.empty()) {
-            auto last=row.back();row.pop_back();
-            if (r==inputCheck->staged && inputCheck->allowed.contains(last)) return true;
-            row.push_back(last);
-        }
-        if (same() && inputCheck->staged==r) return inputCheck->ready &&
-            (candidate?inputCheck->allowed.contains(f.choices[candidate-1].value):inputCheck->valid);
-        auto check=std::make_shared<InputCheck>();
-        check->field=f.id;check->target=g_snapshot.selected;check->baseline=g_snapshot.baseline;
-        check->session=g_snapshot.session;check->staged=std::move(r);
-        auto job=std::make_unique<std::shared_ptr<InputCheck>>(check);
-        inputCheck=check;
-        if (g_ui->QueueGameTask(CheckInputs,job.get())) job.release();
-        else inputCheck.reset();
-        return false;
-    }
-    return g_snapshot.traitRules.permits(set);
-}
-bool SetOption(void*,uint64_t id,uint64_t candidate,const uint64_t* picks,int n) {
-    std::lock_guard lock(g_mutex); auto f=Find(id);
-    return f && (f->kind==Kind::Traits || Bucket(f->kind)) && Compatible(*f,candidate,picks,n);
-}
-bool SetApply(void*,uint64_t id,const uint64_t* picks,int n) {
-    std::lock_guard lock(g_mutex); auto f=Find(id);
-    if (!f || (f->kind!=Kind::Traits && !Bucket(f->kind)) || !Enabled(*f) || !Compatible(*f,0,picks,n)) return false;
-    Choice c{0,std::to_string(n)+" selected"};
-    for (int i=0;i<n;++i) {
-        if (std::find(picks,picks+i,picks[i])!=picks+i) return false;
-        c.pickers.push_back(f->choices[picks[i]-1].value);
-    }
-    g_draft.stage(*f,c);
-    if (Bucket(f->kind)) for (auto& field:g_snapshot.fields) if (field.kind==Kind::Regenerate) field.choices.clear();
-    return true;
-}
-struct SceneId {
-    uint64_t session{},field{},choice{};
-    bool operator==(const SceneId&) const = default;
-};
-SceneId wantedScene{};
-bool sceneQueued=false;
-int sceneState=0;
-std::chrono::steady_clock::time_point lastProbe{};
-// Only the game thread touches the lease. Identity, never a pointer alone,
-// determines whether a later task is allowed to restore the Army character.
-engine::StageLease lease{};
-SceneId leasedScene{};
-void ClearLease() {
-    if (leasedScene.session && leasedScene.session==g_ui->SaveSession()) engine::RestoreStage(lease);
-    lease={}; leasedScene={};
-}
-void RunScene(void*) {
-    SceneId id;
-    Key target{};
-    uint64_t baseline=0;
-    Kind kind=Kind::View;
-    Choice candidate{};
-    Ptr role=0;
-    unsigned slot=0;
-    try {
-        {
-            std::lock_guard lock(g_mutex);
-            id=wantedScene;
-            if (id.session && id.session==g_ui->SaveSession()) if (auto f=Find(id.field)) {
-                if (auto c=ChoiceById(*f,id.choice); c && !c->disabled) {
-                    target=g_snapshot.selected; baseline=g_snapshot.baseline; kind=f->kind; slot=f->slot;
-                    candidate=*c;
-                    if (auto r=g_draft.edits.find(Kind::Role); r!=g_draft.edits.end()) role=r->second.second.value;
-                }
-            }
-        }
-        bool ready=target.army && leasedScene==id && engine::StageCurrent(lease);
-        if (!ready) {
-            ClearLease();
-            Ptr selectedArmy; unsigned selectedIndex;
-            if (target.army && id.session==g_ui->SaveSession() && engine::StageSelection(selectedArmy,selectedIndex)
-                    && selectedArmy==target.army && selectedIndex==target.index) {
-                for (const auto& t:Targets()) if (t.key==target && Stamp(t.member)==baseline) {
-                    if (!role) role=Read<Ptr>(t.member+0x318);
-                    ready=engine::PreviewStage(t.member,role,kind==Kind::Appearance?candidate.value:0,
-                            candidate.look,kind==Kind::Equipment?candidate.value:0,slot,lease);
-                    if (ready) leasedScene=id;
-                    break;
-                }
-            }
-        }
-        bool stale;
-        {
-            std::lock_guard lock(g_mutex);
-            stale=id!=wantedScene || (id.session && id.session!=g_ui->SaveSession());
-            sceneState=stale?0:(ready?2:1);
-            sceneQueued=false;
-        }
-        if (stale) ClearLease();
-    } catch (...) {
-        ClearLease();
-        std::lock_guard lock(g_mutex);
-        sceneQueued=false; sceneState=1;
-    }
-}
-int Scene(void*,uint64_t field,uint64_t choice,char (&message)[192]) {
-    std::lock_guard lock(g_mutex);
-    SceneId id{};
-    auto f=field?Find(field):nullptr;
-    const bool visual=f && (f->kind==Kind::Appearance || f->kind==Kind::Equipment);
-    if (visual && !g_pending) if (auto c=ChoiceById(*f,choice); c && !c->disabled)
-        id={g_snapshot.session,field,choice};
-    const auto now=std::chrono::steady_clock::now();
-    const bool changed=id!=wantedScene;
-    if (changed) { wantedScene=id; sceneState=0; }
-    if (!sceneQueued && (changed || (id.session && now-lastProbe>std::chrono::milliseconds(sceneState==2?250:1500)))) {
-        sceneQueued=g_ui->QueueGameTask(RunScene,nullptr);
-        lastProbe=now;
-        if (!sceneQueued) { wantedScene={~uint64_t(0),0,0}; return 1; }
-    }
-    if (!visual) return 0;
-    if (!id.choice) strcpy_s(message,f->kind==Kind::Appearance?"Generate an appearance to preview.":"Select a weapon to preview.");
-    else if (!sceneState) strcpy_s(message,"Preparing Army model...");
-    else if (sceneState!=2) strcpy_s(message,"Open this captain's detail view in the Army screen before opening the editor.");
-    return id.choice && sceneState==2?2:1;
-}
-void Close(void*,uint64_t field) {
-    std::lock_guard lock(g_mutex);
-    ++g_generationRequest;
-    for (auto& f:g_snapshot.fields) if (f.id==field && Generator(f.kind)) f.choices.clear();
-}
 }
 namespace {
 namespace act=sowmod::actions;
 constexpr act::Input recipeInputs[]={
     {"captain","Captain (Army:seat)",act::Choice},{"base","Base class",act::Choice},
-    {"advanced","Advanced class",act::Choice},{"tribe","Tribe",act::Choice},{"rarity","Rarity",act::Choice},
+    {"advanced","Advanced class",act::Choice,nullptr,0,0,nullptr,{nullptr,act::OnOpen|act::OnInputs,1u<<1}},{"tribe","Tribe",act::Choice},{"rarity","Rarity",act::Choice},
     {"immunities","Immunities",act::MultiChoice,""},{"hates","Hates",act::MultiChoice,""},
     {"class_traits","Class traits",act::MultiChoice,""},{"bonuses","Bonuses",act::MultiChoice,""},
     {"mortal","Mortal weaknesses",act::MultiChoice,""},{"vulnerabilities","Vulnerabilities",act::MultiChoice,""},
@@ -1610,10 +1087,25 @@ bool actionChoices(unsigned n,const char* const* v,const char* search,act::Emit 
     return true;
 }
 std::optional<Task> actionPlan;std::string actionTicket;
+bool templateAction(const char* const* v,act::Emit emit,void* ctx){
+    Target t;if(!findCaptain(v[0],t)){emit(ctx,"select a captain first");return false;}
+    Snapshot s;s.selected=t.key;s.session=sowmod::SaveSession();RecipeFields(s,LoadCatalog());
+    Draft draft;
+    if(!TemplateFromMember(t.member,s,draft,nullptr)){emit(ctx,"no compatible template for this captain");return false;}
+    auto r=BuildRecipe(draft);
+    const Ptr kit[]={r.base,r.specialization,r.tribe,r.rarity};
+    for(unsigned i=1;i<std::size(recipeInputs);++i){
+        std::string line=std::string(recipeInputs[i].key)+"=";
+        if(i<=4)line+=RecordName(kit[i-1]);
+        else for(auto id:r.traits[i-5]){if(line.back()!='=')line+=',';line+=RecordName(id);}
+        emit(ctx,line.c_str());
+    }
+    return true;
+}
 bool previewAction(const char* const* v,act::Emit emit,void* ctx) {
     actionPlan.reset();actionTicket.clear();
-    Target t;if(!g_ui || !findCaptain(v[0],t) || !Writable(t.member)){emit(ctx,"captain unavailable");return false;}
-    Task task;task.session=g_ui->SaveSession();task.selected=t.key;task.baseline=Stamp(t.member);
+    Target t;if(!findCaptain(v[0],t) || !Writable(t.member)){emit(ctx,"captain unavailable");return false;}
+    Task task;task.session=sowmod::SaveSession();task.selected=t.key;task.baseline=Stamp(t.member);
     if(!task.session)return false;
     Snapshot s;s.selected=t.key;s.session=task.session;auto catalog=LoadCatalog();RecipeFields(s,catalog);
     for(unsigned i=1;i<std::size(actionKinds);++i){
@@ -1641,7 +1133,7 @@ bool previewAction(const char* const* v,act::Emit emit,void* ctx) {
 bool saveAction(const char* const* v,act::Emit emit,void* ctx){
     if(!actionPlan || actionTicket!=v[0]){emit(ctx,"unknown or consumed preview ticket");return false;}
     auto task=std::move(*actionPlan);actionPlan.reset();actionTicket.clear();
-    if(!g_ui || g_ui->SaveSession()!=task.session){emit(ctx,"save session changed");return false;}
+    if(sowmod::SaveSession()!=task.session){emit(ctx,"save session changed");return false;}
     for(auto& t:Targets())if(t.key==task.selected && Stamp(t.member)==task.baseline){
         auto catalog=LoadCatalog();std::string status;bool ok=Commit(t.member,task,catalog,status);
         if(status.empty())status="engine rejected save";
@@ -1652,37 +1144,17 @@ bool saveAction(const char* const* v,act::Emit emit,void* ctx){
 }
 }
 bool RegisterEditorActions(const act::Registrar& r){
-    static constexpr act::Input ticket[]={{"ticket","Preview ticket",act::Text}};
+    static constexpr act::Input ticket[]={{"ticket","Preview ticket",act::Text,nullptr,0,0,nullptr,
+        {[](unsigned,const char* const*,const char*,act::Emit emit,void* ctx){
+            emit(ctx,actionPlan && actionPlan->session==sowmod::SaveSession()?actionTicket.c_str():"");return true;},act::OnOpen|act::AfterRun}}};
     return r.Add({"inspect","Inspect captain",true,recipeInputs,1,[](const char* const* v,act::Emit emit,void* ctx){
         Target t;if(!findCaptain(v[0],t)){emit(ctx,"captain not found");return false;}
         emit(ctx,t.label.c_str());recipe::Catalog db;
         if(!LoadRecipeCatalog(LoadCatalog(),db,t.key.army))return false;
         emit(ctx,KitText(MemberKit(t.member,db)).c_str());
         std::vector<Ptr> active;if(!MemberRecords(t.member+0x198,active))return false;
-        for(auto id:active)emit(ctx,RecordName(id).c_str());return true;},actionChoices}) &&
-        r.Add({"preview","Generate captain preview",true,recipeInputs,unsigned(std::size(recipeInputs)),previewAction,actionChoices}) &&
-        r.Add({"save","Save generated captain",true,ticket,1,saveAction});
-}
-void AddUrukEditor(int parent, HagUIAPI* ui) {
-    if (!ui || ui->abiVersion < 11 || !ui->AddPopupEditor) return;
-    g_ui = ui;
-    const int page = ui->RegisterSubPage(parent, "Uruk Editor");
-    if (page < 0) return;
-    const HagUI_PropertySource source{Refresh, Count, ReadField, ChoiceCount, ReadChoice, Apply};
-    const HagUI_PopupActions popup{"Save Uruk",State,Generate,Save,Discard,Close};
-    const HagUI_SetEditor set{HandlesSet,SetOption,SetApply};
-    if (ui->abiVersion>=13 && ui->AddSetEditor) ui->AddSetEditor(page,nullptr,&source,&popup,Scene,&set);
-    else if (ui->abiVersion>=12 && ui->AddSceneEditor) ui->AddSceneEditor(page,nullptr,&source,&popup,Scene);
-    else ui->AddPopupEditor(page,nullptr,&source,&popup);
-    ui->AddSubPageButton(parent, "Uruk Editor", page);
-    if (ui->abiVersion>=13 && ui->AddSetEditor) {
-        const int regen=ui->RegisterSubPage(parent,"Regenerate Captain");
-        if (regen>=0) {
-            if (ui->AddHeaderButton) ui->AddHeaderButton(regen,"Take Over Template",TakeTemplate,CanTakeTemplate);
-            ui->AddSetEditor(regen,&recipePage,&source,&popup,Scene,&set);
-            if (ui->abiVersion>=14 && ui->SetEditorFooterGenerator) ui->SetEditorFooterGenerator(regen,"Generate",FooterGenerator);
-            ui->AddSubPageButton(parent,"Regenerate Captain",regen);
-        }
-    }
+        for(auto id:active)emit(ctx,RecordName(id).c_str());return true;},actionChoices,"Captains"}) &&
+        r.Add({"preview","Generate captain preview",true,recipeInputs,unsigned(std::size(recipeInputs)),previewAction,actionChoices,"Captains/Generator",templateAction,"Take Over Template"}) &&
+        r.Add({"save","Save generated captain",true,ticket,1,saveAction,nullptr,"Captains/Generator"});
 }
 }

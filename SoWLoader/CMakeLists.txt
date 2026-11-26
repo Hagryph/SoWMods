@@ -19,6 +19,7 @@ add_library(SoWLoader SHARED
     src/Console.cpp
     src/Overlay.cpp
     src/GameHooks.cpp
+    src/CampaignLoad.cpp
     src/GameTaskQueue.cpp
     src/WindowWatch.cpp
     src/ModManager.cpp
@@ -34,6 +35,8 @@ target_include_directories(SoWLoader PRIVATE src "${CMAKE_CURRENT_SOURCE_DIR}/..
 target_precompile_headers(SoWLoader PRIVATE src/PCH.h)
 target_compile_definitions(SoWLoader PRIVATE UNICODE _UNICODE)
 target_compile_options(SoWLoader PRIVATE /utf-8)
+add_custom_target(CheckHeadlessMods COMMAND "${CMAKE_COMMAND}" -P "${CMAKE_CURRENT_SOURCE_DIR}/../tools/HeadlessMods.cmake" VERBATIM)
+add_dependencies(SoWLoader CheckHeadlessMods)
 target_link_libraries(SoWLoader PRIVATE minhook::minhook imgui::imgui d3d11 dxgi d3dcompiler advapi32)
 
 # The output DLL MUST be named exactly steam_api64.dll (it impersonates the Steam API DLL).
@@ -41,6 +44,7 @@ set_target_properties(SoWLoader PROPERTIES PREFIX "" OUTPUT_NAME "steam_api64")
 
 include(CTest)
 if(BUILD_TESTING)
+    add_test(NAME SubmodBoundary COMMAND "${CMAKE_COMMAND}" -P "${CMAKE_CURRENT_SOURCE_DIR}/../tools/TestHeadlessMods.cmake")
     add_executable(ModConfigTests tests/ModConfigTests.cpp src/ModConfigService.cpp)
     target_include_directories(ModConfigTests PRIVATE src "${CMAKE_CURRENT_SOURCE_DIR}/../shared")
     target_compile_definitions(ModConfigTests PRIVATE UNICODE _UNICODE WIN32_LEAN_AND_MEAN)

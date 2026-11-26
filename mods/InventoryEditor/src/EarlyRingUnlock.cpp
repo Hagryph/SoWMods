@@ -6,13 +6,11 @@
 #include "GameOffsets.h"
 #include <cstring>
 #include <cstdio>
-#include <new>
+#include "ModRuntime.h"
 
 namespace inventory_editor {
 namespace {
-HagUIAPI* g_ui = nullptr;
-void (*g_log)(const char*) = nullptr;
-SRWLOCK g_lock = SRWLOCK_INIT;
+bool guardReady = false;
 
 struct Snapshot {
     std::uint64_t session = 0;
@@ -23,11 +21,6 @@ struct Snapshot {
     bool unlocked[2]{};
     bool valid = false;
 };
-Snapshot g_snapshot;
-bool g_probePending = false;
-bool g_unlockPending = false;
-ULONGLONG g_lastProbe = 0;
-struct Request { std::uint64_t session; bool unlock; };
 
 bool ReadState(Snapshot& state) {
     using HasFn = bool(__fastcall*)(std::uintptr_t, std::uintptr_t);
@@ -74,96 +67,15 @@ bool Give(std::uintptr_t player, std::uintptr_t row) {
     }
 }
 
-void Execute(void* context) {
-    const Request request = *static_cast<Request*>(context);
-    delete static_cast<Request*>(context);
-    Snapshot state{};
-    state.session = request.session;
-    bool ok = request.session != 0 && g_ui->SaveSession() == request.session && ReadState(state);
-    if (ok && request.unlock) {
-        ok = game::ring::GrantMissing(state,
-            [&] { return g_ui->SaveSession() == request.session; }, &Give, &ReadState);
-        if (g_log) g_log(ok
-            ? "Early ring: native ability grants completed; button hidden."
-            : "Early ring: native grant did not complete; button remains available when state can be verified.");
-    }
-    if (!ok || g_ui->SaveSession() != request.session) state.valid = false;
-    ::AcquireSRWLockExclusive(&g_lock);
-    const Snapshot previous = g_snapshot;
-    g_snapshot = state;
-    if (request.unlock) g_unlockPending = false;
-    else g_probePending = false;
-    ::ReleaseSRWLockExclusive(&g_lock);
-    if (g_log && (previous.session != state.session || previous.valid != state.valid ||
-        previous.unlocked[0] != state.unlocked[0] || previous.unlocked[1] != state.unlocked[1])) {
-        char message[192]{};
-        std::snprintf(message, sizeof(message),
-            "Early ring state: world=%llu eligible=%d brand=%d captains=%d button=%s",
-            static_cast<unsigned long long>(state.session), state.valid,
-            state.unlocked[0], state.unlocked[1],
-            game::ring::ShouldOffer(state, g_ui->SaveSession(), false) ? "visible" : "hidden");
-        g_log(message);
-    }
-}
-
-void Queue(bool unlock) {
-    const auto session = g_ui->SaveSession();
-    if (!session) return;
-    ::AcquireSRWLockExclusive(&g_lock);
-    if ((unlock && g_unlockPending) || (!unlock && (g_probePending || g_unlockPending ||
-        (g_snapshot.session == session && ::GetTickCount64() - g_lastProbe < 250)))) {
-        ::ReleaseSRWLockExclusive(&g_lock);
-        return;
-    }
-    // Reject a stale or already-unlocked click before queuing; Execute checks again.
-    if (unlock && (g_snapshot.session != session || !g_snapshot.valid ||
-                   game::ring::Complete(g_snapshot))) {
-        ::ReleaseSRWLockExclusive(&g_lock);
-        return;
-    }
-    if (unlock) g_unlockPending = true;
-    else g_probePending = true;
-    g_lastProbe = ::GetTickCount64();
-    ::ReleaseSRWLockExclusive(&g_lock);
-    auto* request = new (std::nothrow) Request{session, unlock};
-    if (!request || !g_ui->QueueGameTask(&Execute, request)) {
-        delete request;
-        ::AcquireSRWLockExclusive(&g_lock);
-        if (unlock) g_unlockPending = false;
-        else g_probePending = false;
-        ::ReleaseSRWLockExclusive(&g_lock);
-        if (unlock && g_log) g_log("Early ring: game task queue unavailable; no grant was made.");
-    }
-}
-
-bool Visible() {
-    const auto session = g_ui->SaveSession();
-    Queue(false);
-    ::AcquireSRWLockShared(&g_lock);
-    const bool result = game::ring::ShouldOffer(g_snapshot, session, g_unlockPending);
-    ::ReleaseSRWLockShared(&g_lock);
-    return result;
-}
-void Unlock() { Queue(true); }
 }
 
 bool RegisteredRingAction(bool unlock) {
-    if(!g_ui)return false;
-    Snapshot state{};state.session=g_ui->SaveSession();
+    if(!guardReady)return false;
+    Snapshot state{};state.session=sowmod::SaveSession();
     if(!state.session || !ReadState(state))return false;
     if(unlock && !game::ring::Complete(state))
-        return game::ring::GrantMissing(state,[&]{return state.session==g_ui->SaveSession();},&Give,&ReadState);
+        return game::ring::GrantMissing(state,[&]{return state.session==sowmod::SaveSession();},&Give,&ReadState);
     return game::ring::Complete(state);
 }
-void AddEarlyRingUnlock(int page, HagUIAPI* ui, void (*log)(const char*)) {
-    if (!ui || ui->abiVersion < 8) return;
-    if (!InstallRingGrantGuard()) {
-        if (log) log("Early ring unavailable: native duplicate-grant guard could not be installed.");
-        return;
-    }
-    g_ui = ui;
-    g_log = log;
-    ui->AddHeaderButton(page, "Early Unlock Ring", &Unlock, &Visible);
-    if (log) log("Early ring action registered; unlock state comes from the loaded save.");
-}
+bool InitEarlyRingUnlock() { return guardReady = InstallRingGrantGuard(); }
 }  // namespace inventory_editor

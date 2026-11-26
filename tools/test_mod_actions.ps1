@@ -23,10 +23,16 @@ Rejected 'run uruks.set_recruitment enabled=true enabled=false' 'expected unique
 Rejected 'run inventoryeditor.spawn item=invalid count=51' 'out of range'
 Rejected 'run uruks.preview nonexistent=x' 'unknown input'
 Rejected 'run uruks.save' 'missing ticket'
+if((Request 'read uruks.set_recruitment enabled') -ne (Request 'run uruks.get_recruitment')){throw 'Bound setting and handler disagree'}
+if((Request 'help uruks.preview') -notmatch 'menu=Captains/Generator' -or
+   (Request 'help uruks.preview') -notmatch 'advanced:choice \(refresh=3, dependencies=2'){throw 'Missing submenu or dependent choice metadata'}
+Rejected 'read uruks.preview missing' 'field has no such source'
 Write-Output "Discovery and validation passed: $($ids.Count) actions"
 if($DiscoveryOnly){return}
 $target="captain=$Captain"
 $before=Request "run uruks.inspect $target"
+$template=Request "preset uruks.preview $target"
+if($template -notmatch '(?m)^immunities=' -or $template -notmatch '(?m)^base=ClassMarker_Defender$'){throw 'Template did not return generator settings'}
 $base='ClassMarker_Defender'
 $specs=(Request "choices uruks.preview advanced $target base=$base").Split([char]10)
 if('Marker_Specialization_Tank' -notin $specs){throw 'Tank not offered for Defender'}
@@ -41,6 +47,7 @@ $argsText=($traits.GetEnumerator() | ForEach-Object {"$($_.Key)=$($_.Value)"}) -
 $plan=Request "run uruks.preview $kit $argsText"
 if($plan -notmatch '^ticket=(\d+) '){throw "Invalid ticket: $plan"}
 $ticket=$Matches[1]
+if((Request 'read uruks.save ticket') -ne $ticket){throw 'Save form did not resolve the preview ticket'}
 if((Request "run uruks.inspect $target") -ne $before){throw 'Captain changed during preview'}
 Write-Output "Preview passed: $plan"
 if(!$SaveCaptain){return}

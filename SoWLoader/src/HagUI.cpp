@@ -1,4 +1,7 @@
 #include "HagUI.h"
+#include "ModActions.h"
+#include <map>
+#include <sstream>
 #include "Overlay.h"
 #include "Log.h"
 
@@ -176,9 +179,23 @@ void HagUI::AddSubPageButton(int page, const char* label, int child) {
     pages_[page].widgets.back().child = child;
 }
 void HagUI::AddActionForms(int parent,const std::string& prefix) {
-    int page=RegisterSubPage(parent,"Mod Actions");
-    pages_[page].actionPrefix=prefix;
-    AddSubPageButton(parent,"Mod Actions",page);
+    std::map<std::pair<int,std::string>,int> children;
+    for(auto& cmd:actions::Commands()) {
+        if(!cmd.id.starts_with(prefix+".")) continue;
+        int at=parent;
+        std::istringstream path(cmd.spec.menu?cmd.spec.menu:"");
+        for(std::string part;std::getline(path,part,'/');) {
+            auto [node,created]=children.try_emplace({at,part},-1);
+            if(created) {
+                node->second=RegisterSubPage(at,part.c_str());
+                AddSubPageButton(at,part.c_str(),node->second);
+            }
+            at=node->second;
+        }
+        int page=RegisterSubPage(at,cmd.spec.label);
+        AddSubPageButton(at,cmd.spec.label,page);
+        pages_[page].actionPrefix=cmd.id;
+    }
 }
 void HagUI::AddPropertyEditor(int page, void* context, const HagUI_PropertySource* source, const HagUI_PopupActions* popup, HagUI_SceneFn scene,const HagUI_SetEditor* set) {
     if (page < 0 || page >= (int)pages_.size() || !source || !source->refresh || !source->count ||
