@@ -684,14 +684,12 @@ bool TemplateFromMember(Ptr m,Snapshot& snap,Draft& draft,const Draft* retune) {
     if (!MemberRecords(m+0x198,active)) return false;
     auto fixed=recipe::coreInputs(db,r);
     const Ptr slots=Read<Ptr>(m+0x1e0);
-    std::set<Ptr> automatic=db.managedTraits;
-    for (int i=0;i<VectorSize(m+0x1e0,32);++i) {
-        Ptr picker=Read<Ptr>(slots+32*i);
-        if (db.managedPickers.contains(picker) || std::ranges::find(fixed,picker)!=fixed.end())
-            automatic.insert(Read<Ptr>(slots+32*i+8));
+    if (!retune){
+        std::vector<recipe::Slot> granted;
+        for(int i=0,n=VectorSize(m+0x1e0,32);i<n;++i)
+            granted.push_back({Read<Ptr>(slots+32*i),Read<Ptr>(slots+32*i+8)});
+        for(auto id:recipe::templateTraits(db,active,granted,fixed))r.traits[db.categories.at(id)].push_back(id);
     }
-    if (!retune) for (auto id:active) if (auto bucket=db.categories.find(id);bucket!=db.categories.end() &&
-        db.producers.contains(id) && !automatic.contains(id)) r.traits[bucket->second].push_back(id);
     const Ptr rank=CellHash(Read<Ptr>(m+0x268),0x40c579dc,0);
     auto valid=[&]{engine::GenerationPlan plan;std::string error;return engine::PlanGeneration(m,rank,db,r,plan,error,snap.session);};
     size_t skipped=0;

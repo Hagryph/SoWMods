@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <array>
 #include <cctype>
+#include <cmath>
 #include <map>
 #include <sstream>
 
@@ -37,13 +38,36 @@ struct FormTheme {
         color(ImGuiCol_ButtonActive,IM_COL32(103,79,39,255));
         ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding,em*.16f);
         ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize,1.f);
-        ImGui::PushStyleVar(ImGuiStyleVar_PopupRounding,em*.2f);
+        ImGui::PushStyleVar(ImGuiStyleVar_PopupRounding,em*.35f);
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding,ImVec2(em*.46f,em*.20f));
     }
     ~FormTheme(){ImGui::PopStyleVar(4);ImGui::PopStyleColor(13);}
 };
 std::string fold(std::string s){
     for(char& c:s)c=char(std::tolower(static_cast<unsigned char>(c)));return s;
+}
+struct Option {std::string id,label;};
+bool optionRow(const Option& opt,bool selected,float em){
+    ImGui::PushID(opt.id.c_str());
+    const auto pos=ImGui::GetCursorScreenPos();
+    const ImVec2 size{ImGui::GetContentRegionAvail().x,em*1.55f};
+    const bool clicked=ImGui::InvisibleButton("##option",size,ImGuiButtonFlags_EnableNav);
+    auto* draw=ImGui::GetWindowDrawList();
+    const bool hover=ImGui::IsItemHovered(),focused=ImGui::IsItemFocused();
+    const ImVec2 end{pos.x+size.x,pos.y+size.y};
+    if(selected || hover || focused)
+        draw->AddRectFilled(pos,end,selected?IM_COL32(58,48,32,255):IM_COL32(45,39,31,255),em*.22f);
+    if(focused)draw->AddRect(pos,end,IM_COL32(150,120,64,255),em*.22f);
+    float mid=pos.y+size.y*.5f;
+    draw->PushClipRect(pos,{end.x-em*1.35f,end.y},true);
+    draw->AddText({pos.x+em*.55f,mid-em*.5f},selected?IM_COL32(239,205,140,255):ImGui::GetColorU32(ImGuiCol_Text),opt.label.c_str());
+    draw->PopClipRect();
+    if(selected){
+        const float x=end.x-em*.85f;
+        const ImVec2 tick[]={{x-em*.22f,mid},{x-em*.05f,mid+em*.16f},{x+em*.25f,mid-em*.20f}};
+        draw->AddPolyline(tick,3,IM_COL32(224,179,74,255),0,em*.09f);
+    }
+    ImGui::PopID();return clicked;
 }
 struct Form {
     std::vector<std::string> values;
@@ -98,7 +122,11 @@ void DrawForm(const std::string& id) {
                         f.values[i]=line.substr(eq+1);break;
                     }
                 }
-                for(auto& binding:f.bindings)binding=Binding{};
+                for(unsigned i=0;i<a.count;++i){
+                    auto& binding=f.bindings[i];binding=Binding{};
+                    if(a.inputs[i].type==Choice && !f.values[i].empty())
+                        binding.query=Submit(*it,f.values,i,f.values[i]);
+                }
                 f.status="Template loaded.";
             }else f.status=result.text;
             f.preset.reset();
@@ -164,30 +192,37 @@ void DrawForm(const std::string& id) {
                     if(!b.loaded || (spec.when&OnOpen))pull();
                     ImGui::SetKeyboardFocusHere();
                 }
-                b.open=true;ImGui::SetNextItemWidth(-1);
-                if(ImGui::InputTextWithHint("##filter","Search...",b.search.data(),b.search.size()))
-                    b.searchDue=ImGui::GetTime()+.20;
+                b.open=true;
+                const bool searchable=b.search[0] || std::count(b.data.begin(),b.data.end(),'\n')>=6;
+                if(searchable){
+                    ImGui::SetNextItemWidth(-1);
+                    if(ImGui::InputTextWithHint("##filter","Search...",b.search.data(),b.search.size()))
+                        b.searchDue=ImGui::GetTime()+.20;
+                }
                 if(b.searchDue && ImGui::GetTime()>=b.searchDue){pull();b.searchDue=0;}
                 const auto needle=fold(b.search.data());
-                if(ImGui::BeginChild("##options",ImVec2(0,em*10))){
-                    std::istringstream rows(b.data);unsigned shown=0;
-                    for(std::string row;std::getline(rows,row);){
-                        auto tab=row.find('\t');auto opt=row.substr(0,tab);
-                        auto label=tab==row.npos?opt:row.substr(tab+1);
-                        if(!needle.empty() && fold(label).find(needle)==std::string::npos &&
-                            fold(opt).find(needle)==std::string::npos)continue;
-                        ++shown;bool on=std::ranges::find(picks,opt)!=picks.end();
-                        ImGui::PushID(opt.c_str());
-                        if(ImGui::Selectable(label.c_str(),on,ImGuiSelectableFlags_NoAutoClosePopups,ImVec2(0,em*1.35f))){
-                            if(in.type==Choice){value=opt;ImGui::CloseCurrentPopup();}
-                            else{if(on)std::erase(picks,opt);else picks.push_back(opt);
+                std::istringstream rows(b.data);std::vector<Option> options;
+                for(std::string row;std::getline(rows,row);){
+                    auto tab=row.find('\t');auto opt=row.substr(0,tab);
+                    auto label=tab==row.npos?opt:row.substr(tab+1);
+                    if(needle.empty() || fold(label).contains(needle) || fold(opt).contains(needle))
+                        options.push_back({std::move(opt),std::move(label)});
+                }
+                const int count=std::clamp(int(options.size()),1,6);
+                ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing,ImVec2(em*.3f,em*.10f));
+                const float height=std::ceil(count*em*1.55f+(count-1)*ImGui::GetStyle().ItemSpacing.y)+1;
+                if(ImGui::BeginChild("##options",ImVec2(0,height))){
+                    for(auto& opt:options){
+                        bool on=std::ranges::find(picks,opt.id)!=picks.end();
+                        if(optionRow(opt,on,em)){
+                            if(in.type==Choice){value=opt.id;ImGui::CloseCurrentPopup();}
+                            else{if(on)std::erase(picks,opt.id);else picks.push_back(opt.id);
                                 value.clear();for(auto& p:picks){if(!value.empty())value+=',';value+=p;}}
                         }
-                        ImGui::PopID();
                     }
-                    if(!shown)ImGui::TextDisabled("%s",b.query?"Loading...":"No matches");
+                    if(options.empty())ImGui::TextDisabled("%s",b.query?"Loading...":"No matches");
                 }
-                ImGui::EndChild();ImGui::EndCombo();
+                ImGui::EndChild();ImGui::PopStyleVar();ImGui::EndCombo();
             }else b.open=false;
             ImGui::PopStyleVar();
         }

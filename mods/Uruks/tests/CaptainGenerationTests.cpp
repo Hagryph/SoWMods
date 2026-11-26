@@ -32,6 +32,14 @@ int main() {
     try {
         using namespace uruk;
         {
+            recipe::Catalog db;
+            db.producers={{10,{{1}}},{20,{{2}}},{30,{{3}}},{40,{{3}}},{50,{{4}}}};
+            db.optionalOnly={1,2,3,4};
+            Check(recipe::templateTraits(db,{10},{{1,10},{2,0},{3,0},{4,50}},{4})==
+                  std::vector<Ptr>({10,20}));
+            Check(recipe::templateTraits(db,{},{{3,40},{3,99}},{})==std::vector<Ptr>{40});
+        }
+        {
             constexpr Ptr defender=101,archer=102;
             auto nativeCap=[](Ptr,bool follower,bool* capped){*capped=follower;return follower?2u:84u;};
             bool capped=false;

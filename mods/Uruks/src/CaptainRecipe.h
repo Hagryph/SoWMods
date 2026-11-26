@@ -81,6 +81,35 @@ struct Recipe {
     bool operator==(const Recipe&) const = default;
 };
 struct Slot { Id picker{}, definition{}; };
+// An inactive slot can retain its picker after its active definition is cleared.
+// Infer a missing output only for an exclusively optional, single-output picker.
+inline std::vector<Id> templateTraits(const Catalog& db,const std::vector<Id>& active,
+                                     const std::vector<Slot>& slots,const std::vector<Id>& fixed){
+    auto automatic=db.managedTraits;
+    auto owned=[&](Id p){return db.managedPickers.contains(p) || std::ranges::find(fixed,p)!=fixed.end();};
+    for(auto slot:slots)if(owned(slot.picker))automatic.insert(slot.definition);
+    std::vector<Id> result;
+    auto add=[&](Id id){
+        if(db.producers.contains(id) && !automatic.contains(id) && std::ranges::find(result,id)==result.end())
+            result.push_back(id);
+    };
+    for(Id id:active)add(id);
+    for(auto [picker,definition]:slots){
+        if(!picker || owned(picker))continue;
+        if(definition){
+            auto it=db.producers.find(definition);
+            if(it!=db.producers.end() && std::ranges::find(it->second,picker,&Picker::id)!=it->second.end())add(definition);
+        }else if(db.optionalOnly.contains(picker)){
+            Id output=0;
+            for(auto& [id,producers]:db.producers)if(std::ranges::find(producers,picker,&Picker::id)!=producers.end()){
+                if(output){output=0;break;}
+                output=id;
+            }
+            if(output)add(output);
+        }
+    }
+    return result;
+}
 // One captain has one role. Ordinary draws may still supply any of the other picks.
 template<class Accept>
 bool withRole(const Catalog& db,const std::vector<Id>& classPicks,Accept accept,const std::vector<Id>& allowed={}) {
