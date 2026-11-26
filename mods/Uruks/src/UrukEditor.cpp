@@ -1018,14 +1018,14 @@ bool Commit(Ptr m,const Task& task,const Catalog& catalog,std::string& status) {
         std::string detail;
         auto result=engine::ReplaceCaptain(m,*c->generation,db,r,SaveTraits,detail);
         if (result==engine::ReplaceResult::SeatUnavailable)
-            status="Cannot safely replace this seat while it is referenced or has command relationships. No replacement made.";
-        else if (result==engine::ReplaceResult::AttachmentUnavailable)
-            status=detail+". No replacement made.";
+            status="The selected Army seat is not available for an in-place build. No build applied.";
+        else if (result==engine::ReplaceResult::RollbackFailed)
+            status="Build verification failed and the original could not be fully restored. Reload before continuing.";
         else if (result==engine::ReplaceResult::CleanupFailed)
-            status="Captain replaced, but the engine failed to release the previous member. Restart before continuing.";
+            status="Build applied, but the engine failed to release temporary data. Restart before continuing.";
         else if (result==engine::ReplaceResult::Replaced)
-            status="Replaced the selected captain at his original level and Army seat.";
-        else status="Candidate failed validation. The original captain was not replaced.";
+            status="Applied the generated build to the original captain at his original level and Army seat.";
+        else status=detail.empty()?"Candidate failed validation. No build applied.":detail;
         return result==engine::ReplaceResult::Replaced || result==engine::ReplaceResult::CleanupFailed;
     }
     if (auto l=get(Kind::Level))

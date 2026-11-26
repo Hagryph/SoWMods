@@ -1,5 +1,6 @@
 // Compile the implementation into this test to exercise the private snapshot and memory boundary.
 #include "../src/UrukEditor.cpp"
+#include "../src/MemberCopy.h"
 #include <array>
 #include <iostream>
 #include <source_location>
@@ -265,55 +266,22 @@ int main() {
             Check(!recipe::markerInputs(prereq,req,inputs,required,forbidden));
         }
         {
-            Ptr slot=1,owned=2;
-            unsigned links=0;
-            auto publish=[&](bool valid,bool canLink=true){
-                return engine::detail::publishCandidate(1,owned,valid,[&]{return &slot;},
-                    [&](Ptr old,Ptr next){Check(old==1 && next==2);++links;return canLink;});
-            };
-            Check(!publish(false) && slot==1 && owned==2 && !links);
-            slot=3;Check(!publish(true) && slot==3 && owned==2 && !links);
-            slot=1;Check(!publish(true,false) && slot==1 && owned==2 && links==1);
-            Check(publish(true) && slot==2 && owned==1 && links==2);
-        }
-        {
-            Ptr source=9,candidate=0;
-            int binds=0;
-            auto check=[&](Ptr member,Ptr expected){return expected==(member==1?source:candidate);};
-            auto bind=[&](Ptr dst,Ptr src){Check(dst==2 && src==1);candidate=source;++binds;};
-            auto transfer=[&]{return engine::detail::transferAttachment(1,2,source,candidate,check,bind);};
-            Check(!transfer() && candidate==9 && binds==1);
-            Check(!transfer() && binds==1);
-            candidate=8;Check(transfer() && candidate==8 && binds==1);
-            source=candidate=0;Check(!transfer() && !candidate && binds==1);
-            source=9;Check(engine::detail::transferAttachment(1,2,source,candidate,check,[](Ptr,Ptr){})!=nullptr);
-            candidate=9;Check(engine::detail::transferAttachment(1,2,source,candidate,
-                [](Ptr,Ptr){return false;},bind)!=nullptr && binds==1);
-        }
-        {
-            // The seat and candidate can stay valid while the native observer
-            // expires, moves, or switches to another encounter during generation.
-            auto attempt=[](Ptr source,Ptr next,Ptr seatTarget,bool observerOk,bool expectSwap,int expectedBinds) {
-                Ptr slot=1,owned=2;int binds=0;
-                const bool swapped=engine::detail::publishCandidate(1,owned,true,[&]{return &slot;},
-                    [&](Ptr old,Ptr candidate) {
-                        auto read=[&](Ptr m){return m==old?source:next;};
-                        return !engine::detail::handoffSeatAttachment(old,candidate,9,read,
-                            [&](Ptr m,Ptr target){return (m==old || observerOk) && read(m)==target;},
-                            [&](Ptr m,Ptr target)->const char* {return m==old && target==seatTarget?nullptr:"wrong seat";},
-                            [&](Ptr dst,Ptr src){Check(src==old && dst==candidate);next=source;++binds;});
-                    });
-                Check(swapped==expectSwap && slot==(swapped?2:1) && owned==(swapped?1:2) && binds==expectedBinds);
-            };
-            attempt(0,0,0,true,true,0);
-            attempt(10,0,10,true,true,1);
-            attempt(10,10,10,true,true,0);
-            attempt(0,9,9,true,true,0);
-            attempt(0,9,10,true,false,0);
-            attempt(0,9,9,false,false,0);
-            attempt(0,11,11,true,false,0);
-            attempt(10,0,9,true,false,0);
-            attempt(10,9,10,true,false,0);
+            using namespace engine::membercopy;
+            std::array<std::byte,0x528> live{},preview{};
+            preview.fill(std::byte{0x7b});
+            auto original=live,candidate=preview;
+            exchangeValues(live.data(),preview.data());
+            for (auto e:excluded) for (unsigned i=0;i<e.size;++i) Check(live[e.offset+i]==original[e.offset+i]);
+            Check(live[0x290]==std::byte{0x7b} && live[0x328]==std::byte{0x7b} && live[0x4f0]==std::byte{});
+            exchangeValues(live.data(),preview.data());
+            Check(live==original && preview==candidate);
+            auto exchange=[&]{exchangeValues(live.data(),preview.data());};
+            int gear=1;
+            Check(commit(exchange,[&]{gear=2;return false;},[&]{gear=1;return true;})==Outcome::Restored);
+            Check(gear==1 && live==original && preview==candidate);
+            Check(commit(exchange,[]{return false;},[]{return false;})==Outcome::RollbackFailed && live==original);
+            Check(commit(exchange,[&]{gear=2;return true;},[]{Check(false);return false;})==Outcome::Applied);
+            Check(gear==2 && live[0x290]==candidate[0x290] && live[0x168]==original[0x168]);
         }
         {
             recipe::Catalog kits;recipe::Recipe request;request.base=1;request.specialization=2;

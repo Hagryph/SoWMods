@@ -1,4 +1,5 @@
 #include "GeneratorNative.h"
+#include "MemberCopy.h"
 #include "GameOffsets.h"
 #include <Windows.h>
 #include <algorithm>
@@ -1058,7 +1059,7 @@ void refreshGeneratedTraits(P m,const GenerationPlan& p) {
     __try {call<void>(game::kFactionMemberUpdateTraits,m,0u);}
     __finally {at<unsigned>(m+0x4b8)=p.level;}
 }
-bool verifyRestored(P m,const GenerationPlan& p,const recipe::Catalog& db) {
+bool verifyRestored(P m,const GenerationPlan& p,const recipe::Catalog& db,bool allowRefresh=true) {
     std::vector<P> active,markers;
     const auto& r=p.requested;
     auto matches=[&]{return (!p.role || at<P>(m+0x318)==p.role) && equipmentMatches(m,p.weapons) &&
@@ -1072,36 +1073,73 @@ bool verifyRestored(P m,const GenerationPlan& p,const recipe::Catalog& db) {
         records(m+0x198,8,active) && recipe::optionalResult(db,p.requested,active,p.automatic) &&
         std::ranges::all_of(p.automatic,[&](P id){return std::ranges::find(active,id)!=active.end();});};
     if (matches()) return true;
+    if (!allowRefresh) return false;
     refreshGeneratedTraits(m,p);
     return matches();
 }
 bool detachedNode(P n) {return at<P>(n)==n && at<P>(n+8)==n;}
-bool registeredAttachment(P m,P target) {
-    const P handle=m+0x4d0,node=handle+8;
-    if (at<P>(handle)!=game::FromRVA(0x141db4fe0) || at<P>(handle+0x18)!=handle ||
-        at<P>(handle+0x20)!=target) return false;
-    if (!target) return detachedNode(node);
-    if (at<P>(target)!=game::FromRVA(0x141dbc8a8)) return false;
-    const P head=target+8;
-    for (P prev=head,next=at<P>(head),i=0; next && next!=head && i<512; ++i) {
-        if (at<P>(next+8)!=prev) return false;
-        if (next==node) return at<P>(node) && at<P>(at<P>(node)+8)==node;
-        prev=next;next=at<P>(next);
+// These native vectors own heap storage. Exchanging both headers retains the
+// original buffers (including picker-slot state) intact for a possible undo.
+constexpr membercopy::Region buildVectors[]={{0x198,8},{0x1b0,8},{0x1e0,32},{0x228,8},{0x358,8}};
+bool independentBuildStorage(P a,P b) {
+    for (unsigned off:{0x150,0x158,0x2d8}) {
+        if (!at<P>(a+off) || !at<P>(b+off) || at<P>(a+off)==at<P>(b+off)) return false;
     }
-    return false;
+    auto internal=[&](P ptr){return (ptr>=a && ptr-a<0x528) || (ptr>=b && ptr-b<0x528);};
+    struct Range { P start,end; };
+    std::vector<Range> ranges;
+    for (P m:{a,b}) for (auto [off,stride]:buildVectors) {
+        const P h=m+off,begin=at<P>(h),end=at<P>(h+8);
+        const size_t cap=at<unsigned>(h+16);
+        if (at<unsigned char>(h+20) || cap>65536 || end<begin || (end-begin)%stride ||
+            end-begin>cap*stride || (!begin && cap) || internal(begin) || begin>UINTPTR_MAX-cap*stride) return false;
+        if (begin) {
+            const auto limit=begin+cap*stride;
+            for (auto other:ranges) if (other.start==begin || (begin<other.end && other.start<limit)) return false;
+            if ((begin<a+0x528 && a<limit) || (begin<b+0x528 && b<limit)) return false;
+            ranges.push_back({begin,limit});
+            for (P pos=begin;pos<end;pos+=sizeof(P)) if (internal(at<P>(pos))) return false;
+        }
+    }
+    return true;
 }
-const char* participantSeatError(P m,P target) {
-    // The native attachment walker (141bf0264) resolves each participant's
-    // army/index pair at +0x28, not a cached FactionMember pointer.
-    P b=at<P>(target+0x18),e=at<P>(target+0x20);
-    if (!b || e<b || (e-b)%0x40 || (e-b)/0x40>512) return "invalid attachment participant list";
-    bool found=false;
-    for (;b!=e;b+=0x40) if (at<P>(b+0x28)==at<P>(m+0x178) &&
-        at<unsigned>(b+0x30)==at<unsigned>(m+0x174)) {
-        if (call<P>(0x140595d04,b)==m) return nullptr;
-        found=true;
-    }
-    return found?"participant resolves to a different member":"seat is not an attachment participant";
+void exchangeBuild(P a,P b) {
+    auto* left=reinterpret_cast<std::byte*>(a);
+    auto* right=reinterpret_cast<std::byte*>(b);
+    membercopy::exchangeValues(left,right);
+    for (auto [off,_]:buildVectors) std::swap_ranges(left+off,left+off+24,right+off);
+    // Derived by the same native trait calculation as the active array.
+    std::swap(at<P>(a+0x378),at<P>(b+0x378));
+    constexpr uint64_t traitBits=(1ull<<14)|(1ull<<19)|(1ull<<34);
+    const auto delta=(at<uint64_t>(a+0x508)^at<uint64_t>(b+0x508))&traitBits;
+    at<uint64_t>(a+0x508)^=delta;at<uint64_t>(b+0x508)^=delta;
+}
+// Use the member copier's own subobject operations, never share an inventory
+// instance or replace an appearance object that other game code may reference.
+bool copyOwnedBuild(P dst,P src,bool inSeat) {
+    __try {
+        call<void>(0x141bc6040,dst,at<unsigned>(src+0x170));
+        call<void>(0x141c3c798,at<P>(dst+0x150),at<P>(src+0x150));
+        if (inSeat) call<void>(0x141c3ccc0,at<P>(dst+0x150),at<P>(dst+0x178),at<P>(dst+0x268),
+            at<P>(dst+0x318),at<unsigned>(dst+0x4b8),call<bool>(0x14114dfd8,dst));
+        call<void>(0x141c66788,at<P>(dst+0x158),at<P>(src+0x158));
+        call<void>(0x1401c7948,dst+0x50,src+0x50);
+        call<void>(0x1402eba60,at<P>(dst+0x2d8),at<P>(src+0x2d8));
+        if (at<unsigned>(dst+0x170)!=at<unsigned>(src+0x170)) return false;
+        for (unsigned i=0;i<10;++i)
+            if (equippedRecord(dst+0x50,i)!=equippedRecord(src+0x50,i)) return false;
+        Look actual{},expected{};
+        return inspect(at<P>(dst+0x2d8),actual) && inspect(at<P>(src+0x2d8),expected) && actual==expected;
+    } __except(EXCEPTION_EXECUTE_HANDLER) {return false;}
+}
+bool supportedMemberCopy() {
+    static const bool supported=[]{
+        const auto* code=reinterpret_cast<const unsigned char*>(game::FromRVA(0x141bb936c));
+        uint64_t hash=1469598103934665603ull;
+        for (size_t i=0;i<0x551;++i) hash=(hash^code[i])*1099511628211ull;
+        return hash==0x34fcc366f571f893ull;
+    }();
+    return supported;
 }
 P seatOwner(P m,const GenerationPlan& p) {
     if (!m || at<P>(m)!=game::FromRVA(game::kFactionMemberVtable) ||
@@ -1116,6 +1154,10 @@ P seatOwner(P m,const GenerationPlan& p) {
     if (!b || e<b || (e-b)%sizeof(P) || (e-b)/sizeof(P)>4096 || p.index>=(e-b)/sizeof(P)) return 0;
     P slot=b+p.index*sizeof(P);
     return at<P>(slot)==m?slot:0;
+}
+bool readbackBuild(P member,const GenerationPlan& p,const recipe::Catalog& db) {
+    __try {return seatOwner(member,p) && verifyRestored(member,p,db,false);}
+    __except(EXCEPTION_EXECUTE_HANDLER) {return false;}
 }
 }
 bool EquipmentGrantReady() {
@@ -1133,7 +1175,7 @@ bool PlanGeneration(P m,P rank,const recipe::Catalog& db,const recipe::Recipe& r
     __except(EXCEPTION_EXECUTE_HANDLER) {error="Could not prepare the native generation inputs.";return false;}
 }
 ReplaceResult ReplaceCaptain(P m,const GenerationPlan& p,const recipe::Catalog& db,const recipe::Recipe& r,WritePickers write,std::string& detailMessage) {
-    P owned=0;
+    P owned=0,backup=0;
     bool published=false;
     GearScope gear{0,db,p.weapons};
     auto* previousGear=gearScope;
@@ -1141,13 +1183,7 @@ ReplaceResult ReplaceCaptain(P m,const GenerationPlan& p,const recipe::Catalog& 
     auto* previous=hateScope;
     __try {
         __try {
-            if (!Supported() || !seatOwner(m,p)) return ReplaceResult::SeatUnavailable;
-            const P attachment=at<P>(m+0x4f0);
-            if (auto error=!registeredAttachment(m,attachment)?"source observer is not registered correctly":
-                attachment?participantSeatError(m,attachment):nullptr) {
-                detailMessage="Before generation: ";detailMessage+=error;
-                return ReplaceResult::AttachmentUnavailable;
-            }
+            if (!Supported() || !supportedMemberCopy() || !seatOwner(m,p)) return ReplaceResult::SeatUnavailable;
             call<void>(0x1419ed468,&owned);
             if (!owned) return ReplaceResult::Rejected;
             gear.member=owned;
@@ -1157,26 +1193,32 @@ ReplaceResult ReplaceCaptain(P m,const GenerationPlan& p,const recipe::Catalog& 
             gearScope=p.weapons.empty()?nullptr:&gear;
             bool valid=replace(m,owned,p,db,r,write)==ReplaceResult::Replaced &&
                 restoreLevel(owned,p) && verifyRestored(owned,p,db);
-            // On the game thread. Keep the pool's intrusive-list position, then
-            // exchange unique ownership as in the native member loader (140f9a276).
-            const char* attachmentError=nullptr;
-            published=detail::publishCandidate(m,owned,valid,[&]{return reinterpret_cast<P*>(seatOwner(m,p));},
-                [&](P old,P candidate) {
-                    if (!detachedNode(candidate+0x18)) return false;
-                    attachmentError=detail::handoffSeatAttachment(old,candidate,attachment,
-                        [](P member){return at<P>(member+0x4f0);},registeredAttachment,participantSeatError,
-                        [](P dst,P src){call<void>(0x141bb6d98,dst+0x4d0,src+0x4d0);});
-                    if (attachmentError) return false;
-                    if (!detachedNode(old+0x18)) call<void>(0x140f9a2c0,old+0x18,candidate+0x18);
-                    return true;
-                });
-            if (attachmentError) {
-                detailMessage="Before seat swap: ";detailMessage+=attachmentError;
-                return ReplaceResult::AttachmentUnavailable;
+            gearScope=previousGear;hateScope=previous;
+            if (!valid) return ReplaceResult::Rejected;
+            if (!seatOwner(m,p)) return ReplaceResult::SeatUnavailable;
+            if (!independentBuildStorage(m,owned)) {
+                detailMessage="Generated storage is shared, borrowed, or not independently owned. No build applied.";
+                return ReplaceResult::Rejected;
             }
-            return published?ReplaceResult::Replaced:valid?ReplaceResult::SeatUnavailable:ReplaceResult::Rejected;
+            call<void>(0x1419ed468,&backup);
+            if (!backup || !copyOwnedBuild(backup,m,false)) {
+                detailMessage="Could not back up the captain's owned build data. No build applied.";
+                return ReplaceResult::Rejected;
+            }
+            if (!seatOwner(m,p)) return ReplaceResult::SeatUnavailable;
+            // Neither the Army slot nor either member's observer nodes move.
+            auto outcome=membercopy::commit([&]{exchangeBuild(m,owned);},
+                [&]{return copyOwnedBuild(m,owned,true) && readbackBuild(m,p,db);},
+                [&]{return copyOwnedBuild(m,backup,true);});
+            if (outcome==membercopy::Outcome::Applied) {
+                published=true;return ReplaceResult::Replaced;
+            }
+            if (outcome==membercopy::Outcome::RollbackFailed) return ReplaceResult::RollbackFailed;
+            detailMessage="In-place build readback failed. Restored the original build.";
+            return ReplaceResult::Rejected;
         } __finally {
             gearScope=previousGear;hateScope=previous;
+            if (backup) call<void>(0x1419ef15c,&backup);
             if (owned) call<void>(0x1419ef15c,&owned);
         }
     }

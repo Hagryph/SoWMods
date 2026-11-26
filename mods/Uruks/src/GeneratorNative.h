@@ -13,43 +13,6 @@ template<class Query>
 unsigned queryTreeCap(Query query,P tree,bool follower,bool* capped,P generationTree) {
     return query(tree,follower && (!generationTree || tree!=generationTree),capped);
 }
-// On the game thread: locate the owner again after validation. The caller
-// releases 'owned' in both cases, so ownership may change only at commit.
-template<class Locate,class Link>
-bool publishCandidate(P original,P& owned,bool validated,Locate locate,Link link) {
-    if (!validated || !original || !owned || original==owned) return false;
-    P* slot=locate();
-    if (!slot || *slot!=original || !link(original,owned)) return false;
-    std::swap(*slot,owned);
-    return true;
-}
-// Never overwrite a different relationship. An observer already registered on
-// the same object needs no native assignment.
-template<class Registered,class Bind>
-const char* transferAttachment(P source,P candidate,P expected,P current,Registered registered,Bind bind) {
-    if (current && current!=expected) return "candidate has a different attachment";
-    if (!registered(candidate,current)) return "candidate observer is not registered correctly";
-    if (current==expected) return nullptr;
-    bind(candidate,source);
-    if (!registered(source,expected)) return "source observer was lost during native assignment";
-    if (!registered(candidate,expected)) return "candidate observer was not registered by native assignment";
-    return nullptr;
-}
-template<class Read,class Registered,class SeatError,class Bind>
-const char* handoffSeatAttachment(P source,P candidate,P initial,Read read,Registered registered,
-                                  SeatError seatError,Bind bind) {
-    const P live=read(source),next=read(candidate);
-    if (!registered(source,live)) return "source observer is not registered correctly";
-    if (live) {
-        if (auto error=seatError(source,live)) return error;
-    } else if (next && next==initial) {
-        // The engine already moved the observer. Validate its current target
-        // against the still-published seat, not against the unpublished member.
-        if (!registered(candidate,next)) return "candidate observer is not registered correctly";
-        return seatError(source,next);
-    }
-    return transferAttachment(source,candidate,live,next,registered,bind);
-}
 }
 struct Look {
     P base{}, head{}, pieces[23]{}, designs[15]{};
@@ -96,7 +59,7 @@ struct GenerationPlan {
     std::set<P> requiredMarkers,forbiddenMarkers,automatic,blockedClassRewards;
 };
 bool PlanGeneration(P target,P rank,const recipe::Catalog&,const recipe::Recipe&,GenerationPlan&,std::string& error,uint64_t session);
-enum class ReplaceResult { Rejected, Replaced, ChangedUnexpectedly, SeatUnavailable, CleanupFailed, AttachmentUnavailable };
+enum class ReplaceResult { Rejected, Replaced, ChangedUnexpectedly, SeatUnavailable, CleanupFailed, RollbackFailed };
 using WritePickers=bool(*)(P,const std::vector<P>&);
 ReplaceResult ReplaceCaptain(P target,const GenerationPlan&,const recipe::Catalog&,const recipe::Recipe&,WritePickers,std::string& detail);
 int OrderCheck(P member,P contract,unsigned level,P title,unsigned name,const P* active,int count,P& reason);
