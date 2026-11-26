@@ -439,7 +439,7 @@ bool LoadRecipeCatalog(const Catalog& catalog,recipe::Catalog& db,Ptr army) {
         }
         if (name=="Marker_OrcRarity_Common" || name=="Marker_OrcRarity_Epic" || name=="Marker_OrcRarity_Legendary") {
             db.rarities.insert(id);
-            db.epicCaps[id]=name.ends_with("Common")?0:name.ends_with("Epic")?1:2;
+            db.epicCaps[id]=name.ends_with("Common")?0:name.ends_with("Epic")?1:3;
         }
     }
     // Only ordinary captain trees present in this faction's class setup.

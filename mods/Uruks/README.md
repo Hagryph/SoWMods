@@ -82,7 +82,9 @@ When checking or generating a draft, campaign-progress predicates on trait
 pickers, roles and supported trait rewards do not require the current save to
 have reached that act or unlock. No campaign variable is written. Normal game
 updates outside generation still evaluate the actual campaign state; equipment,
-class, epic limits and mutually exclusive pickers are checked as before.
+class and mutually exclusive pickers are still checked. The generator permits
+up to three total epic traits for Legendary, one for Epic and none for Common.
+Automatic epic traits count toward the same limit.
 Only one outcome of a single-draw list can be used. Builders with additional
 unmodelled setup and rewards with unknown actions are not replayed. The generation report records the chosen reward, builder and list.
 

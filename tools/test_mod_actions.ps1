@@ -84,6 +84,13 @@ if('Quirk_Summoner_Spiders' -notin $terrorChoices){throw 'Terror encounter rewar
 if('Quirk_Summoner_Spiders' -in (Request "choices uruks.generate class_traits $positionKit tribe=TribeDef_Warmonger").Split([char]10)){throw 'Encounter tribe requirement lost'}
 if('Hate_HenchmanDamage' -notin (Request "choices uruks.generate hates $positionKit tribe=TribeDef_Terror").Split([char]10)){throw 'Rank-conditioned Hate unavailable'}
 $gangKit="$target base=$base advanced=Marker_Specialization_Tank tribe=TribeDef_Terror rarity=Marker_OrcRarity_Legendary"
+$epicPair='ET_ChampTAN_FullHPDetermination,ET_GreatToughness'
+if('ET_GreatStrength' -notin (Request "choices uruks.generate bonuses $gangKit bonuses=$epicPair search=ET_GreatStrength").Split([char]10)){
+    throw 'Legendary Tank cannot add Great Strength as its third epic'
+}
+if((Request "choices uruks.generate bonuses $gangKit bonuses=$epicPair,ET_GreatStrength search=ET_CurseWarder").Trim()){
+    throw 'Legendary Tank offered a fourth epic'
+}
 $gangs=(Request "choices uruks.generate bonuses $gangKit search=Quirk_HasGang_Normal").Split([char]10)
 foreach($gang in 'Quirk_HasGang_Normal_Defenders','Quirk_HasGang_Normal_Savages'){
     if($gang -notin $gangs){throw "Campaign-gated gang unavailable: $gang"}
