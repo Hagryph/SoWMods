@@ -7,12 +7,14 @@ namespace sow::actions {
 struct Command {
     std::string id;
     sowmod::actions::Action spec; // descriptors in the mod must have static lifetime
+    std::uint32_t reconcileOn{};
+    sowmod::actions::Run reconcile{};
 };
-inline constexpr int CatalogRequest=-3, VisibilityRequest=-4;
+inline constexpr int CatalogRequest=-3, VisibilityRequest=-4, ReconcileRequest=-5;
 struct Row {std::string id,label;std::vector<std::string> facets;};
 struct Result {bool ok; std::string text; std::vector<Row> rows;};
 struct Job;
-bool RegisterMod(const std::string& prefix,sowmod::actions::Register fn,std::vector<Command>& added);
+bool RegisterMod(const std::string& prefix,sowmod::actions::Register fn,std::vector<Command>& added,unsigned version=sowmod::actions::SchemaVersion);
 std::vector<Command> Commands();
 std::shared_ptr<Job> Submit(const Command&,std::vector<std::string>,int choice=-1,std::string search={});
 bool Poll(const std::shared_ptr<Job>&,Result&);

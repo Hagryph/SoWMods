@@ -44,6 +44,30 @@ $before=Request "run uruks.inspect $target"
 $template=Request "preset uruks.generate $target"
 if($template -notmatch '(?m)^immunities=' -or $template -notmatch '(?m)^base=ClassMarker_Defender$'){throw 'Template did not return generator settings'}
 $templateArgs=$template.Split([char]10) -join ' '
+function CheckKitChange([string]$field,[string]$value,[string[]]$removeBonuses=@()){
+    $lines=@(foreach($line in $template.Split([char]10)){
+        if($line.StartsWith("$field=")){"$field=$value"}else{$line}
+    })
+    $draft=$lines -join ' '
+    $result=Request "reconcile uruks.generate $target $draft"
+    $expected=@(foreach($line in $lines){
+        if($line.StartsWith('bonuses=')){
+            $kept=$line.Substring(8).Split(',') | Where-Object {$_ -notin $removeBonuses}
+            'bonuses='+($kept -join ',')
+        }else{$line}
+    })
+    if($result -cne ($expected -join [char]10)){throw "Unexpected changes after setting $field to $value : $result"}
+}
+if((Request "reconcile uruks.generate $target $templateArgs") -cne $template){throw 'Unchanged kit lost selections'}
+if($template -match '(?m)^advanced=Marker_Specialization_Tank$' -and
+   $template -match '(?m)^tribe=TribeDef_Warmonger$' -and $template -match 'ET_ChampTAN_FullHPDetermination' -and
+   $template -match '(?m)^class_traits=Quirk_NoLastChance$'){
+    CheckKitChange tribe TribeDef_Dark
+    CheckKitChange base ClassMarker_Infantry
+    CheckKitChange advanced Marker_Specialization_Commander @('ET_ChampTAN_FullHPDetermination')
+}
+$unsupported=$templateArgs -replace 'advanced=\S+','advanced=Marker_Specialization_Marksman'
+if((Request "reconcile uruks.generate $target $unsupported") -cne 'advanced='){throw 'Unsupported advanced class cleared unrelated fields'}
 $offered=@((Request "choices uruks.generate class_traits $target $templateArgs").Split([char]10) | Where-Object {$_})
 $selected=($template.Split([char]10) | Where-Object {$_ -like 'class_traits=*'}) -replace '^class_traits=',''
 foreach($pick in $selected.Split(',')){if($pick -and $pick -notin $offered){throw "Cannot remove imported class trait: $pick"}}

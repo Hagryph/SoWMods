@@ -32,6 +32,17 @@ int main() {
     try {
         using namespace uruk;
         {
+            recipe::Recipe r;r.traits[0]={1,2,3};r.traits[1]={4,5};
+            const auto original=r;
+            auto accepts=[](const recipe::Recipe& c){
+                auto has=[&](int k,int id){return std::ranges::find(c.traits[k],id)!=c.traits[k].end();};
+                return has(0,1)==has(1,4) && !has(0,2) && !has(1,5);
+            };
+            Check(!recipe::retainSelections(r,accepts,1) && r==original);
+            Check(recipe::retainSelections(r,accepts) && r.traits[0]==std::vector<Ptr>{1,3} && r.traits[1]==std::vector<Ptr>{4});
+            auto kept=r;Check(recipe::retainSelections(r,accepts) && r==kept);
+        }
+        {
             recipe::Catalog db;
             db.producers={{10,{{1}}},{20,{{2}}},{30,{{3}}},{40,{{3}}},{50,{{4}}}};
             db.optionalOnly={1,2,3,4};

@@ -2,7 +2,7 @@
 #include <cstdint>
 
 namespace sowmod::actions {
-inline constexpr unsigned SchemaVersion=3;
+inline constexpr unsigned SchemaVersion=4;
 using Emit=void(*)(void*,const char*);
 using Choices=bool(*)(unsigned field,const char* const* values,const char* search,Emit,void*);
 enum Refresh : unsigned { OnOpen=1, OnInputs=2, AfterRun=4, Periodic=8, OnDraft=16 };
@@ -54,7 +54,11 @@ struct Registrar {
     unsigned version;
     void* context;
     bool (*add)(void*,const Action*);
+    bool (*bindReconcile)(void*,const char*,std::uint32_t,Run);
     bool Add(const Action& action) const {return add(context,&action);}
+    bool Reconcile(const char* key,std::uint32_t onChange,Run rule) const {
+        return version>=4 && bindReconcile && bindReconcile(context,key,onChange,rule);
+    }
 };
 using Register=bool(*)(const Registrar*);
 }

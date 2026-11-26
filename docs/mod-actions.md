@@ -1,6 +1,6 @@
 # Registered mod actions
 
-The loader requires a mod to export `SoWMod_RegisterActionsV3` before calling its optional
+New mods export `SoWMod_RegisterActionsV4` (existing V3 registrations are also accepted) before the loader calls their optional
 `SoWMod_Init`. Registration describes the actions; it must not read game state. Unregistered
 legacy DLLs are logged and their init is skipped. Action keys are namespaced by the lowercase DLL stem.
 
@@ -16,7 +16,7 @@ Submods do not create windows, pages, or widgets. Both standalone and aggregate 
 submod boundary check.
 
 ```cpp
-extern "C" __declspec(dllexport) bool SoWMod_RegisterActionsV3(
+extern "C" __declspec(dllexport) bool SoWMod_RegisterActionsV4(
     const sowmod::actions::Registrar* r) {
     using namespace sowmod::actions;
     static constexpr Input args[]={{"enabled","Enabled",Boolean,"false"}};
@@ -41,6 +41,10 @@ of earlier inputs to watch, for `Periodic` a visible-form interval of at least 2
 `OnDraft` invalidates choices after any draft edit, including edits to that same multiselect, without resetting its selection. Closed choice lists refresh on demand.
 Save-scoped reads are scheduled on the game thread. IPC `read ACTION FIELD` pulls the same
 source on demand. `help` exposes the menu, triggers, dependencies and interval.
+After adding an action, V4 mods can call `Registrar::Reconcile(key, mask, callback)`.
+When a watched input changes, the callback receives the complete edited draft before dependent values are reset.
+Return only `key=value` lines to update; omitted values stay untouched. A failed check leaves the draft intact.
+IPC `reconcile ACTION field=value ...` runs the same read-only rule without invoking the action.
 An optional action `preset` callback emits `key=value` lines to fill the form without
 running the command. For example, `preset uruks.generate captain=Faction_MinasIthil:271`
 returns the editable template. The same callback backs **Take Over Template** in the UI.

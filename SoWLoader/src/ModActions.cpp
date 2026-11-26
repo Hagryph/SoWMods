@@ -66,9 +66,15 @@ std::string validate(const Input& f,const std::string& s) {
     return {};
 }
 }
-bool RegisterMod(const std::string& prefix,Register fn,std::vector<Command>& added) {
+bool RegisterMod(const std::string& prefix,Register fn,std::vector<Command>& added,unsigned version) {
     if(!fn || !key(prefix)) return false;
-    std::vector<Command> batch;Registrar api{SchemaVersion,&batch,add};
+    std::vector<Command> batch;Registrar api{version,&batch,add,[](void* context,const char* id,uint32_t mask,Run rule){
+        auto& commands=*static_cast<std::vector<Command>*>(context);
+        if(!id || !rule || !mask)return false;
+        auto it=std::ranges::find(commands,id,&Command::id);
+        if(it==commands.end() || it->reconcile || (uint64_t(mask)>>it->spec.count))return false;
+        it->reconcileOn=mask;it->reconcile=rule;return true;
+    }};
     if(!fn(&api) || batch.empty()) return false;
     for(auto& c:batch)if(c.spec.followup && (!key(c.spec.followup) ||
         !std::ranges::any_of(batch,[&](const Command& n){return n.id==c.spec.followup && n.spec.ipcOnly && n.spec.count && n.spec.needsSave==c.spec.needsSave;})))return false;
@@ -105,6 +111,7 @@ void execute(Job& j) {
         r.text=std::to_string(r.rows.size())+" rows";
     }else if(j.field==VisibilityRequest){r.ok=true;r.text=a.show()?"true":"false";}
     else if(j.field==-2) r.ok=a.preset(values.data(),emit,&r.text);
+    else if(j.field==ReconcileRequest) r.ok=j.command.reconcile(values.data(),emit,&r.text);
     else if(j.field<0) r.ok=a.run(values.data(),emit,&r.text);
     else if(auto pull=a.inputs[j.field].source.pull) r.ok=pull(j.field,values.data(),j.search.c_str(),emit,&r.text);
     else if(auto opts=a.inputs[j.field].options){
@@ -125,7 +132,7 @@ std::shared_ptr<Job> Submit(const Command& c,std::vector<std::string> values,int
     auto j=std::make_shared<Job>();j->command=c;j->field=field;j->search=std::move(search);j->values=std::move(values);
     auto& a=c.spec;j->session=CurrentSaveSession();
     std::string error;
-    if(j->values.size()!=a.count || field<VisibilityRequest || (field==CatalogRequest && !a.rows) || (field==VisibilityRequest && !a.show) || (field==-2 && !a.preset) || field>=int(a.count)) error="bad inputs";
+    if(j->values.size()!=a.count || field<ReconcileRequest || (field==ReconcileRequest && !c.reconcile) || (field==CatalogRequest && !a.rows) || (field==VisibilityRequest && !a.show) || (field==-2 && !a.preset) || field>=int(a.count)) error="bad inputs";
     else if(field==-1)for(unsigned i=0;i<a.count && error.empty();++i)error=validate(a.inputs[i],j->values[i]);
     if(error.empty() && a.needsSave && !j->session) error="load a save first";
     if(!error.empty()){finish(*j,{false,error});return j;}
@@ -153,7 +160,7 @@ std::string dispatch(std::string line) {
         return out;
     }
     if(verb=="list"){std::string out="ok";for(auto& c:Commands())out+=" "+c.id;return out;}
-    if(verb!="help" && verb!="run" && verb!="choices" && verb!="read" && verb!="preset" && verb!="catalog" && verb!="visible")return "err expected list, help, read, choices, preset or run";
+    if(verb!="help" && verb!="run" && verb!="choices" && verb!="read" && verb!="preset" && verb!="catalog" && verb!="visible" && verb!="reconcile")return "err unknown verb";
     in>>id;auto all=Commands();auto it=std::ranges::find(all,id,&Command::id);
     if(it==all.end())return "err unregistered action";
     auto& a=it->spec;
@@ -162,6 +169,7 @@ std::string dispatch(std::string line) {
         s+=a.ipcOnly?" ui=none":a.rows?" ui=catalog":a.titleRow?" ui=title":a.count==1 && a.inputs[0].type==Boolean && a.inputs[0].source.pull?" ui=toggle":a.count?" ui=form":" ui=button";
         if(a.followup)s+=" followup="+std::string(a.followup);
         if(a.menu)s+=" menu="+std::string(a.menu);
+        if(it->reconcile)s+=" reconcileOn="+std::to_string(it->reconcileOn);
         if(a.preset)s+=" preset="+std::string(a.presetLabel);
         for(unsigned i=0;i<a.count;++i){auto& f=a.inputs[i];s+=" | "+std::string(f.key)+":"+typeName(f.type);
             if(f.type==Integer)s+="["+std::to_string(f.min)+".."+std::to_string(f.max)+"]";
@@ -170,7 +178,7 @@ std::string dispatch(std::string line) {
             if(f.source.pull || f.type>=Choice)s+=" (refresh="+std::to_string(f.source.when)+", dependencies="+std::to_string(f.source.dependencies)+", intervalMs="+std::to_string(f.source.intervalMs)+")";}
         return s;
     }
-    int choice=verb=="catalog"?CatalogRequest:verb=="visible"?VisibilityRequest:verb=="preset"?-2:-1;
+    int choice=verb=="reconcile"?ReconcileRequest:verb=="catalog"?CatalogRequest:verb=="visible"?VisibilityRequest:verb=="preset"?-2:-1;
     if(choice==-2 && !a.preset)return "err no preset registered";
     if(verb=="choices" || verb=="read"){in>>field;for(unsigned i=0;i<a.count;++i)if(field==a.inputs[i].key)choice=i;
         if(choice<0 || (a.inputs[choice].type<Choice && (verb=="choices" || !a.inputs[choice].source.pull)))return "err field has no such source";}

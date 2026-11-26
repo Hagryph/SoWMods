@@ -75,8 +75,10 @@ void ModManager::LoadAll() {
         std::string prefix=nn.substr(0,nn.size()-4);
         std::transform(prefix.begin(),prefix.end(),prefix.begin(),[](unsigned char c){return static_cast<char>(std::tolower(c));});
         std::vector<actions::Command> commands;
-        auto registration=reinterpret_cast<sowmod::actions::Register>(GetProcAddress(mod,"SoWMod_RegisterActionsV3"));
-        if (!actions::RegisterMod(prefix,registration,commands)) {
+        auto registration=reinterpret_cast<sowmod::actions::Register>(GetProcAddress(mod,"SoWMod_RegisterActionsV4"));
+        const unsigned version=registration?4:3;
+        if(!registration)registration=reinterpret_cast<sowmod::actions::Register>(GetProcAddress(mod,"SoWMod_RegisterActionsV3"));
+        if (!actions::RegisterMod(prefix,registration,commands,version)) {
             log.Error("[mods] "+nn+": missing or invalid action registration; skipping initialization");
             continue;
         }

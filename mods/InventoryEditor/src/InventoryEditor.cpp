@@ -513,7 +513,7 @@ bool SpawnWorldDrop(std::uintptr_t itemRow) {
 
 // This mod's single tab is auto-named after this.
 extern "C" __declspec(dllexport) const char* SoWMod_Name() { return "Item Spawner"; }
-extern "C" __declspec(dllexport) bool SoWMod_RegisterActionsV3(const sowmod::actions::Registrar* r) {
+extern "C" __declspec(dllexport) bool SoWMod_RegisterActionsV4(const sowmod::actions::Registrar* r) {
     using namespace sowmod::actions;
     static constexpr Input spawn[]={{"item","Item",Choice},{"count","Count",Integer,"1",1,kMaxWorldDropsPerClick}};
     static constexpr const char* facets[]={"Category","Slot","Set","Rarity","Variant"};

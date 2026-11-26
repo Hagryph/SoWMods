@@ -72,7 +72,7 @@ bool optionRow(const Option& opt,bool selected,float em){
 struct Form {
     std::vector<std::string> values;
     std::vector<Binding> bindings;
-    std::shared_ptr<Job> run,preset,commit;
+    std::shared_ptr<Job> run,preset,commit,reconcile;
     std::vector<std::string> commitValues;
     std::string status;
     uint64_t session=0;
@@ -111,15 +111,22 @@ void DrawForm(const std::string& id) {
         }
     }
     if(Poll(f.commit,result)){f.status=(result.ok?"":"Error: ")+result.text;f.commit.reset();}
-    if(a.preset){
-        if(Poll(f.preset,result)){
+    {
+        const bool adjusted=Poll(f.reconcile,result);
+        if(adjusted || Poll(f.preset,result)){
             if(result.ok){
+                std::string updates;
                 std::istringstream lines(result.text);
                 for(std::string line;std::getline(lines,line);){
                     auto eq=line.find('=');
                     if(eq==line.npos)continue;
                     for(unsigned i=0;i<a.count;++i)if(line.substr(0,eq)==a.inputs[i].key){
-                        f.values[i]=line.substr(eq+1);break;
+                        auto value=line.substr(eq+1);
+                        if(adjusted && value!=f.values[i]){
+                            if(!updates.empty())updates+=", ";
+                            updates+=a.inputs[i].label;
+                        }
+                        f.values[i]=std::move(value);break;
                     }
                 }
                 for(unsigned i=0;i<a.count;++i){
@@ -127,15 +134,17 @@ void DrawForm(const std::string& id) {
                     if(a.inputs[i].type==Choice && !f.values[i].empty())
                         binding.query=Submit(*it,f.values,i,f.values[i]);
                 }
-                f.status="Template loaded.";
+                f.status=!adjusted?"Template loaded.":updates.empty()?"":"Updated incompatible selections: "+updates;
             }else f.status=result.text;
-            f.preset.reset();
+            f.preset.reset();f.reconcile.reset();
         }
-        ImGui::BeginDisabled(bool(f.preset)||bool(f.run)||bool(f.commit)||(a.count && f.values[0].empty()));
+    }
+    if(a.preset){
+        ImGui::BeginDisabled(bool(f.reconcile)||bool(f.preset)||bool(f.run)||bool(f.commit)||(a.count && f.values[0].empty()));
         if(ImGui::Button(a.presetLabel)){f.commitValues.clear();f.preset=Submit(*it,f.values,-2);}
         ImGui::EndDisabled();
     }
-    ImGui::BeginDisabled(bool(f.preset)||bool(f.run)||bool(f.commit));
+    ImGui::BeginDisabled(bool(f.reconcile)||bool(f.preset)||bool(f.run)||bool(f.commit));
     bool missing=false;
     for(unsigned n=0;n<a.count;++n)missing|=!a.inputs[n].initial && f.values[n].empty();
     if(a.preset)ImGui::SameLine();
@@ -232,19 +241,21 @@ void DrawForm(const std::string& id) {
         ImGui::PopID();
     });
     // Invalidate even closed dependants. A late reply to the old request must not win.
+    const bool reconcile=(changed&it->reconcileOn)!=0;
     for(unsigned n=0;n<a.count;++n){
         auto& in=a.inputs[n];auto& b=f.bindings[n];
         const bool resetByParent=(in.source.dependencies&changed)!=0;
         if(!resetByParent && !(changed && (in.source.when&OnDraft)))continue;
-        if(resetByParent && in.type>=Choice){
+        if(!reconcile && resetByParent && in.type>=Choice){
             auto reset=in.initial?in.initial:"";
             if(f.values[n]!=reset)changed|=1u<<n;
             f.values[n]=reset;
         }
         b.data.clear();b.error.clear();b.query.reset();b.loaded=false;b.searchDue=0;
-        if(b.open || in.type<Choice){b.query=Submit(*it,f.values,n,b.search.data());b.loaded=true;}
+        if(!reconcile && (b.open || in.type<Choice)){b.query=Submit(*it,f.values,n,b.search.data());b.loaded=true;}
     }
     if(changed){f.commitValues.clear();f.status.clear();}
+    if(reconcile){f.reconcile=Submit(*it,f.values,ReconcileRequest);f.status="Checking selections...";}
     if(next!=all.end()){
         ImGui::SameLine();ImGui::BeginDisabled(f.commitValues.empty());
         if(ImGui::Button(next->spec.label)){f.commit=Submit(*next,f.commitValues);f.commitValues.clear();f.status="Saving...";}

@@ -680,11 +680,11 @@ bool TemplateFromMember(Ptr m,Snapshot& snap,Draft& draft,const Draft* retune) {
     auto db=snap.recipeCatalog;
     auto r=retune?BuildRecipe(*retune):MemberKit(m,db);
     if (!r.complete() || !db.tribes.contains(r.tribe) || !engine::ScopeClassDraws(db,r,snap.selected.army)) return false;
-    std::vector<Ptr> active;
-    if (!MemberRecords(m+0x198,active)) return false;
-    auto fixed=recipe::coreInputs(db,r);
-    const Ptr slots=Read<Ptr>(m+0x1e0);
     if (!retune){
+        std::vector<Ptr> active;
+        if (!MemberRecords(m+0x198,active)) return false;
+        auto fixed=recipe::coreInputs(db,r);
+        const Ptr slots=Read<Ptr>(m+0x1e0);
         std::vector<recipe::Slot> granted;
         for(int i=0,n=VectorSize(m+0x1e0,32);i<n;++i)
             granted.push_back({Read<Ptr>(slots+32*i),Read<Ptr>(slots+32*i+8)});
@@ -851,12 +851,7 @@ bool actionChoices(unsigned n,const char* const* v,const char* search,act::Emit 
     }
     return true;
 }
-bool templateAction(const char* const* v,act::Emit emit,void* ctx){
-    Target t;if(!findCaptain(v[0],t)){emit(ctx,"select a captain first");return false;}
-    Snapshot s;s.selected=t.key;s.session=sowmod::SaveSession();RecipeFields(s,LoadCatalog());
-    Draft draft;
-    if(!TemplateFromMember(t.member,s,draft,nullptr)){emit(ctx,"no compatible template for this captain");return false;}
-    auto r=BuildRecipe(draft);
+void emitRecipe(const recipe::Recipe& r,act::Emit emit,void* ctx){
     const Ptr kit[]={r.base,r.specialization,r.tribe,r.rarity};
     for(unsigned i=1;i<std::size(recipeInputs);++i){
         std::string line=std::string(recipeInputs[i].key)+"=";
@@ -864,7 +859,37 @@ bool templateAction(const char* const* v,act::Emit emit,void* ctx){
         else for(auto id:r.traits[i-5]){if(line.back()!='=')line+=',';line+=RecordName(id);}
         emit(ctx,line.c_str());
     }
-    return true;
+}
+bool templateAction(const char* const* v,act::Emit emit,void* ctx){
+    Target t;if(!findCaptain(v[0],t)){emit(ctx,"select a captain first");return false;}
+    Snapshot s;s.selected=t.key;s.session=sowmod::SaveSession();RecipeFields(s,LoadCatalog());
+    Draft draft;
+    if(!TemplateFromMember(t.member,s,draft,nullptr)){emit(ctx,"no compatible template for this captain");return false;}
+    emitRecipe(BuildRecipe(draft),emit,ctx);return true;
+}
+bool reconcileAction(const char* const* v,act::Emit emit,void* ctx){
+    Target t;if(!findCaptain(v[0],t)){emit(ctx,"select a captain first");return false;}
+    Snapshot s;s.selected=t.key;s.session=sowmod::SaveSession();RecipeFields(s,LoadCatalog());
+    Draft input;if(!ReadRecipeDraft(s,v,input,emit,ctx))return false;
+    auto r=BuildRecipe(input);
+    if(r.base && r.specialization && !recipe::fitsClass(s.recipeCatalog,r.base,r.specialization)){
+        emit(ctx,"advanced=");return true;
+    }
+    if(!r.complete())return true; // No kit to validate against yet. Keep pending picks.
+    auto& db=s.recipeCatalog;
+    if(!engine::ScopeClassDraws(db,r,t.key.army)){emit(ctx,"Cannot check this kit yet. Draft kept.");return false;}
+    auto rank=CellHash(Read<Ptr>(t.member+0x268),0x40c579dc,0);
+    // Eliminate structural mismatches before searching combinations. Native
+    // prerequisites are checked on whole sets, never inferred from a lone trait.
+    for(size_t k=0;k<r.traits.size();++k)std::erase_if(r.traits[k],[&](Ptr id){
+        auto one=r;one.traits={};one.traits[k]={id};
+        return !recipe::resolve(db,one,[](const auto&){return true;});
+    });
+    if(!recipe::retainSelections(r,[&](const auto& candidate){
+        engine::GenerationPlan plan;std::string error;
+        return engine::PlanGeneration(t.member,rank,db,candidate,plan,error,s.session);
+    })){emit(ctx,"Could not resolve the new kit without guessing. Draft kept.");return false;}
+    emitRecipe(r,emit,ctx);return true;
 }
 bool generateAction(const char* const* v,act::Emit emit,void* ctx) {
     Target t;if(!findCaptain(v[0],t) || !Writable(t.member)){emit(ctx,"captain unavailable");return false;}
@@ -896,6 +921,7 @@ bool RegisterGenerationActions(const act::Registrar& r){
         emit(ctx,KitText(MemberKit(t.member,db)).c_str());
         std::vector<Ptr> active;if(!MemberRecords(t.member+0x198,active))return false;
         for(auto id:active)emit(ctx,RecordName(id).c_str());return true;},actionChoices}.IpcOnly()) &&
-        r.Add(act::Action{"generate","Generate Captain",true,recipeInputs,unsigned(std::size(recipeInputs)),generateAction,actionChoices,nullptr,templateAction,"Take Over Template"});
+        r.Add(act::Action{"generate","Generate Captain",true,recipeInputs,unsigned(std::size(recipeInputs)),generateAction,actionChoices,nullptr,templateAction,"Take Over Template"}) &&
+        r.Reconcile("generate",0x1f,reconcileAction);
 }
 }

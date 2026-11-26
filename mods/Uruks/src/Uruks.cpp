@@ -7,7 +7,7 @@
 
 namespace { bool recruitmentReady = false; }
 extern "C" __declspec(dllexport) const char* SoWMod_Name() { return "Uruks"; }
-extern "C" __declspec(dllexport) bool SoWMod_RegisterActionsV3(const sowmod::actions::Registrar* r) {
+extern "C" __declspec(dllexport) bool SoWMod_RegisterActionsV4(const sowmod::actions::Registrar* r) {
     using namespace sowmod::actions;
     static constexpr Input toggle[]={{"enabled","Enabled",Boolean,"false",0,0,nullptr,
         {[](unsigned,const char* const*,const char*,Emit emit,void* ctx){emit(ctx,uruk::IgnoreRecruitmentLevel()?"true":"false");return true;},OnOpen|AfterRun}}};

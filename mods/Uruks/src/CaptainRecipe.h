@@ -81,6 +81,32 @@ struct Recipe {
     bool operator==(const Recipe&) const = default;
 };
 struct Slot { Id picker{}, definition{}; };
+// Prefer the smallest change to the draft. Test sets, not individual traits:
+// a pair of mutually dependent selections can be valid only together.
+template<class Valid>
+bool retainSelections(Recipe& draft,Valid valid,unsigned budget=256){
+    if(valid(draft))return true;
+    std::vector<std::pair<unsigned,size_t>> picks;
+    for(unsigned k=0;k<draft.traits.size();++k)
+        for(size_t j=0;j<draft.traits[k].size();++j)picks.emplace_back(k,j);
+    auto candidate=draft;
+    auto omit=[&](auto&& self,size_t end,size_t remaining)->bool{
+        if(!budget)return false;
+        if(!remaining){--budget;return valid(candidate);}
+        // Reverse order keeps earlier selections in a tie. Erased indices stay stable.
+        for(size_t i=end;i>=remaining && budget;--i){
+            auto [k,j]=picks[i-1];auto& row=candidate.traits[k];
+            Id old=row[j];row.erase(row.begin()+j);
+            if(self(self,i-1,remaining-1))return true;
+            row.insert(row.begin()+j,old);
+        }
+        return false;
+    };
+    for(size_t n=1;n<=picks.size() && budget;++n)if(omit(omit,picks.size(),n)){
+        draft=std::move(candidate);return true;
+    }
+    return false; // An inconclusive check must not discard the user's selections.
+}
 // An inactive slot can retain its picker after its active definition is cleared.
 // Infer a missing output only for an exclusively optional, single-output picker.
 inline std::vector<Id> templateTraits(const Catalog& db,const std::vector<Id>& active,

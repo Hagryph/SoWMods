@@ -36,7 +36,7 @@ level adjustments are logged to `%LOCALAPPDATA%/SoWLoader/logs/Uruks.log`.
 ## Build
 
 Build the loader first to provide the static MinHook dependency, then run
-`mods/build_mods.ps1 -Only Uruks`. The V3 action schema and Loader Config API v1 are required.
+`mods/build_mods.ps1 -Only Uruks`. The V4 action schema and Loader Config API v1 are required.
 
 ## Native References
 
