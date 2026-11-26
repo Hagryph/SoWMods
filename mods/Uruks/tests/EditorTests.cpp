@@ -277,6 +277,20 @@ int main() {
             Check(publish(true) && slot==2 && owned==1 && links==2);
         }
         {
+            Ptr source=9,candidate=0;
+            int binds=0;
+            auto check=[&](Ptr member,Ptr expected){return expected==(member==1?source:candidate);};
+            auto bind=[&](Ptr dst,Ptr src){Check(dst==2 && src==1);candidate=source;++binds;};
+            auto transfer=[&]{return engine::detail::transferAttachment(1,2,source,candidate,check,bind);};
+            Check(!transfer() && candidate==9 && binds==1);
+            Check(!transfer() && binds==1);
+            candidate=8;Check(transfer() && candidate==8 && binds==1);
+            source=candidate=0;Check(!transfer() && !candidate && binds==1);
+            source=9;Check(engine::detail::transferAttachment(1,2,source,candidate,check,[](Ptr,Ptr){})!=nullptr);
+            candidate=9;Check(engine::detail::transferAttachment(1,2,source,candidate,
+                [](Ptr,Ptr){return false;},bind)!=nullptr && binds==1);
+        }
+        {
             recipe::Catalog kits;recipe::Recipe request;request.base=1;request.specialization=2;
             kits.types[1]=3;
             recipe::ClassKit poison,curse,strip;

@@ -1015,11 +1015,12 @@ bool Commit(Ptr m,const Task& task,const Catalog& catalog,std::string& status) {
         const auto r=BuildRecipe(d);
         if (!c || !c->generation || !LoadRecipeCatalog(catalog,db,task.selected.army) ||
             !engine::ScopeClassDraws(db,r,task.selected.army)) return false;
-        auto result=engine::ReplaceCaptain(m,*c->generation,db,r,SaveTraits);
+        std::string detail;
+        auto result=engine::ReplaceCaptain(m,*c->generation,db,r,SaveTraits,detail);
         if (result==engine::ReplaceResult::SeatUnavailable)
             status="Cannot safely replace this seat while it is referenced or has command relationships. No replacement made.";
         else if (result==engine::ReplaceResult::AttachmentUnavailable)
-            status="Cannot transfer this captain's attachment to the same Army seat. No replacement made.";
+            status=detail+". No replacement made.";
         else if (result==engine::ReplaceResult::CleanupFailed)
             status="Captain replaced, but the engine failed to release the previous member. Restart before continuing.";
         else if (result==engine::ReplaceResult::Replaced)

@@ -1090,16 +1090,21 @@ bool registeredAttachment(P m,P target) {
     }
     return false;
 }
-bool attachmentFitsSeat(P m,P target) {
-    if (!registeredAttachment(m,target)) return false;
-    if (!target) return true;
+const char* attachmentSeatError(P m,P target) {
+    if (at<P>(m+0x4f0)!=target) return "source attachment changed";
+    if (!registeredAttachment(m,target)) return "source observer is not registered correctly";
+    if (!target) return nullptr;
     // The native attachment walker (141bf0264) resolves each participant's
     // army/index pair at +0x28, not a cached FactionMember pointer.
     P b=at<P>(target+0x18),e=at<P>(target+0x20);
-    if (!b || e<b || (e-b)%0x40 || (e-b)/0x40>512) return false;
+    if (!b || e<b || (e-b)%0x40 || (e-b)/0x40>512) return "invalid attachment participant list";
+    bool found=false;
     for (;b!=e;b+=0x40) if (at<P>(b+0x28)==at<P>(m+0x178) &&
-        at<unsigned>(b+0x30)==at<unsigned>(m+0x174) && call<P>(0x140595d04,b)==m) return true;
-    return false;
+        at<unsigned>(b+0x30)==at<unsigned>(m+0x174)) {
+        if (call<P>(0x140595d04,b)==m) return nullptr;
+        found=true;
+    }
+    return found?"participant resolves to a different member":"seat is not an attachment participant";
 }
 P seatOwner(P m,const GenerationPlan& p) {
     if (!m || at<P>(m)!=game::FromRVA(game::kFactionMemberVtable) ||
@@ -1130,7 +1135,7 @@ bool PlanGeneration(P m,P rank,const recipe::Catalog& db,const recipe::Recipe& r
     }
     __except(EXCEPTION_EXECUTE_HANDLER) {error="Could not prepare the native generation inputs.";return false;}
 }
-ReplaceResult ReplaceCaptain(P m,const GenerationPlan& p,const recipe::Catalog& db,const recipe::Recipe& r,WritePickers write) {
+ReplaceResult ReplaceCaptain(P m,const GenerationPlan& p,const recipe::Catalog& db,const recipe::Recipe& r,WritePickers write,std::string& detailMessage) {
     P owned=0;
     bool published=false;
     GearScope gear{0,db,p.weapons};
@@ -1141,7 +1146,10 @@ ReplaceResult ReplaceCaptain(P m,const GenerationPlan& p,const recipe::Catalog& 
         __try {
             if (!Supported() || !seatOwner(m,p)) return ReplaceResult::SeatUnavailable;
             const P attachment=at<P>(m+0x4f0);
-            if (!attachmentFitsSeat(m,attachment)) return ReplaceResult::AttachmentUnavailable;
+            if (auto error=attachmentSeatError(m,attachment)) {
+                detailMessage="Before generation: ";detailMessage+=error;
+                return ReplaceResult::AttachmentUnavailable;
+            }
             call<void>(0x1419ed468,&owned);
             if (!owned) return ReplaceResult::Rejected;
             gear.member=owned;
@@ -1153,25 +1161,22 @@ ReplaceResult ReplaceCaptain(P m,const GenerationPlan& p,const recipe::Catalog& 
                 restoreLevel(owned,p) && verifyRestored(owned,p,db);
             // On the game thread. Keep the pool's intrusive-list position, then
             // exchange unique ownership as in the native member loader (140f9a276).
-            bool attachmentFailed=false;
+            const char* attachmentError=nullptr;
             published=detail::publishCandidate(m,owned,valid,[&]{return reinterpret_cast<P*>(seatOwner(m,p));},
                 [&](P old,P candidate) {
                     if (!detachedNode(candidate+0x18)) return false;
-                    if (!attachmentFitsSeat(old,attachment) || !registeredAttachment(candidate,0)) {
-                        attachmentFailed=true;return false;
-                    }
-                    if (attachment) {
-                        // Native member-copy operation: register the new observer.
-                        // Destroying whichever member is not published detaches only its own node.
-                        call<void>(0x141bb6d98,candidate+0x4d0,old+0x4d0);
-                        if (!registeredAttachment(old,attachment) || !registeredAttachment(candidate,attachment)) {
-                            attachmentFailed=true;return false;
-                        }
-                    }
+                    attachmentError=attachmentSeatError(old,attachment);
+                    if (!attachmentError)
+                        attachmentError=detail::transferAttachment(old,candidate,attachment,at<P>(candidate+0x4f0),
+                            registeredAttachment,[](P dst,P src){call<void>(0x141bb6d98,dst+0x4d0,src+0x4d0);});
+                    if (attachmentError) return false;
                     if (!detachedNode(old+0x18)) call<void>(0x140f9a2c0,old+0x18,candidate+0x18);
                     return true;
                 });
-            if (attachmentFailed) return ReplaceResult::AttachmentUnavailable;
+            if (attachmentError) {
+                detailMessage="Before seat swap: ";detailMessage+=attachmentError;
+                return ReplaceResult::AttachmentUnavailable;
+            }
             return published?ReplaceResult::Replaced:valid?ReplaceResult::SeatUnavailable:ReplaceResult::Rejected;
         } __finally {
             gearScope=previousGear;hateScope=previous;

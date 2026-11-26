@@ -23,6 +23,18 @@ bool publishCandidate(P original,P& owned,bool validated,Locate locate,Link link
     std::swap(*slot,owned);
     return true;
 }
+// Never overwrite a different relationship. An observer already registered on
+// the same object needs no native assignment.
+template<class Registered,class Bind>
+const char* transferAttachment(P source,P candidate,P expected,P current,Registered registered,Bind bind) {
+    if (current && current!=expected) return "candidate has a different attachment";
+    if (!registered(candidate,current)) return "candidate observer is not registered correctly";
+    if (current==expected) return nullptr;
+    bind(candidate,source);
+    if (!registered(source,expected)) return "source observer was lost during native assignment";
+    if (!registered(candidate,expected)) return "candidate observer was not registered by native assignment";
+    return nullptr;
+}
 }
 struct Look {
     P base{}, head{}, pieces[23]{}, designs[15]{};
@@ -71,6 +83,6 @@ struct GenerationPlan {
 bool PlanGeneration(P target,P rank,const recipe::Catalog&,const recipe::Recipe&,GenerationPlan&,std::string& error,uint64_t session);
 enum class ReplaceResult { Rejected, Replaced, ChangedUnexpectedly, SeatUnavailable, CleanupFailed, AttachmentUnavailable };
 using WritePickers=bool(*)(P,const std::vector<P>&);
-ReplaceResult ReplaceCaptain(P target,const GenerationPlan&,const recipe::Catalog&,const recipe::Recipe&,WritePickers);
+ReplaceResult ReplaceCaptain(P target,const GenerationPlan&,const recipe::Catalog&,const recipe::Recipe&,WritePickers,std::string& detail);
 int OrderCheck(P member,P contract,unsigned level,P title,unsigned name,const P* active,int count,P& reason);
 }
