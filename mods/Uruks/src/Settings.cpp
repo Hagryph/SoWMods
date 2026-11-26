@@ -1,6 +1,7 @@
 #include "Settings.h"
 #include "ModConfig.h"
 #include <algorithm>
+#include <atomic>
 #include <iterator>
 #include <cstdio>
 #include <string>
@@ -10,6 +11,8 @@ namespace {
 sowmod::Config g_config;
 sowmod::Option<bool> g_ignoreLevel;
 sowmod::Option<bool> g_freeGarrison;
+sowmod::Option<bool> g_retainTraits;
+std::atomic<bool> g_retentionEnabled{true};
 }
 
 static HANDLE OpenLog(const wchar_t* filename) {
@@ -58,6 +61,8 @@ bool LoadSettings(int page) {
         g_config = sowmod::Config(page);
         g_ignoreLevel = g_config.Register<bool>("Recruitment", "IgnoreRecruitmentLevel", false);
         g_freeGarrison = g_config.Register<bool>("Garrison", "FreeGarrisonPlacement", false);
+        g_retainTraits = g_config.Register<bool>("Generation", "RetainGeneratedTraits", true);
+        g_retentionEnabled.store(g_config.Read(g_retainTraits));
         Log(IgnoreRecruitmentLevel() ? "Loader config loaded: recruitment bypass enabled" : "Loader config loaded: recruitment bypass disabled");
         return true;
     } catch (...) { return false; }
@@ -72,6 +77,13 @@ bool FreeGarrisonPlacement() {
     try { return g_config.Read(g_freeGarrison); } catch (...) { return false; }
 }
 bool SaveFreeGarrisonPlacement(bool enabled) { return g_config.Update(g_freeGarrison, enabled); }
+
+bool RetainGeneratedTraits() { return g_retentionEnabled.load(std::memory_order_relaxed); }
+bool SaveRetainGeneratedTraits(bool enabled) {
+    if (!g_config.Update(g_retainTraits, enabled)) return false;
+    g_retentionEnabled.store(enabled);
+    return true;
+}
 
 void SetIgnoreRecruitmentLevel(bool enabled) {
     if (!g_config.Update(g_ignoreLevel, enabled)) {

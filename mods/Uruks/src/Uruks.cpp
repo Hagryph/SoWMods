@@ -7,7 +7,7 @@
 #include "RetainedTraits.h"
 #include "CaptainGeneration.h"
 
-namespace { bool recruitmentReady = false; }
+namespace { bool recruitmentReady = false, retentionReady = false; }
 extern "C" __declspec(dllexport) const char* SoWMod_Name() { return "Uruks"; }
 extern "C" __declspec(dllexport) void SoWMod_WorldLoaded() {
     uruk::retained::RefreshLoaded();
@@ -20,6 +20,8 @@ extern "C" __declspec(dllexport) bool SoWMod_RegisterActionsV4(const sowmod::act
         {[](unsigned,const char* const*,const char*,Emit emit,void* ctx){emit(ctx,uruk::IgnoreRecruitmentLevel()?"true":"false");return true;},OnOpen|AfterRun}}};
     static constexpr Input placement[]={{"enabled","Enabled",Boolean,"false",0,0,nullptr,
         {[](unsigned,const char* const*,const char*,Emit emit,void* ctx){emit(ctx,uruk::FreeGarrisonPlacement()?"true":"false");return true;},OnOpen|AfterRun}}};
+    static constexpr Input retention[]={{"enabled","Enabled",Boolean,"true",0,0,nullptr,
+        {[](unsigned,const char* const*,const char*,Emit emit,void* ctx){emit(ctx,uruk::RetainGeneratedTraits()?"true":"false");return true;},OnOpen|AfterRun}}};
     return r && r->version==SchemaVersion && uruk::RegisterGenerationActions(*r) &&
         r->Add(Action{"refresh_retained","Reevaluate retained slots",true,nullptr,0,
             [](const char* const*,Emit emit,void* ctx){auto n=uruk::retained::RefreshLoaded();emit(ctx,std::to_string(n).c_str());return n>=0;}}.IpcOnly()) &&
@@ -37,13 +39,23 @@ extern "C" __declspec(dllexport) bool SoWMod_RegisterActionsV4(const sowmod::act
                 if (!uruk::SaveFreeGarrisonPlacement(on)) {
                     uruk::ApplyGarrisonCost(previous); emit(ctx,"Could not save Garrison setting"); return false;
                 }
+                emit(ctx,on?"true":"false");return true;}}) &&
+        r->Add({"set_retain_traits","Retain Generated Traits",true,retention,1,
+            [](const char* const* v,Emit emit,void* ctx){
+                const bool on=std::string_view(v[0])=="true";
+                if (!retentionReady) { emit(ctx,"Trait reevaluation unavailable"); return false; }
+                if (on!=uruk::RetainGeneratedTraits()) {
+                    if (!uruk::SaveRetainGeneratedTraits(on)) { emit(ctx,"Could not save retention setting"); return false; }
+                    uruk::retained::RefreshLoaded();
+                }
                 emit(ctx,on?"true":"false");return true;}});
 }
 extern "C" __declspec(dllexport) int SoWMod_Scope() { return SOWMOD_GLOBAL; }
 extern "C" __declspec(dllexport) void SoWMod_Init(int page) {
     if (!uruk::LoadSettings(page)) { uruk::Log("Cannot initialize mods/cfg/Uruks.ini"); return; }
     recruitmentReady = uruk::InstallRecruitmentHooks();
-    if (!uruk::retained::Install()) uruk::Log("Owned-slot retention unavailable");
+    retentionReady = uruk::retained::Install();
+    if (!retentionReady) uruk::Log("Owned-slot retention unavailable");
     if (!recruitmentReady) uruk::Log("Recruitment hooks unavailable");
 }
 

@@ -13,16 +13,17 @@ function Rejected([string]$line,[string]$reason){
     if(!$r.StartsWith("err $reason")){throw "$line -> unexpected result: $r"}
 }
 $ids=(Request 'list').Split(' ')
-foreach($id in 'uruks.generate','uruks.inspect','inventoryeditor.spawn','inventoryeditor.unlock_ring','uruks.get_recruitment','uruks.set_recruitment','uruks.set_free_garrison'){
+foreach($id in 'uruks.generate','uruks.inspect','inventoryeditor.spawn','inventoryeditor.unlock_ring','uruks.get_recruitment','uruks.set_recruitment','uruks.set_free_garrison','uruks.set_retain_traits'){
     if($id -notin $ids){throw "Missing action: $id"}
     $null=Request "help $id"
 }
 $layout=(Request 'layout').Split([char]10)
-$expected=@('Item Spawner | title | Early Unlock Ring','Item Spawner | catalog | Spawn item','Uruks | toggle | Ignore Recruitment Level','Uruks | toggle | Free Garrison Placement','Uruks | form | Generate Captain')
+$expected=@('Item Spawner | title | Early Unlock Ring','Item Spawner | catalog | Spawn item','Uruks | toggle | Ignore Recruitment Level','Uruks | toggle | Free Garrison Placement','Uruks | toggle | Retain Generated Traits','Uruks | form | Generate Captain')
 $ours=@($layout | Where-Object {$_ -match '^(Item Spawner|Uruks|Loader)[ /]'})
 if(Compare-Object $ours $expected){throw "Unexpected generated layout: $ours"}
 Rejected 'run unregistered' 'unregistered'
 Rejected 'run uruks.set_recruitment enabled=yes' 'expected true or false'
+Rejected 'run uruks.set_retain_traits enabled=yes' 'expected true or false'
 Rejected 'run uruks.set_recruitment enabled=true enabled=false' 'expected unique'
 Rejected 'run inventoryeditor.spawn item=invalid count=51' 'out of range'
 Rejected 'run uruks.generate nonexistent=x' 'unknown input'

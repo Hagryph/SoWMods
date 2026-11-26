@@ -6,6 +6,7 @@
 #include <source_location>
 
 namespace uruk { std::string lastReport; void Log(const char*) {} bool WriteGenerationLog(const char* s) {lastReport=s;return true;} }
+namespace uruk { bool RetainGeneratedTraits() { return true; } }
 void Check(bool condition, std::source_location location = std::source_location::current()) {
     if (!condition) throw std::runtime_error("Editor test failed at line " + std::to_string(location.line()));
 }

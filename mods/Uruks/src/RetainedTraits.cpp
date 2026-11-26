@@ -100,6 +100,7 @@ bool scoped(P m,unsigned char pass,const Binding* next){
     __finally {current=previous;}
 }
 bool evaluate(P m,unsigned char pass){
+    if (!RetainGeneratedTraits()) return scoped(m,pass,nullptr);
     Binding b;
     return scoped(m,pass,bind(m,b)?&b:nullptr);
 }
