@@ -41,6 +41,7 @@ struct Encounter {
 };
 struct Catalog {
     std::vector<Encounter> encounters;
+    std::set<Id> ranks,positionPickers;
     std::set<Id> encounterPickers,rolePickers,roleMarkers;
     std::map<Id,std::vector<Id>> markerGroups;
     std::map<Id, unsigned> categories;
@@ -81,6 +82,25 @@ struct Recipe {
     bool operator==(const Recipe&) const = default;
 };
 struct Slot { Id picker{}, definition{}; };
+struct PositionOutput { Id current{},acquired{}; };
+using PositionOutputs=std::map<Id,PositionOutput>;
+// Compare a build at acquisition time without changing the captain's live rank.
+// Never count a dormant trait unless its own picker is present; another slot
+// can independently own the same active definition.
+inline bool accountPositions(const PositionOutputs& outputs,const std::vector<Slot>& slots,std::vector<Id>& active){
+    std::set<Id> found,replace,keep;
+    for(auto [picker,definition]:slots){
+        if(auto it=outputs.find(picker);it!=outputs.end()){
+            if(definition!=it->second.current && definition!=it->second.acquired)return false;
+            found.insert(picker);
+            if(definition)replace.insert(definition);
+        }else if(definition)keep.insert(definition);
+    }
+    if(found.size()!=outputs.size())return false;
+    std::erase_if(active,[&](Id id){return replace.contains(id) && !keep.contains(id);});
+    for(auto [_,out]:outputs)if(std::ranges::find(active,out.acquired)==active.end())active.push_back(out.acquired);
+    return true;
+}
 // Prefer the smallest change to the draft. Test sets, not individual traits:
 // a pair of mutually dependent selections can be valid only together.
 template<class Valid>
@@ -149,8 +169,9 @@ bool withRole(const Catalog& db,const std::vector<Id>& classPicks,Accept accept,
     }
     return false;
 }
-inline bool fitsEncounter(const Catalog& db,const Recipe& r,const Encounter& e,Id rank) {
-    if ((e.tribe && r.tribe!=e.tribe) || (e.rank && rank!=e.rank) ||
+inline bool fitsEncounter(const Catalog& db,const Recipe& r,const Encounter& e) {
+    // The builder's rank describes where the reward occurs, not who can retain it.
+    if ((e.tribe && r.tribe!=e.tribe) ||
         (e.tree && (!db.trees.contains(r.base) || db.trees.at(r.base)!=e.tree))) return false;
     if ((!e.types.empty() || !e.blockedTypes.empty()) && (!db.types.contains(r.base) ||
         e.blockedTypes.contains(db.types.at(r.base)) || (!e.types.empty() && !e.types.contains(db.types.at(r.base))))) return false;

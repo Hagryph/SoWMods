@@ -78,6 +78,11 @@ Write-Output "Template class traits ($($offered.Count)): $($offered -join ', ')"
 $base='ClassMarker_Defender'
 $specs=(Request "choices uruks.generate advanced $target base=$base").Split([char]10)
 if('Marker_Specialization_Tank' -notin $specs){throw 'Tank not offered for Defender'}
+$positionKit="$target base=$base advanced=Marker_Specialization_Tank rarity=Marker_OrcRarity_Legendary class_traits=Quirk_NoLastChance"
+$terrorChoices=(Request "choices uruks.generate class_traits $positionKit tribe=TribeDef_Terror").Split([char]10)
+if('Quirk_Summoner_Spiders' -notin $terrorChoices){throw 'Terror encounter reward unavailable outside the source seat'}
+if('Quirk_Summoner_Spiders' -in (Request "choices uruks.generate class_traits $positionKit tribe=TribeDef_Warmonger").Split([char]10)){throw 'Encounter tribe requirement lost'}
+if('Hate_HenchmanDamage' -notin (Request "choices uruks.generate hates $positionKit tribe=TribeDef_Terror").Split([char]10)){throw 'Rank-conditioned Hate unavailable'}
 $traits=[ordered]@{
     immunities='Immune_Combat,Immune_Curse,Immune_Frost,Immune_Beast,Immune_Poison,Immune_Ranged,Immune_Stealth'
     hates='Hate_BodyguardDefeat,Hate_ExecutionAttacks,Hate_Unstable,Hate_Vault,Hate_EnragedOrcs,Hate_PowerfulEnemies,Hate_Injury'

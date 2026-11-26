@@ -34,6 +34,7 @@ struct GenerationPlan {
     recipe::Encounter encounter;
     recipe::Recipe requested;
     std::vector<P> grants,exclude;
+    recipe::PositionOutputs positionOutputs;
     std::set<P> requiredMarkers,forbiddenMarkers,automatic,blockedClassRewards;
 };
 bool PlanGeneration(P target,P rank,const recipe::Catalog&,const recipe::Recipe&,GenerationPlan&,std::string& error,uint64_t session);

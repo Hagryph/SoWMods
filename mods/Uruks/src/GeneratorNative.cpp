@@ -175,7 +175,7 @@ bool scopeDraws(recipe::Catalog& db,const recipe::Recipe& r,P armyRecord) {
     });
     if (!roleSource.tables.empty()) draws.sources.push_back(std::move(roleSource));
     TraitSource rewards{512,{}};
-    for (const auto& e:db.encounters) if (recipe::fitsEncounter(db,r,e,e.rank)) {
+    for (const auto& e:db.encounters) if (recipe::fitsEncounter(db,r,e)) {
         std::set<P> table;
         for (P id:e.grants) if (db.routes.contains(id) && !db.managedPickers.contains(id)) {
             draws.groups.emplace(id,db.routes.at(id).groups);table.insert(id);
@@ -454,7 +454,44 @@ void buildAtClassCap(P member,P ctx,P params,P row,P tree,const std::set<P>& blo
         call<void>(0x141bbf928,member,ctx,params,row,P(0));
     } __finally {generatingTree=previous;rewardMember=oldMember;deniedRewards=oldDenied;}
 }
-// Build the ordinary input packet. Unspecified fields keep the native constructor defaults.
+bool acquisitionTraits(P m,const std::vector<P>& inputs,const GenerationPlan& p,const recipe::Catalog& db,
+                       std::vector<P>& result,recipe::PositionOutputs& overrides) {
+    overrides.clear();
+    P active[512]{},perSlot[512]{};
+    int n=ProjectTraits(m,inputs.data(),int(inputs.size()),p.generationLevel,p.rank,active,perSlot);
+    if(n<0)return false;
+    result.assign(active,active+n);
+    std::map<P,std::set<P>> pending;
+    for(const auto& group:p.requested.traits)for(P id:group){
+        if(std::ranges::find(result,id)!=result.end())continue;
+        auto producers=db.producers.find(id);
+        if(producers!=db.producers.end())for(const auto& src:producers->second)
+            if(db.positionPickers.contains(src.id) && std::ranges::find(inputs,src.id)!=inputs.end())
+                pending[src.id].insert(id);
+    }
+    if(pending.empty())return true;
+    std::vector<recipe::Slot> slots;
+    for(size_t i=0;i<inputs.size();++i)slots.push_back({inputs[i],perSlot[i]});
+    for(P rank:db.ranks)if(rank!=p.rank){
+        if(ProjectTraits(m,inputs.data(),int(inputs.size()),p.generationLevel,rank,active,perSlot)<0)return false;
+        for(size_t i=0;i<inputs.size();++i)if(auto it=pending.find(inputs[i]);it!=pending.end() && it->second.contains(perSlot[i])){
+            overrides.emplace(inputs[i],recipe::PositionOutput{slots[i].definition,perSlot[i]});pending.erase(it);
+        }
+        if(pending.empty())break;
+    }
+    return recipe::accountPositions(overrides,slots,result);
+}
+bool ownedOptionalResult(P m,const recipe::Catalog& db,const GenerationPlan& p,const std::vector<P>& active){
+    if(p.positionOutputs.empty())return recipe::optionalResult(db,p.requested,active,p.automatic);
+    std::vector<P> owned;
+    if(!records(m+0x1e0,32,owned))return false;
+    std::vector<recipe::Slot> slots;
+    P begin=at<P>(m+0x1e0);
+    for(size_t i=0;i<owned.size();++i)slots.push_back({owned[i],at<P>(begin+32*i+8)});
+    auto accounted=active;
+    return recipe::accountPositions(p.positionOutputs,slots,accounted) &&
+        recipe::optionalResult(db,p.requested,accounted,p.automatic);
+}
 bool makePlan(P target,P rank,const recipe::Catalog& db,const recipe::Recipe& r,GenerationPlan& p,std::string& error,uint64_t session) {
     if (!Supported() || !target || !rank || !r.complete() || !TribeAvailable(r.tribe)) {
         error="The selected captain or kit is unavailable."; return false;
@@ -488,7 +525,7 @@ bool makePlan(P target,P rank,const recipe::Catalog& db,const recipe::Recipe& r,
         const auto* e=origin;
         auto authored=chain;
         if (e) {
-            if (!recipe::fitsEncounter(db,r,*e,rank) || std::ranges::none_of(e->grants,[&](P id){
+            if (!recipe::fitsEncounter(db,r,*e) || std::ranges::none_of(e->grants,[&](P id){
                 return std::ranges::find(chain,id)!=chain.end();})) return false;
             for (P id:e->grants) if (std::ranges::find(authored,id)==authored.end()) authored.push_back(id);
         }
@@ -537,10 +574,11 @@ bool makePlan(P target,P rank,const recipe::Catalog& db,const recipe::Recipe& r,
             auto protectedMarkers=p.requiredMarkers;
             if (role) protectedMarkers.insert(db.roles.at(role).markers.begin(),db.roles.at(role).markers.end());
             if (!recipe::classRewardPool(db,r,protectedMarkers,p.forbiddenMarkers,p.blockedClassRewards)) return false;
-            int count=ProjectTraits(m,inputs.data(),int(inputs.size()),p.generationLevel,rank,active);
-            if(count<0 || !recipe::matches(db,r,active,count,requiredOutputs) ||
-               std::count_if(active,active+count,[&](P id){return db.epics.contains(id);})>db.epicCaps.at(r.rarity)) return false;
-            if (!recipe::planWeapons(db,active,count,role,[&](P id){return WeaponAllowed(m,id);},p.weapons)) return false;
+            std::vector<P> projected;
+            if(!acquisitionTraits(m,inputs,p,db,projected,p.positionOutputs) ||
+               !recipe::matches(db,r,projected.data(),projected.size(),requiredOutputs) ||
+               std::ranges::count_if(projected,[&](P id){return db.epics.contains(id);})>db.epicCaps.at(r.rarity)) return false;
+            if (!recipe::planWeapons(db,projected.data(),projected.size(),role,[&](P id){return WeaponAllowed(m,id);},p.weapons)) return false;
             if (role) {
                 if (!p.personality) {
                     // All option checks and the staged generation must validate the same native identity.
@@ -603,7 +641,7 @@ ReplaceResult replace(P original,P m,const GenerationPlan& p,const recipe::Catal
     const P b=params.ptr();
     const auto& event=p.encounter;
     if (event.reward && (std::ranges::find(db.encounters,event)==db.encounters.end() ||
-        !recipe::fitsEncounter(db,r,event,p.rank) ||
+        !recipe::fitsEncounter(db,r,event) ||
         (!event.roles.empty() && std::ranges::find(event.roles,p.role)==event.roles.end()))) return ReplaceResult::Rejected;
     if (p.role) {
         if (!db.roleLists.contains(p.role) || !p.personality ||
@@ -651,7 +689,7 @@ ReplaceResult replace(P original,P m,const GenerationPlan& p,const recipe::Catal
             return std::ranges::find(slots,id)==slots.end();}) || !equipmentMatches(m,p.weapons) ||
             !records(m+0x198,8,active)) return ReplaceResult::ChangedUnexpectedly;
     }
-    if(optionalResult(db,r,active,p.automatic)) return ReplaceResult::Replaced;
+    if(ownedOptionalResult(m,db,p,active)) return ReplaceResult::Replaced;
     // Direct grants and later rewards do not consult the weighted-draw exclusion list.
     // Only reconcile optional slots if the finished native result actually differs.
     std::vector<P> native,fixed;
@@ -668,11 +706,12 @@ ReplaceResult replace(P original,P m,const GenerationPlan& p,const recipe::Catal
     wanted=fixed;
     std::vector<P> additions;
     for(P id:p.grants) if(std::ranges::find(wanted,id)==wanted.end()) {wanted.push_back(id);additions.push_back(id);}
-    P projected[512]{};
-    int n=ProjectTraits(m,wanted.data(),int(wanted.size()),p.generationLevel,p.rank,projected);
-    if(!permitsGrants(m,additions) || !recipe::fitsCore(db,fixed,additions) || n<0 ||
-       !recipe::matches(db,r,projected,n,automatic) || !write(m,wanted) ||
-       !records(m+0x198,8,active) || !optionalResult(db,r,active,p.automatic))
+    std::vector<P> projected;
+    recipe::PositionOutputs overrides;
+    if(!permitsGrants(m,additions) || !recipe::fitsCore(db,fixed,additions) ||
+       !acquisitionTraits(m,wanted,p,db,projected,overrides) ||
+       !recipe::matches(db,r,projected.data(),projected.size(),automatic) || !write(m,wanted) ||
+       !records(m+0x198,8,active) || !ownedOptionalResult(m,db,p,active))
         return ReplaceResult::ChangedUnexpectedly;
     return ReplaceResult::Replaced;
 }
@@ -699,7 +738,7 @@ bool verifyRestored(P m,const GenerationPlan& p,const recipe::Catalog& db,bool a
         std::ranges::none_of(markers,[&](P id){return p.forbiddenMarkers.contains(id) ||
             (db.allSpecializations.contains(id) && id!=r.specialization) ||
             (db.rarityRecords.contains(id) && id!=r.rarity);}) &&
-        records(m+0x198,8,active) && recipe::optionalResult(db,p.requested,active,p.automatic) &&
+        records(m+0x198,8,active) && ownedOptionalResult(m,db,p,active) &&
         std::ranges::all_of(p.automatic,[&](P id){return std::ranges::find(active,id)!=active.end();});};
     if (matches()) return true;
     if (!allowRefresh) return false;

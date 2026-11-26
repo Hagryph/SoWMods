@@ -72,8 +72,12 @@ leave the other hand available for compatible native kit items. The save
 report records reserved slots alongside the equipment actually observed.
 
 The generator can also use a trait reward from an encounter builder. It checks
-the builder's tribe, Army rank, base class, allowed roles and markers, expands
+the builder's tribe, base class, allowed roles and markers, expands
 supported reward prerequisites, and plans the required weapons before replacement.
+The encounter's Army rank is not a requirement for keeping its reward.
+For a rank-dependent picker the generator can verify the requested output at a
+different native rank. The captain keeps his real position and relationships;
+the Army screen still shows only traits active and visible there.
 Only one outcome of a single-draw list can be used. Builders with additional
 unmodelled setup and rewards with unknown actions are not replayed. The generation report records the chosen reward, builder and list.
 

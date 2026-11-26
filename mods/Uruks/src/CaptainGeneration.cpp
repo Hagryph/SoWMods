@@ -110,7 +110,7 @@ Catalog LoadCatalog(Ptr database = 0) {
     for (uint32_t i = 0; i < count; ++i) {
         const Ptr category = categories + i * 0x58;
         const auto name = Text(Read<Ptr>(category));
-        if (name!="Faction/FactionMemberBuilder" && name!="Faction/Rewards/Definitions" && name!="Faction/Tribes/Definitions" &&
+        if (name!="Faction/RowRanks" && name!="Faction/FactionMemberBuilder" && name!="Faction/Rewards/Definitions" && name!="Faction/Tribes/Definitions" &&
             name!="Faction/Traits/Picker" && name!="Faction/Traits/Definitions" && name!="Faction/Traits/PickerListRaw" &&
             name!="Interface/Menu/MenuTreeNode/TraitGroup" && name!="Faction/Traits/Marker" && name!="Faction/Roles/Definitions" &&
             name!="Faction/Contracts/Contract" && name!="Inventory/Items") continue;
@@ -351,6 +351,8 @@ bool LoadRecipeCatalog(const Catalog& catalog,recipe::Catalog& db,Ptr army) {
         defs=catalog.find("Faction/Traits/Definitions"), pickers=catalog.find("Faction/Traits/Picker"),
         markers=catalog.find("Faction/Traits/Marker");
     if (nodes==catalog.end() || defs==catalog.end() || pickers==catalog.end() || markers==catalog.end()) return false;
+    if (auto it=catalog.find("Faction/RowRanks");it!=catalog.end())
+        for (const auto& rank:it->second) db.ranks.insert(rank.address);
     std::map<Ptr,unsigned> groups;
     if (auto items=catalog.find("Inventory/Items");items!=catalog.end()) {
         for (const auto& [id,name]:items->second) {
@@ -493,6 +495,7 @@ bool LoadRecipeCatalog(const Catalog& catalog,recipe::Catalog& db,Ptr army) {
         bool hiddenOutput=false;
         for (auto e:Links(id,0x6bd57b1d)) {
             auto traits=Links(e,0xbcb47686);
+            if (!Links(e,0xfa3aba01).empty()) db.positionPickers.insert(id);
             auto requiresAny=Links(e,0xb05e2ca4);
             recipe::indexWeaknessGate(db,e,traits,requiresAny);
             for (auto dep:requiresAny) if (!db.categories.contains(dep) && db.definitions.contains(dep) &&

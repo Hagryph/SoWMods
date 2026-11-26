@@ -297,9 +297,16 @@ int main() {
             gear.roleMarkers={210};gear.roles[5].markers={210};gear.routes[202]={202,{},{210},{}};
             gear.rolePickers.insert(202);gear.roles[5].grants.push_back(202);
             gear.markerGroups={{210,{999}},{211,{999}}};
-            Check(recipe::fitsEncounter(gear,build,event,107) && !recipe::fitsEncounter(gear,build,event,108));
-            auto wrong=build;wrong.tribe=109;Check(!recipe::fitsEncounter(gear,wrong,event,107));
-            event.markers={106};Check(!recipe::fitsEncounter(gear,build,event,107));event.markers.clear();
+            Check(recipe::fitsEncounter(gear,build,event));event.rank=108;Check(recipe::fitsEncounter(gear,build,event));
+            std::vector<Ptr> observed{42,80};
+            Check(!recipe::accountPositions({{7,{0,81}}},{{8,80}},observed));
+            Check(!recipe::accountPositions({{7,{0,81}}},{{7,99}},observed));
+            Check(recipe::accountPositions({{7,{0,81}},{9,{80,82}}},{{7,0},{8,42},{9,80},{10,80}},observed));
+            Check(observed==std::vector<Ptr>({42,80,81,82}));
+            Check(recipe::accountPositions({{9,{80,82}}},{{9,80}},observed));
+            Check(observed==std::vector<Ptr>({42,81,82}));
+            auto wrong=build;wrong.tribe=109;Check(!recipe::fitsEncounter(gear,wrong,event));
+            event.markers={106};Check(!recipe::fitsEncounter(gear,build,event));event.markers.clear();
             auto joint=[&](Ptr offhand){
                 unsigned left=64;std::vector<Ptr> roots{200};
                 return recipe::withRewardRequirements(event,roots,left,[&](const auto& source,const auto& inputs){
