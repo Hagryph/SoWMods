@@ -2,7 +2,7 @@
 #include <cstdint>
 
 namespace sowmod::actions {
-inline constexpr unsigned SchemaVersion=2;
+inline constexpr unsigned SchemaVersion=3;
 using Emit=void(*)(void*,const char*);
 using Choices=bool(*)(unsigned field,const char* const* values,const char* search,Emit,void*);
 enum Refresh : unsigned { OnOpen=1, OnInputs=2, AfterRun=4, Periodic=8 };
@@ -24,6 +24,8 @@ struct Input {
 };
 // Strings are borrowed for the duration of the call only. No STL objects cross DLLs.
 using Run=bool(*)(const char* const* values,Emit,void*);
+using EmitRow=void(*)(void*,const char* id,const char* label,const char* const* facets);
+using Rows=bool(*)(EmitRow,void*);
 struct Action {
     const char* key;
     const char* label;
@@ -35,6 +37,18 @@ struct Action {
     const char* menu=nullptr; // slash-separated submenu labels relative to this mod
     Run preset=nullptr; // optional subfunction: emit key=value lines to populate the draft
     const char* presetLabel=nullptr;
+    bool ipcOnly=false,titleRow=false;
+    bool (*show)()=nullptr;
+    const char* const* facets=nullptr;
+    unsigned facetCount=0;
+    Rows rows=nullptr;
+    const char* followup=nullptr;
+    constexpr Action IpcOnly() const {auto a=*this;a.ipcOnly=true;return a;}
+    constexpr Action TitleRow(bool(*visible)()) const {auto a=*this;a.titleRow=true;a.show=visible;return a;}
+    template<unsigned N> constexpr Action Catalog(const char* const(&names)[N],Rows source) const {
+        auto a=*this;a.facets=names;a.facetCount=N;a.rows=source;return a;
+    }
+    constexpr Action FollowedBy(const char* key) const {auto a=*this;a.followup=key;return a;}
 };
 struct Registrar {
     unsigned version;

@@ -78,4 +78,8 @@ bool RegisteredRingAction(bool unlock) {
     return game::ring::Complete(state);
 }
 bool InitEarlyRingUnlock() { return guardReady = InstallRingGrantGuard(); }
+bool CanUnlockRing(){
+    Snapshot state{};state.session=sowmod::SaveSession();
+    return guardReady && state.session && ReadState(state) && !game::ring::Complete(state);
+}
 }  // namespace inventory_editor

@@ -3,6 +3,8 @@
 #include <map>
 #include <sstream>
 #include "Overlay.h"
+#include "GameHooks.h"
+#include <algorithm>
 #include "Log.h"
 
 #include <cmath>
@@ -181,7 +183,7 @@ void HagUI::AddSubPageButton(int page, const char* label, int child) {
 void HagUI::AddActionForms(int parent,const std::string& prefix) {
     std::map<std::pair<int,std::string>,int> children;
     for(auto& cmd:actions::Commands()) {
-        if(!cmd.id.starts_with(prefix+".")) continue;
+        if(cmd.spec.ipcOnly || !cmd.id.starts_with(prefix+".")) continue;
         int at=parent;
         std::istringstream path(cmd.spec.menu?cmd.spec.menu:"");
         for(std::string part;std::getline(path,part,'/');) {
@@ -189,12 +191,58 @@ void HagUI::AddActionForms(int parent,const std::string& prefix) {
             if(created) {
                 node->second=RegisterSubPage(at,part.c_str());
                 AddSubPageButton(at,part.c_str(),node->second);
+                if(cmd.spec.needsSave)SetPageScope(node->second,1);
             }
             at=node->second;
+            if(!cmd.spec.needsSave)SetPageScope(at,pages_[parent].scope);
         }
-        int page=RegisterSubPage(at,cmd.spec.label);
-        AddSubPageButton(at,cmd.spec.label,page);
-        pages_[page].actionPrefix=cmd.id;
+        auto& a=cmd.spec;
+        Widget w{}; w.text=a.label;w.command=std::make_shared<actions::Command>(cmd);
+        w.type=a.rows?WList:a.titleRow?WHeaderButton:!a.count?WButton:
+            a.count==1 && a.inputs[0].type==sowmod::actions::Boolean && a.inputs[0].source.pull?WToggle:WForm;
+        pages_[at].widgets.push_back(std::move(w));
+    }
+    // Fixed-height controls precede widgets which consume the remaining content band.
+    for(auto& page:pages_) std::stable_sort(page.widgets.begin(),page.widgets.end(),[](const Widget& a,const Widget& b){
+        auto rank=[](WType t){return t==WForm?3:t==WList?2:t==WSubPage?1:0;};
+        return rank(a.type)<rank(b.type);
+    });
+}
+void HagUI::RunAction(const Widget& w,std::vector<std::string> values) {
+    if(w.command && !w.write)w.write=actions::Submit(*w.command,std::move(values));
+}
+void HagUI::RefreshActionWidgets(int page) {
+    const auto session=CurrentSaveSession(),now=GetTickCount64();
+    for(auto& w:pages_[page].widgets){
+        if(!w.command)continue;
+        auto& cmd=*w.command;auto& a=cmd.spec;
+        if(w.session!=session){
+            w.query.reset();w.write.reset();w.loaded=w.gate=false;w.due=0;w.session=session;
+            w.items.clear();w.itemIds.clear();w.facets.clear();w.itemFacetIdx.clear();
+            w.search[0]=0;w.actionSel=w.listSel=-1;
+        }
+        if(a.needsSave && !session)continue;
+        actions::Result result{};
+        if(actions::Poll(w.write,result)){
+            if(!result.ok)Log::Channel("HagUI").Error(cmd.id+": "+result.text);
+            w.write.reset();w.query.reset();w.due=0;
+        }
+        if(actions::Poll(w.query,result)){
+            w.query.reset();w.due=now+750;
+            if(a.rows && result.ok && !result.rows.empty()){
+                std::vector<const char*> labels,ids,facets;
+                for(auto& row:result.rows){
+                    labels.push_back(row.label.c_str());ids.push_back(row.id.c_str());
+                    for(auto& v:row.facets)facets.push_back(v.c_str());
+                }
+                FillCatalog(w,a.facets,a.facetCount,labels.data(),ids.data(),int(ids.size()),facets.data());
+                w.loaded=true;
+            }else if(a.show)w.gate=result.ok && result.text=="true";
+            else if(w.type==WToggle){w.loaded=result.ok;w.value=result.ok && result.text=="true";}
+        }
+        if(w.query || w.write || now<w.due)continue;
+        int field=a.rows && !w.loaded?actions::CatalogRequest:a.show?actions::VisibilityRequest:w.type==WToggle?0:-1;
+        if(field!=-1)w.query=actions::Submit(cmd,std::vector<std::string>(a.count),field);
     }
 }
 void HagUI::AddPropertyEditor(int page, void* context, const HagUI_PropertySource* source, const HagUI_PopupActions* popup, HagUI_SceneFn scene,const HagUI_SetEditor* set) {
@@ -254,6 +302,7 @@ void HagUI::AddSettingToggle(int page, const char* label, bool (*get)(), void (*
     pages_[page].widgets.push_back(std::move(w));
 }
 bool HagUI::ToggleValue(const Widget& widget) {
+    if(widget.command)return widget.value;
     __try { return widget.getToggle ? widget.getToggle() : widget.toggle && *widget.toggle; }
     __except (EXCEPTION_EXECUTE_HANDLER) { return false; }
 }
@@ -267,6 +316,7 @@ static bool FlipToggleSafe(const HagUI::Widget& widget) {
     }
 }
 void HagUI::FlipToggle(const Widget& widget) {
+    if(widget.command){if(widget.loaded)RunAction(widget,{widget.value?"false":"true"});return;}
     if (!FlipToggleSafe(widget)) Log::Channel("HagUI").Error("setting callback raised SEH");
 }
 void HagUI::AddConditionalButton(int page, const char* label, void (*onClick)(), bool (*visible)()) {
@@ -284,6 +334,8 @@ void HagUI::AddHeaderButton(int page, const char* label, void (*onClick)(), bool
     pages_[page].widgets.back().type = WHeaderButton;
 }
 bool HagUI::WidgetVisible(const Widget& widget) {
+    if(widget.command)return (!widget.command->spec.needsSave || widget.session!=0) &&
+        (!widget.command->spec.show || (widget.gate && !widget.write));
     if (!widget.visible) return true;
     __try {
         return widget.visible();
@@ -306,6 +358,11 @@ void HagUI::AddFacetedActionList(int page, const char* const* facetNames, int fa
     if (page < 0 || page >= (int)pages_.size() || itemCount < 0 || facetCount < 0) return;
     Widget w{}; w.type = WList; w.toggle = nullptr; w.onClick = nullptr;
     w.onItemAdd = onAdd;
+    FillCatalog(w,facetNames,facetCount,displays,ids,itemCount,facetValues);
+    pages_[page].widgets.push_back(std::move(w));
+}
+void HagUI::FillCatalog(Widget& w,const char*const* facetNames,int facetCount,const char*const* displays,
+                        const char*const* ids,int itemCount,const char*const* facetValues){
     w.facets.resize(facetCount);
     for (int f = 0; f < facetCount; ++f)
         w.facets[f].name = (facetNames && facetNames[f]) ? facetNames[f] : "";
@@ -331,7 +388,6 @@ void HagUI::AddFacetedActionList(int page, const char* const* facetNames, int fa
         w.itemFacetIdx.push_back(std::move(idx));
     }
     for (auto& f : w.facets) f.sel.assign(f.opts.size(), 0);
-    pages_[page].widgets.push_back(std::move(w));
 }
 void HagUI::SetPageOnFirstOpenInSave(int page, void (*fn)(int page)) {
     if (page >= 0 && page < (int)pages_.size()) pages_[page].onFirstOpenInSave = fn;

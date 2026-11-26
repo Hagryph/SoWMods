@@ -879,6 +879,7 @@ void Overlay::DrawHub() {
             // paintButton): header bold 21 at (60,86); rows from y+44, 40 apart.
             auto& hub = HagUI::Get();
             const int currentPage = hub.ResolvePage(vis[activeTab_ - 1]);
+            hub.RefreshActionWidgets(currentPage);
             const HagUI::Page& pg = pages[currentPage];
             const float titleY = pg.parent>=0 ? 32.f : 86.f;
             const float bottom = pg.parent>=0 ? 394.f : 434.f;
@@ -891,17 +892,22 @@ void Overlay::DrawHub() {
             AddTextCX(dl, fTab_, 21.0f * s, ImVec2(X(60), Y(titleY)), uText, pg.title.c_str(), XS);
             float headerRight = X(772);
             float ry = titleY + 44;
-            if (!pg.actionPrefix.empty()) {
-                ImGui::SetCursorScreenPos(ImVec2(X(60),Y(ry)));
-                if(ImGui::BeginChild("##registeredactions",ImVec2(712*sx,(bottom-ry)*sy)))
-                    actions::DrawForm(pg.actionPrefix);
-                ImGui::EndChild();
-            }
+
             for (int i = 0; i < (int)pg.widgets.size(); ++i) {
                 const HagUI::Widget& wd = pg.widgets[i];
                 if (!HagUI::WidgetVisible(wd)) continue;
                 ImGui::PushID(i);
-                if (wd.type == HagUI::WProperties) {
+                if (wd.type == HagUI::WForm) {
+                    ImGui::SetCursorScreenPos(ImVec2(X(60),Y(ry)));
+                    if(ImGui::BeginChild("##registeredactions",ImVec2(712*sx,(bottom-ry)*sy))){
+                        for(size_t j=i;j<pg.widgets.size();++j){
+                            const auto& form=pg.widgets[j];
+                            if(form.type!=HagUI::WForm || !HagUI::WidgetVisible(form))continue;
+                            ImGui::PushID(int(j));actions::DrawForm(form.command->id);ImGui::PopID();
+                        }
+                    }
+                    ImGui::EndChild();ImGui::PopID();break;
+                } else if (wd.type == HagUI::WProperties) {
                     DrawGeneratorFooter(wd,ImVec2(X(60),footerY),footerButton);
                     DrawPropertyEditor(wd, ImVec2(X(60), Y(ry)), ImVec2(712 * sx, (bottom - ry) * sy), sx, sy, fBody_);
                     ry = bottom;
@@ -940,6 +946,7 @@ void Overlay::DrawHub() {
                     ImGui::SetCursorScreenPos(pa);
                     ImGui::InvisibleButton("##btn", ImVec2(pb.x - pa.x, pb.y - pa.y));
                     const bool hov = ImGui::IsItemHovered();
+                    if (ImGui::IsItemClicked() && wd.command) HagUI::RunAction(wd);
                     if (ImGui::IsItemClicked() && wd.onClick) wd.onClick();
                     if (ImGui::IsItemClicked() && wd.type == HagUI::WSubPage) hub.OpenSubPage(wd.child);
                     RoundedVGrad(dl, pa, pb, IM_COL32(0xE0, 0xB3, 0x4A, hov ? 87 : 46),
@@ -1209,7 +1216,7 @@ void Overlay::DrawHub() {
                             const bool rowHovered = ImGui::IsItemHovered();
                             if (ImGui::IsItemClicked()) {
                                 wd.listSel = k;
-                                if (wd.onItemAdd && k < (int)wd.itemIds.size() && !wd.itemIds[k].empty()) {
+                                if ((wd.command || wd.onItemAdd) && k < (int)wd.itemIds.size() && !wd.itemIds[k].empty()) {
                                     wd.actionSel = k;
                                     wd.actionCount = 1;
                                     openAddPopup = true;
@@ -1251,7 +1258,7 @@ void Overlay::DrawHub() {
                     if (openAddPopup) {
                         ImGui::OpenPopup("Spawn item##count");
                     }
-                    if (wd.onItemAdd) {
+                    if (wd.command || wd.onItemAdd) {
                         const float modalW = std::max(330.0f * sx, 300.0f);
                         const float modalH = std::max(186.0f * sy, 160.0f);
                         ImGui::SetNextWindowPos(ImVec2(disp.x * 0.5f, disp.y * 0.5f),
@@ -1302,28 +1309,27 @@ void Overlay::DrawHub() {
                             const float stepH = std::max(28.0f * sy, 24.0f);
                             const float stepW = std::max(30.0f * sx, 28.0f);
                             const float inputW = std::max(92.0f * sx, 78.0f);
-                            if (ImGui::Button("-", ImVec2(stepW, stepH)) && wd.actionCount > 1)
+                            const int minCount=wd.command?wd.command->spec.inputs[1].min:1;
+                            const int maxCount=wd.command?wd.command->spec.inputs[1].max:9999;
+                            if (ImGui::Button("-", ImVec2(stepW, stepH)) && wd.actionCount > minCount)
                                 --wd.actionCount;
                             ImGui::SameLine(0.0f, 6.0f * sx);
                             ImGui::SetNextItemWidth(inputW);
-                            if (ImGui::InputInt("##count", &wd.actionCount, 0, 0,
-                                                ImGuiInputTextFlags_CharsDecimal)) {
-                                if (wd.actionCount < 1) wd.actionCount = 1;
-                                if (wd.actionCount > 9999) wd.actionCount = 9999;
-                            }
+                            ImGui::InputInt("##count", &wd.actionCount, 0, 0, ImGuiInputTextFlags_CharsDecimal);
                             ImGui::SameLine(0.0f, 6.0f * sx);
-                            if (ImGui::Button("+", ImVec2(stepW, stepH)) && wd.actionCount < 9999)
+                            if (ImGui::Button("+", ImVec2(stepW, stepH)) && wd.actionCount < maxCount)
                                 ++wd.actionCount;
 
-                            if (wd.actionCount < 1) wd.actionCount = 1;
-                            if (wd.actionCount > 9999) wd.actionCount = 9999;
+                            wd.actionCount=std::clamp(wd.actionCount,minCount,maxCount);
 
                             const float btnW = (ms.x - 46.0f * sx) * 0.5f;
                             const float btnH = std::max(30.0f * sy, 26.0f);
                             ImGui::SetCursorScreenPos(ImVec2(mp.x + 18.0f * sx, mp.y + ms.y - 42.0f * sy));
                             if (ImGui::Button("SPAWN", ImVec2(btnW, btnH))) {
-                                if (k >= 0 && k < (int)wd.itemIds.size())
-                                    wd.onItemAdd(wd.itemIds[k].c_str(), wd.actionCount);
+                                if (k >= 0 && k < (int)wd.itemIds.size()){
+                                    if(wd.command)HagUI::RunAction(wd,{wd.itemIds[k],std::to_string(wd.actionCount)});
+                                    else wd.onItemAdd(wd.itemIds[k].c_str(),wd.actionCount);
+                                }
                                 ImGui::CloseCurrentPopup();
                             }
                             ImGui::SameLine(0.0f, 10.0f * sx);
@@ -1346,7 +1352,7 @@ void Overlay::DrawHub() {
                 ImGui::PopID();
                 if (wd.type != HagUI::WHeaderButton) ry += 40;
             }
-            if (pg.widgets.empty() && pg.actionPrefix.empty())
+            if (pg.widgets.empty())
                 txt(fBody_, 17.0f * s, 60, ry, uDim, "This page has no options yet.");
         }
 

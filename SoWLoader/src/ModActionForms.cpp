@@ -19,7 +19,8 @@ struct Binding {
 struct Form {
     std::vector<std::string> values;
     std::vector<Binding> bindings;
-    std::shared_ptr<Job> run,preset;
+    std::shared_ptr<Job> run,preset,commit;
+    std::vector<std::string> commitValues;
     std::string status;
     uint64_t session=0;
     int frame=-2;
@@ -40,7 +41,22 @@ void DrawForm(const std::string& id) {
     }
     bool enter=f.frame+1!=ImGui::GetFrameCount();f.frame=ImGui::GetFrameCount();
     Result result;bool ran=Poll(f.run,result);
-    if(ran){f.status=(result.ok?"":"Error: ")+result.text;f.run.reset();}
+    auto next=all.end();
+    if(a.followup)next=std::ranges::find(all,id.substr(0,id.rfind('.')+1)+a.followup,&Command::id);
+    if(ran){
+        f.status=(result.ok?"":"Error: ")+result.text;f.run.reset();
+        if(result.ok && next!=all.end()){
+            std::map<std::string,std::string> outputs;std::istringstream words(result.text);
+            for(std::string word;words>>word;){auto p=word.find('=');if(p!=word.npos)outputs.emplace(word.substr(0,p),word.substr(p+1));}
+            for(unsigned i=0;i<next->spec.count;++i){
+                auto pos=outputs.find(next->spec.inputs[i].key);
+                if(pos==outputs.end()){f.commitValues.clear();break;}
+                f.commitValues.push_back(pos->second);
+            }
+            if(!f.commitValues.empty())f.status="Preview ready.";
+        }
+    }
+    if(Poll(f.commit,result)){f.status=(result.ok?"":"Error: ")+result.text;f.commit.reset();}
     if(a.preset){
         if(Poll(f.preset,result)){
             if(result.ok){
@@ -56,11 +72,11 @@ void DrawForm(const std::string& id) {
             }else f.status=result.text;
             f.preset.reset();
         }
-        ImGui::BeginDisabled(bool(f.preset)||bool(f.run));
-        if(ImGui::Button(a.presetLabel))f.preset=Submit(*it,f.values,-2);
+        ImGui::BeginDisabled(bool(f.preset)||bool(f.run)||bool(f.commit));
+        if(ImGui::Button(a.presetLabel)){f.commitValues.clear();f.preset=Submit(*it,f.values,-2);}
         ImGui::EndDisabled();
     }
-    ImGui::BeginDisabled(bool(f.preset));
+    ImGui::BeginDisabled(bool(f.preset)||bool(f.run)||bool(f.commit));
     std::uint32_t changed=0;
     for(unsigned n=0;n<a.count;++n){
         auto& in=a.inputs[n];auto& b=f.bindings[n];auto& value=f.values[n];
@@ -126,8 +142,14 @@ void DrawForm(const std::string& id) {
     bool pending=false;
     for(unsigned i=0;i<a.count;++i)pending|=a.inputs[i].type<Choice && bool(f.bindings[i].query);
     ImGui::BeginDisabled(bool(f.run)||pending);
-    if(ImGui::Button(a.label)){f.run=Submit(*it,f.values);f.status="Running...";}
+    if(changed){f.commitValues.clear();f.status.clear();}
+    if(ImGui::Button(a.label)){f.commitValues.clear();f.run=Submit(*it,f.values);f.status="Running...";}
     ImGui::EndDisabled();
+    if(next!=all.end()){
+        ImGui::SameLine();ImGui::BeginDisabled(f.commitValues.empty());
+        if(ImGui::Button(next->spec.label)){f.commit=Submit(*next,f.commitValues);f.commitValues.clear();f.status="Saving...";}
+        ImGui::EndDisabled();
+    }
     if(!f.status.empty())ImGui::TextWrapped("%s",f.status.c_str());
     ImGui::EndDisabled();
 }

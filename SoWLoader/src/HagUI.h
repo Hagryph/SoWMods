@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include "HagUIAPI.h"
+#include "ModActions.h"
 
 namespace sow {
 
@@ -38,6 +39,8 @@ public:
     bool Back();
     void ResetNavigation();
     struct Widget;
+    void RefreshActionWidgets(int page);
+    static void RunAction(const Widget&,std::vector<std::string> values={});
     static bool WidgetVisible(const Widget& widget);
     static bool ToggleValue(const Widget& widget);
     static void FlipToggle(const Widget& widget);
@@ -51,7 +54,7 @@ public:
     void RunFirstOpenInSave();
 
     // Read access for the renderer (Overlay::DrawHub): tabs exist ONLY for registered pages.
-    enum WType { WLabel = 0, WToggle = 1, WButton = 2, WList = 3, WHeaderButton = 4, WSubPage = 5, WProperties = 6 };
+    enum WType { WLabel = 0, WToggle = 1, WButton = 2, WList = 3, WHeaderButton = 4, WSubPage = 5, WProperties = 6, WForm = 7 };
     // One filterable dimension: its distinct values + a live multi-select mask (parallel to opts).
     struct Facet {
         std::string name;
@@ -92,6 +95,10 @@ public:
         mutable char propertySearch[128]{};
         mutable char choiceSearch[128]{};
         mutable bool applyFailed = false;
+        std::shared_ptr<actions::Command> command;
+        mutable std::shared_ptr<actions::Job> query,write;
+        mutable uint64_t due=0,session=UINT64_MAX;
+        bool gate=false,value=false,loaded=false;
     };
     struct Page {
         std::string title;
@@ -100,7 +107,7 @@ public:
         void (*onFirstOpenInSave)(int page) = nullptr;
         bool firstOpenInSaveDone = false;
         int parent = -1;
-        std::string actionPrefix;
+
     };  // scope: 0=global,1=local
     const std::vector<Page>& Pages() const { return pages_; }
 
@@ -108,6 +115,7 @@ public:
     HagUI& operator=(const HagUI&) = delete;
 
 private:
+    static void FillCatalog(Widget&,const char*const*,int,const char*const*,const char*const*,int,const char*const*);
     HagUI() = default;
     void PollInput(Overlay& r);
     void DrawHub(Overlay& r);

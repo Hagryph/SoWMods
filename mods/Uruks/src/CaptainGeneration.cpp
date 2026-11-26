@@ -1,5 +1,5 @@
 #include "ModRuntime.h"
-#include "UrukEditor.h"
+#include "CaptainGeneration.h"
 #include "GameOffsets.h"
 #include "Settings.h"
 #include "GeneratorNative.h"
@@ -50,64 +50,34 @@ struct Key {
     bool operator==(const Key&) const = default;
 };
 struct Target { Key key; Ptr member; std::string label; };
-enum class Kind { View, Target, Level, Role, Picker, Equipment, Name, Appearance, Traits, Advance,
+enum class Kind { Target,
     Class, Base, Tribe, Rarity, Immunities, Hates, Classes, Bonuses, Mortal, Vulnerable, Dazed, Hints, Regenerate };
 bool Selector(Kind k) { return k>=Kind::Class && k<=Kind::Rarity; }
-bool RecipeField(Kind k) { return k>=Kind::Class && k<=Kind::Regenerate; }
 bool Bucket(Kind k) { return k>=Kind::Immunities && k<=Kind::Hints; }
-bool Identity(Kind k) { return k==Kind::Name || k==Kind::Role || k==Kind::Appearance; }
-bool Generator(Kind k) { return Identity(k) || k==Kind::Advance || k==Kind::Regenerate; }
 struct Choice {
-    uint64_t value; std::string label; bool selected = false;
-    std::string preview;
-    engine::Look look{};
+    uint64_t value{}; std::string label;
     std::vector<Ptr> pickers;
-    uint64_t ticket=0;
-    engine::Advancement advance{};
-    const char* disabled=nullptr;
     std::shared_ptr<const engine::GenerationPlan> generation;
 };
 struct Field {
     uint64_t id = 0;
-    Kind kind = Kind::View;
-    std::string label, value, category;
-    Ptr expected = 0;
-    uint32_t slot = 0;
+    Kind kind = Kind::Target;
+    std::string label, value;
     std::vector<Choice> choices;
 };
 struct Snapshot {
     uint64_t session = 0;
     Key selected;
-    std::vector<Target> targets;
-    engine::TraitRules traitRules;
     recipe::Catalog recipeCatalog;
     std::vector<Field> fields;
-    bool supported=false;
-    bool mayGenerate=false, mayAdvance=false;
-    const char* traitSaveBlock=nullptr;
-    uint64_t baseline=0;
     std::string status;
 };
 struct Draft {
     bool fromTemplate=false;
     std::map<Kind,std::pair<uint64_t,Choice>> edits;
-    bool dirty() const { return !edits.empty(); }
-    bool permits(Kind k,uint64_t field) const {
-        if (!dirty()) return true;
-        if (RecipeField(k)) return RecipeField(edits.begin()->first);
-        if (Identity(k)) return Identity(edits.begin()->first);
-        return edits.size()==1 && edits.begin()->second.first==field;
-    }
-    bool missing(Kind k) const {
-        return edits.count(Kind::Role) && (k==Kind::Name || k==Kind::Appearance) && !edits.count(k);
-    }
-    bool ready() const {
-        if (dirty() && RecipeField(edits.begin()->first)) return edits.contains(Kind::Regenerate);
-        return dirty() && !missing(Kind::Name) && !missing(Kind::Appearance);
-    }
+    bool ready() const { return edits.contains(Kind::Regenerate); }
     void stage(const Field& f,const Choice& c) {
-        if (RecipeField(f.kind) && f.kind!=Kind::Regenerate) edits.erase(Kind::Regenerate);
-        if (f.kind==Kind::Role) { edits.erase(Kind::Name); edits.erase(Kind::Appearance); }
+        if (f.kind!=Kind::Regenerate) edits.erase(Kind::Regenerate);
         edits[f.kind]={f.id,c};
     }
 };
@@ -158,11 +128,6 @@ Catalog LoadCatalog(Ptr database = 0) {
         std::sort(records.begin(), records.end(), [](const auto& a, const auto& b) { return a.name < b.name; });
     }
     return catalog;
-}
-bool InCatalog(const Catalog& catalog, const std::string& category, Ptr record) {
-    auto it = catalog.find(category);
-    return it != catalog.end() && std::any_of(it->second.begin(), it->second.end(),
-        [record](const auto& entry) { return entry.address == record; });
 }
 uint32_t FieldHash(const char* text) {
     uint32_t hash = 0;
@@ -246,21 +211,6 @@ std::string TraitLabel(Ptr trait,LookupText lookup=GameText) {
     }
     return ReadableId(id);
 }
-std::string PickerLabel(Ptr picker) {
-    auto id=RecordName(picker);
-    if (DemoTraitId(id)) return {};
-    std::vector<std::string> labels;
-    bool hasOutput=false;
-    for (auto entry:Links(picker,0x6bd57b1d)) for (auto trait:Links(entry,0xbcb47686)) {
-        hasOutput=true;
-        auto label=TraitLabel(trait);
-        if (!label.empty() && std::ranges::find(labels,label)==labels.end()) labels.push_back(std::move(label));
-    }
-    if (labels.empty()) return hasOutput ? std::string{} : ReadableId(id);
-    auto result=labels.front();
-    for (size_t i=1;i<labels.size();++i) result+=" / "+labels[i];
-    return result;
-}
 std::vector<Target> Targets(Ptr faction = 0) {
     std::vector<Target> result;
     const Ptr systems = Read<Ptr>(game::FromRVA(game::kGameSystemsSingleton));
@@ -295,7 +245,7 @@ std::vector<Target> Targets(Ptr faction = 0) {
     return result;
 }
 
-Field& Add(Snapshot& snapshot, std::string label, std::string value, Kind kind = Kind::View) {
+Field& Add(Snapshot& snapshot, std::string label, std::string value, Kind kind) {
     snapshot.fields.push_back({});
     auto& field = snapshot.fields.back();
     field.id = g_nextField.fetch_add(1);
@@ -304,17 +254,6 @@ Field& Add(Snapshot& snapshot, std::string label, std::string value, Kind kind =
     field.value = std::move(value);
     return field;
 }
-void RecordField(Snapshot& snapshot, const Catalog& catalog, const char* label, Ptr current,
-                 const char* category, Kind kind = Kind::View) {
-    auto& field = Add(snapshot, label, RecordName(current), kind);
-    field.category = category;
-    field.expected = current;
-    if (kind == Kind::View) return;
-    if (auto it = catalog.find(category); it != catalog.end()) for (const auto& record : it->second)
-        field.choices.push_back({record.address, record.name, record.address == current});
-}
-
-// Class progression uses XP reward tracks, separately from the ordinary trait draw lists.
 void LoadClassRewards(recipe::Catalog& db,Ptr reward,const std::vector<Ptr>& owners,bool base) {
     if (owners.empty()) return;
     for (Ptr setup:Links(reward,0xcca3a85c)) for (Ptr track:Links(setup,0x11407c64))
@@ -620,117 +559,11 @@ recipe::Recipe BuildRecipe(const Draft& draft) {
     return r;
 }
 
-void Capture(Snapshot& snapshot, const Catalog& catalog) {
-    auto& selector = Add(snapshot, "Uruk", "Select a captain", Kind::Target);
-    for (size_t i = 0; i < snapshot.targets.size(); ++i) selector.choices.push_back({i, snapshot.targets[i].label, snapshot.targets[i].key == snapshot.selected});
-    auto selected = std::find_if(snapshot.targets.begin(), snapshot.targets.end(), [&](const auto& target) { return target.key == snapshot.selected; });
-    if (selected == snapshot.targets.end()) {
-        Add(snapshot, "State", "No captain selected");
-        return;
-    }
-    selector.value = selected->label;
-    RecipeFields(snapshot,catalog);
-    const Ptr member = selected->member;
-    const uint64_t flags = Read<uint64_t>(member + 0x508);
-    const bool spawned = Read<Ptr>(member + 0x48) != 0;
-    const bool writable = snapshot.supported && !spawned && !(flags & ((1ull<<37)|4)) && !Read<Ptr>(member+0x190);
-    snapshot.mayGenerate=writable;
-    snapshot.traitSaveBlock=!writable ? "This captain is not writable." :
-        flags&(1ull<<38) ? "The engine has locked this captain's traits." :
-        VectorSize(member+0x1c8,8) ? "Replacing traits with recorded reward history is not supported." : nullptr;
-    std::map<unsigned,std::vector<Choice>> equipment;
-    if (writable) {
-        Ptr kit[512]{};
-        int n=engine::KitItems(member,kit);
-        for (int j=0;j<n;++j) {
-            unsigned slot=0; Ptr look=0;
-            if (!InCatalog(catalog,"Inventory/Items",kit[j]) || !engine::WeaponLook(member,kit[j],slot,look)) continue;
-            Choice c{kit[j],RecordName(kit[j])};
-            c.preview="Look: "+RecordName(look);
-            Ptr model=Cell(look,"Model");
-            for (unsigned i=0;i<32;++i) {
-                Ptr variant=Cell(model,"Models",i);
-                if (!variant) break;
-                c.preview+="\nModel: "+RecordName(Cell(variant,"ModelRecord"));
-            }
-            c.look.base=look;
-            equipment[slot].push_back(std::move(c));
-        }
-    }
-    auto& name=Add(snapshot,"Name generator",Text(member+0x498),Kind::Name);
-    name.expected=Read<unsigned>(member+0x170);
-    auto& title=Add(snapshot,"Title generator",RecordName(Read<Ptr>(member+0x318)),Kind::Role);
-    title.expected=Read<Ptr>(member+0x318);
-    Add(snapshot,"Appearance generator",RecordName(Read<Ptr>(Read<Ptr>(member+0x2d8)+0x170)),Kind::Appearance);
-    auto& traits=Add(snapshot,"Trait list","0 selected",Kind::Traits);
-    if (snapshot.supported && engine::ReadTraitRules(member,snapshot.traitRules)) {
-        for (const auto& [p,groups]:snapshot.traitRules.groups) if (InCatalog(catalog,"Faction/Traits/Picker",p)) {
-            auto label=PickerLabel(p);
-            if (!label.empty()) traits.choices.push_back({p,std::move(label)});
-        }
-        std::sort(traits.choices.begin(),traits.choices.end(),[](const Choice& a,const Choice& b){return a.label<b.label;});
-    } else {
-        snapshot.traitRules={};
-        snapshot.traitSaveBlock="Native picker rules unavailable.";
-    }
-    Add(snapshot,"Level-up reward","Advance one level",Kind::Advance);
-
-    auto& level = Add(snapshot, "Level", std::to_string(Read<uint32_t>(member + 0x4b8) + 1), Kind::Level);
-    level.expected=Read<unsigned>(member+0x4b8);
-    const int cap=writable?engine::LevelCap(member):-1;
-    snapshot.mayAdvance=int(level.expected)<cap && !(flags&(1ull<<38)) && !Read<Ptr>(member+0x4f0);
-    if (writable && cap>=0) for (int i=0;i<85;++i) {
-        Choice c{unsigned(i),std::to_string(i+1),unsigned(i)==level.expected};
-        if (i>cap) c.disabled="Above this captain's native level cap";
-        level.choices.push_back(std::move(c));
-    }
-    static const char* weaponSlots[] = {"Melee weapon", "Secondary weapon", "Ranged weapon", "Ranged auxiliary", "Weapon slot 4", "Weapon slot 5", "Utility weapon", "Tribe weapon", "Weapon slot 8", "Offhand weapon"};
-    for (uint32_t i = 0; i < 10; ++i) {
-        if (equipment[i].empty()) continue;
-        const Ptr instance = Read<Ptr>(member + 0x50 + i * 8);
-        const Ptr item = Read<Ptr>(instance + 0x38);
-        auto& field = Add(snapshot, i < 10 ? weaponSlots[i] : "Armor item " + std::to_string(i - 10), RecordName(item), Kind::Equipment);
-        field.expected = item;
-        field.slot = i;
-        field.category = "Inventory/Items";
-        field.choices=std::move(equipment[i]);
-        for (auto& c:field.choices) c.selected=c.value==item;
-    }
-}
-
 bool Signature(Ptr address, const char* bytes, size_t count) {
     __try { return std::memcmp(reinterpret_cast<const void*>(game::FromRVA(address)), bytes, count) == 0; }
     __except (EXCEPTION_EXECUTE_HANDLER) { return false; }
 }
 // Only POD lives in the SEH boundary; no UI callbacks touch native objects.
-bool ApplyNative(Ptr member, Kind kind, Ptr expected, uint32_t slot, Ptr value) {
-    __try {
-        using Two = void(__fastcall*)(Ptr, Ptr);
-        using Three = void(__fastcall*)(Ptr, Ptr, Ptr);
-        if (kind == Kind::Level) {
-            if (value > 84) return false;
-            reinterpret_cast<void(__fastcall*)(Ptr, uint32_t)>(game::FromRVA(game::kFactionMemberSetXPLevel))(member, static_cast<uint32_t>(value));
-            return Read<uint32_t>(member + 0x4b8) == value;
-        }
-        if (kind == Kind::Role) {
-            if (!Signature(game::kFactionMemberSetRole, "\x48\x89\x5c\x24\x08", 5)) return false;
-            reinterpret_cast<Three>(game::FromRVA(game::kFactionMemberSetRole))(member, value, 0);
-            return Read<Ptr>(member + 0x318) == value;
-        }
-        if (kind == Kind::Equipment) {
-            if (Read<Ptr>(member + 0x48) || slot >= 10 || !engine::WeaponAllowed(member,value) ||
-                !engine::EquipmentGrantReady()) return false;
-            Ptr old = Read<Ptr>(member + 0x50 + slot * 8);
-            if (Read<Ptr>(old + 0x38) != expected) return false;
-            reinterpret_cast<bool(__fastcall*)(Ptr, Ptr, Ptr, uint8_t, Ptr)>(game::FromRVA(game::kFactionMemberGiveItem))(
-                member + 0x50, member, value, 8, Read<Ptr>(member + 0x2d8));
-            Ptr instance = Read<Ptr>(member + 0x50 + slot * 8);
-            return Read<Ptr>(instance + 0x38) == value;
-        }
-        return false;
-    } __except (EXCEPTION_EXECUTE_HANDLER) { return false; }
-}
-
 uint64_t Stamp(Ptr m) {
     uint64_t h=1469598103934665603ull;
     auto mix=[&](uint64_t v){ h=(h^v)*1099511628211ull; };
@@ -761,49 +594,6 @@ uint64_t Stamp(Ptr m) {
 bool Writable(Ptr m) {
     return m && engine::Supported() && Read<Ptr>(m+0x268) && !Read<Ptr>(m+0x48) && !Read<Ptr>(m+0x190)
         && !(Read<uint64_t>(m+0x508)&(4|(1ull<<37)));
-}
-bool Roll(Ptr m, Kind k, Ptr role, const Catalog& catalog, Choice& c) {
-    if (!Writable(m)) return false;
-    c.ticket=g_nextField.fetch_add(1);
-    if (k==Kind::Name) {
-        unsigned id=0; char label[256]{};
-        if (!engine::GenerateName(m,id,label) || !engine::NameAvailable(m,id)) return false;
-        c.value=id; c.label=label; c.preview=c.label; return true;
-    }
-    if (k==Kind::Role) {
-        for (int i=0;i<8;++i) {
-            Ptr r=engine::GenerateTitle(m);
-            if (!r || r==Read<Ptr>(m+0x318) || !InCatalog(catalog,"Faction/Roles/Definitions",r)) continue;
-            c.value=r; c.label=RecordName(r); c.preview=c.label; return true;
-        }
-        return false;
-    }
-    if (k==Kind::Appearance) {
-        for (int i=0;i<8;++i) {
-            c.value=uint64_t(std::chrono::steady_clock::now().time_since_epoch().count())*0x9e3779b97f4a7c15ull+c.ticket+i;
-            if (!engine::Appearance(m,role,c.value,c.look,nullptr)) continue;
-            c.label=RecordName(c.look.head);
-            c.preview="Title: "+RecordName(role)+"\nBody: "+RecordName(c.look.pieces[0])+"\nHead: "+c.label;
-            for (unsigned j=2;j<23;++j) if (c.look.pieces[j]) c.preview+="\n"+RecordName(c.look.pieces[j]);
-            return true;
-        }
-        return false;
-    }
-    if (k==Kind::Advance) {
-        if (!engine::RollAdvancement(m,c.advance)) return false;
-        c.label="Level "+std::to_string(c.advance.level+1)+": "+RecordName(c.advance.reward);
-        c.preview=c.label+"\nReward list: "+RecordName(c.advance.list)+"\nThe game rolls the final outcome on Save:";
-        for (bool remove:{false,true}) {
-            Ptr possible[128]{};
-            int n=engine::RewardPickers(m,c.advance.reward,remove,possible);
-            for (int i=0;i<n;++i) {
-                auto label=PickerLabel(possible[i]);
-                if (!label.empty()) c.preview+=(remove?"\nMay remove: ":"\nMay gain: ")+label;
-            }
-        }
-        c.value=c.ticket; return true;
-    }
-    return false;
 }
 bool SaveTraitsImpl(Ptr m,const std::vector<Ptr>& wanted) {
     if (VectorSize(m+0x1c8,8) || Read<uint64_t>(m+0x508)&(1ull<<38)) return false;
@@ -839,40 +629,7 @@ bool SaveTraits(Ptr m,const std::vector<Ptr>& wanted) {
     __try { return SaveTraitsImpl(m,wanted); }
     __except(EXCEPTION_EXECUTE_HANDLER) { return false; }
 }
-enum class Op { Refresh, Generate, Save, Template, RetuneTemplate };
-struct Task { uint64_t session=0, baseline=0, field=0, request=0; Key selected; Op op=Op::Refresh; Kind kind=Kind::View; Draft draft; unsigned slot=0; Ptr expected=0; };
-Ptr DraftRole(Ptr m,const Draft& d) {
-    auto it=d.edits.find(Kind::Role);
-    return it==d.edits.end()?Read<Ptr>(m+0x318):it->second.second.value;
-}
-void AppendOrderReport(Choice& c,Kind k,Ptr m,const Draft& draft,const Catalog& catalog) {
-    auto it=catalog.find("Faction/Contracts/Contract");
-    if (it==catalog.end()) { c.preview+="\nTraining order data unavailable."; return; }
-    const auto level=k==Kind::Advance?c.advance.level:Read<unsigned>(m+0x4b8);
-    Ptr role=k==Kind::Role?c.value:DraftRole(m,draft);
-    unsigned name=Read<unsigned>(m+0x170);
-    if (auto n=draft.edits.find(Kind::Name);n!=draft.edits.end()) name=unsigned(n->second.second.value);
-    if (k==Kind::Name) name=unsigned(c.value);
-    Ptr active[512]{};
-    int count=0;
-    if (k==Kind::Traits) count=engine::ProjectTraits(m,c.pickers.data(),int(c.pickers.size()),level,
-        Cell(Read<Ptr>(m+0x268),"Rank"),active);
-    unsigned passed=0,blocked=0,unknown=0;
-    std::string examples;
-    for (const auto& order:it->second) {
-        Ptr reason=0;
-        int r=engine::OrderCheck(m,order.address,level,role,name,k==Kind::Traits?active:nullptr,count,reason);
-        if (r==0) ++passed;
-        else if (r<0) ++unknown;
-        else {
-            ++blocked;
-            if (blocked<=3) examples+="\n"+order.name+": "+RecordName(reason);
-        }
-    }
-    c.preview="Training orders: "+std::to_string(passed)+" without a failure, "+std::to_string(blocked)+
-        " blocked, "+std::to_string(unknown)+" unknown.\n\n"+c.preview+examples;
-    if (k==Kind::Advance) c.preview+="\nLevel projected; final random reward not yet applied.";
-}
+struct Task { uint64_t session=0, baseline=0; Key selected; Draft draft; };
 bool MemberRecords(Ptr vector,std::vector<Ptr>& out) {
     const Ptr begin=Read<Ptr>(vector),end=Read<Ptr>(vector+8);
     if (end<begin || (end-begin)%8 || (end-begin)/8>4096 || (!begin && end)) return false;
@@ -1002,57 +759,24 @@ bool GenerationReport(const Task& task,const Catalog& catalog,Ptr m,const std::s
 bool Commit(Ptr m,const Task& task,const Catalog& catalog,std::string& status) {
     const auto& d=task.draft;
     if (!d.ready() || !Writable(m)) return false;
-    auto get=[&](Kind k)->const Choice* {auto i=d.edits.find(k); return i==d.edits.end()?nullptr:&i->second.second;};
-    if (RecipeField(d.edits.begin()->first)) {
-        auto c=get(Kind::Regenerate);
-        recipe::Catalog db;
-        const auto r=BuildRecipe(d);
-        if (!c || !c->generation || !LoadRecipeCatalog(catalog,db,task.selected.army) ||
-            !engine::ScopeClassDraws(db,r,task.selected.army)) return false;
-        std::string detail;
-        auto result=engine::ReplaceCaptain(m,*c->generation,db,r,SaveTraits,detail);
-        if (result==engine::ReplaceResult::SeatUnavailable)
-            status="The selected Army seat is not available for an in-place build. No build applied.";
-        else if (result==engine::ReplaceResult::RollbackFailed)
-            status="Build verification failed and the original could not be fully restored. Reload before continuing.";
-        else if (result==engine::ReplaceResult::CleanupFailed)
-            status="Build applied, but the engine failed to release temporary data. Restart before continuing.";
-        else if (result==engine::ReplaceResult::Replaced)
-            status="Applied the generated build to the original captain at his original level and Army seat.";
-        else status=detail.empty()?"Candidate failed validation. No build applied.":detail;
-        return result==engine::ReplaceResult::Replaced || result==engine::ReplaceResult::CleanupFailed;
-    }
-    if (auto l=get(Kind::Level))
-        return int(l->value)<=engine::LevelCap(m) && ApplyNative(m,Kind::Level,0,0,l->value);
-    if (auto w=get(Kind::Equipment)) {
-        Ptr kit[512]{},look=0; int n=engine::KitItems(m,kit); unsigned slot=0;
-        return std::find(kit,kit+n,w->value)!=kit+n && engine::WeaponLook(m,w->value,slot,look) && slot==task.slot
-            && look==w->look.base && ApplyNative(m,Kind::Equipment,task.expected,slot,w->value);
-    }
-    if (auto t=get(Kind::Traits)) {
-        for (auto p:t->pickers) if (!InCatalog(catalog,"Faction/Traits/Picker",p)) return false;
-        engine::TraitRules now;
-        if (!engine::ReadTraitRules(m,now) || !now.permits(t->pickers)) {
-            status="The captain's picker rules changed. No traits saved."; return false;
-        }
-        return SaveTraits(m,t->pickers);
-    }
-    if (auto a=get(Kind::Advance)) {
-        int result=engine::Advance(m,a->advance);
-        if (result==2) status="Advanced one level. The normal engine roll replaced the previewed reward.";
-        return result!=0;
-    }
-    const auto* name=get(Kind::Name); const auto* a=get(Kind::Appearance); const auto* title=get(Kind::Role);
-    Ptr role=DraftRole(m,d);
-    if (name && !engine::NameAvailable(m,unsigned(name->value))) return false;
-    if (title && (!InCatalog(catalog,"Faction/Roles/Definitions",role) ||
-        !Signature(game::kFactionMemberSetRole,"\x48\x89\x5c\x24\x08",5))) return false;
-    if (a) {
-        engine::Look result{};
-        if (!engine::Appearance(m,role,a->value,result,&a->look)) return false;
-    }
-    if (title && !ApplyNative(m,Kind::Role,0,0,role)) return false;
-    return !name || engine::SetName(m,unsigned(name->value));
+    const auto* c=&d.edits.at(Kind::Regenerate).second;
+    recipe::Catalog db;
+    const auto r=BuildRecipe(d);
+    if (!c->generation || !LoadRecipeCatalog(catalog,db,task.selected.army) ||
+        !engine::ScopeClassDraws(db,r,task.selected.army)) return false;
+    std::string detail;
+    auto result=engine::ReplaceCaptain(m,*c->generation,db,r,SaveTraits,detail);
+    if (result==engine::ReplaceResult::SeatUnavailable)
+        status="The selected Army seat is not available for an in-place build. No build applied.";
+    else if (result==engine::ReplaceResult::RollbackFailed)
+        status="Build verification failed and the original could not be fully restored. Reload before continuing.";
+    else if (result==engine::ReplaceResult::CleanupFailed)
+        status="Build applied, but the engine failed to release temporary data. Restart before continuing.";
+    else if (result==engine::ReplaceResult::Replaced)
+        status="Applied the generated build to the original captain at his original level and Army seat.";
+    else status=detail.empty()?"Candidate failed validation. No build applied.":detail;
+    return result==engine::ReplaceResult::Replaced || result==engine::ReplaceResult::CleanupFailed;
+
 }
 }
 namespace {
@@ -1143,18 +867,18 @@ bool saveAction(const char* const* v,act::Emit emit,void* ctx){
     emit(ctx,"captain changed; preview again");return false;
 }
 }
-bool RegisterEditorActions(const act::Registrar& r){
+bool RegisterGenerationActions(const act::Registrar& r){
     static constexpr act::Input ticket[]={{"ticket","Preview ticket",act::Text,nullptr,0,0,nullptr,
         {[](unsigned,const char* const*,const char*,act::Emit emit,void* ctx){
             emit(ctx,actionPlan && actionPlan->session==sowmod::SaveSession()?actionTicket.c_str():"");return true;},act::OnOpen|act::AfterRun}}};
-    return r.Add({"inspect","Inspect captain",true,recipeInputs,1,[](const char* const* v,act::Emit emit,void* ctx){
+    return r.Add(act::Action{"inspect","Inspect captain",true,recipeInputs,1,[](const char* const* v,act::Emit emit,void* ctx){
         Target t;if(!findCaptain(v[0],t)){emit(ctx,"captain not found");return false;}
         emit(ctx,t.label.c_str());recipe::Catalog db;
         if(!LoadRecipeCatalog(LoadCatalog(),db,t.key.army))return false;
         emit(ctx,KitText(MemberKit(t.member,db)).c_str());
         std::vector<Ptr> active;if(!MemberRecords(t.member+0x198,active))return false;
-        for(auto id:active)emit(ctx,RecordName(id).c_str());return true;},actionChoices,"Captains"}) &&
-        r.Add({"preview","Generate captain preview",true,recipeInputs,unsigned(std::size(recipeInputs)),previewAction,actionChoices,"Captains/Generator",templateAction,"Take Over Template"}) &&
-        r.Add({"save","Save generated captain",true,ticket,1,saveAction,nullptr,"Captains/Generator"});
+        for(auto id:active)emit(ctx,RecordName(id).c_str());return true;},actionChoices}.IpcOnly()) &&
+        r.Add(act::Action{"preview","Generate",true,recipeInputs,unsigned(std::size(recipeInputs)),previewAction,actionChoices,"Captain Generation",templateAction,"Take Over Template"}.FollowedBy("save")) &&
+        r.Add(act::Action{"save","Save Uruk",true,ticket,1,saveAction}.IpcOnly());
 }
 }

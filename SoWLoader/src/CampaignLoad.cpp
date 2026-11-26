@@ -123,7 +123,7 @@ void PumpCampaignLoad(){
     deadline=GetTickCount64()+120000;
 }
 bool RegisterCampaignActions(const sowmod::actions::Registrar* r){
-    return r && r->Add({"load_save","Continue campaign",false,nullptr,0,request,nullptr,"Campaign"}) &&
-        r->Add({"load_status","Campaign load status",false,nullptr,0,readStatus,nullptr,"Campaign"});
+    return r && r->Add(sowmod::actions::Action{"load_save","Continue campaign",false,nullptr,0,request}.IpcOnly()) &&
+        r->Add(sowmod::actions::Action{"load_status","Campaign load status",false,nullptr,0,readStatus}.IpcOnly());
 }
 }

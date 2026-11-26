@@ -1,5 +1,6 @@
 #include "ModActions.h"
 #include "GameHooks.h"
+#include "HagUI.h"
 #include "GameTaskQueue.h"
 #include <algorithm>
 #include <charconv>
@@ -23,6 +24,9 @@ bool key(std::string_view s) {
 bool add(void* context,const Action* a) {
     if (!a || !a->key || !key(a->key) || !a->label || !*a->label || !a->run || a->count>32 || (a->count && !a->inputs)) return false;
     auto& batch=*static_cast<std::vector<Command>*>(context);
+    if(a->rows && (a->count!=2 || a->inputs[0].type!=Choice || a->inputs[1].type!=Integer ||
+        !a->facets || !a->facetCount || a->facetCount>16))return false;
+    if(a->titleRow && a->count)return false;
     if(a->preset && (!a->presetLabel || !*a->presetLabel))return false;
     std::string_view path=a->menu?a->menu:"";
     if(path.size()>160 || path.starts_with('/') || path.ends_with('/') || path.find("//")!=path.npos ||
@@ -66,6 +70,8 @@ bool RegisterMod(const std::string& prefix,Register fn,std::vector<Command>& add
     if(!fn || !key(prefix)) return false;
     std::vector<Command> batch;Registrar api{SchemaVersion,&batch,add};
     if(!fn(&api) || batch.empty()) return false;
+    for(auto& c:batch)if(c.spec.followup && (!key(c.spec.followup) ||
+        !std::ranges::any_of(batch,[&](const Command& n){return n.id==c.spec.followup && n.spec.ipcOnly && n.spec.count && n.spec.needsSave==c.spec.needsSave;})))return false;
     std::lock_guard lock(registryMutex);
     for(auto& c:batch){c.id=prefix+"."+c.id;if(registry.contains(c.id))return false;}
     for(auto& c:batch)registry.emplace(c.id,c);
@@ -89,7 +95,16 @@ void execute(Job& j) {
     std::vector<const char*> values;for(auto& v:j.values)values.push_back(v.c_str());
     Result r{};
     auto& a=j.command.spec;
-    if(j.field==-2) r.ok=a.preset(values.data(),emit,&r.text);
+    if(j.field==CatalogRequest){
+        struct Sink { unsigned n; std::vector<Row>& rows; } sink{a.facetCount,r.rows};
+        r.ok=a.rows([](void* ctx,const char* id,const char* label,const char*const* facets){
+            auto& s=*static_cast<Sink*>(ctx);if(!id || !*id || !label)return;
+            Row row{id,label};for(unsigned i=0;i<s.n;++i)row.facets.emplace_back(facets && facets[i]?facets[i]:"");
+            s.rows.push_back(std::move(row));
+        },&sink);
+        r.text=std::to_string(r.rows.size())+" rows";
+    }else if(j.field==VisibilityRequest){r.ok=true;r.text=a.show()?"true":"false";}
+    else if(j.field==-2) r.ok=a.preset(values.data(),emit,&r.text);
     else if(j.field<0) r.ok=a.run(values.data(),emit,&r.text);
     else if(auto pull=a.inputs[j.field].source.pull) r.ok=pull(j.field,values.data(),j.search.c_str(),emit,&r.text);
     else if(auto opts=a.inputs[j.field].options){
@@ -110,7 +125,7 @@ std::shared_ptr<Job> Submit(const Command& c,std::vector<std::string> values,int
     auto j=std::make_shared<Job>();j->command=c;j->field=field;j->search=std::move(search);j->values=std::move(values);
     auto& a=c.spec;j->session=CurrentSaveSession();
     std::string error;
-    if(j->values.size()!=a.count || field<-2 || (field==-2 && !a.preset) || field>=int(a.count)) error="bad inputs";
+    if(j->values.size()!=a.count || field<VisibilityRequest || (field==CatalogRequest && !a.rows) || (field==VisibilityRequest && !a.show) || (field==-2 && !a.preset) || field>=int(a.count)) error="bad inputs";
     else if(field==-1)for(unsigned i=0;i<a.count && error.empty();++i)error=validate(a.inputs[i],j->values[i]);
     if(error.empty() && a.needsSave && !j->session) error="load a save first";
     if(!error.empty()){finish(*j,{false,error});return j;}
@@ -124,13 +139,28 @@ namespace {
 std::string dispatch(std::string line) {
     std::istringstream in(line);std::string verb,id,arg,field,search;
     in>>verb;
+    if(verb=="layout"){
+        std::string out="ok";auto& pages=HagUI::Get().Pages();
+        for(auto& page:pages){
+            std::string path=page.title;
+            for(int parent=page.parent;parent>=0;parent=pages[parent].parent)path=pages[parent].title+"/"+path;
+            for(auto& w:page.widgets){
+                const char* kind=w.type==HagUI::WToggle?"toggle":w.type==HagUI::WHeaderButton?"title":w.type==HagUI::WList?"catalog":
+                    w.type==HagUI::WForm?"form":w.type==HagUI::WSubPage?"submenu":"button";
+                out+=(out=="ok"?" ":std::string(1,char(31)))+path+" | "+kind+" | "+w.text;
+            }
+        }
+        return out;
+    }
     if(verb=="list"){std::string out="ok";for(auto& c:Commands())out+=" "+c.id;return out;}
-    if(verb!="help" && verb!="run" && verb!="choices" && verb!="read" && verb!="preset")return "err expected list, help, read, choices, preset or run";
+    if(verb!="help" && verb!="run" && verb!="choices" && verb!="read" && verb!="preset" && verb!="catalog" && verb!="visible")return "err expected list, help, read, choices, preset or run";
     in>>id;auto all=Commands();auto it=std::ranges::find(all,id,&Command::id);
     if(it==all.end())return "err unregistered action";
     auto& a=it->spec;
     if(verb=="help"){
         std::string s=std::string("ok ")+a.label+(a.needsSave?" [save]":" [global]");
+        s+=a.ipcOnly?" ui=none":a.rows?" ui=catalog":a.titleRow?" ui=title":a.count==1 && a.inputs[0].type==Boolean && a.inputs[0].source.pull?" ui=toggle":a.count?" ui=form":" ui=button";
+        if(a.followup)s+=" followup="+std::string(a.followup);
         if(a.menu)s+=" menu="+std::string(a.menu);
         if(a.preset)s+=" preset="+std::string(a.presetLabel);
         for(unsigned i=0;i<a.count;++i){auto& f=a.inputs[i];s+=" | "+std::string(f.key)+":"+typeName(f.type);
@@ -140,7 +170,7 @@ std::string dispatch(std::string line) {
             if(f.source.pull || f.type>=Choice)s+=" (refresh="+std::to_string(f.source.when)+", dependencies="+std::to_string(f.source.dependencies)+", intervalMs="+std::to_string(f.source.intervalMs)+")";}
         return s;
     }
-    int choice=verb=="preset"?-2:-1;
+    int choice=verb=="catalog"?CatalogRequest:verb=="visible"?VisibilityRequest:verb=="preset"?-2:-1;
     if(choice==-2 && !a.preset)return "err no preset registered";
     if(verb=="choices" || verb=="read"){in>>field;for(unsigned i=0;i<a.count;++i)if(field==a.inputs[i].key)choice=i;
         if(choice<0 || (a.inputs[choice].type<Choice && (verb=="choices" || !a.inputs[choice].source.pull)))return "err field has no such source";}

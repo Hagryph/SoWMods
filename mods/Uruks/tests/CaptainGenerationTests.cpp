@@ -1,5 +1,5 @@
 // Compile the implementation into this test to exercise the private snapshot and memory boundary.
-#include "../src/UrukEditor.cpp"
+#include "../src/CaptainGeneration.cpp"
 #include "../src/MemberCopy.h"
 #include <array>
 #include <iostream>
@@ -59,7 +59,6 @@ int main() {
         Check(TraitLabel(trait.header.at(),lookup)=="Test Ability");
         FakeRecord demo("DEMO_ImmuneToCurse"), demoPicker("Picker_dEmO_ImmuneToCurse"), curse("Immune_Curse");
         Check(TraitLabel(demo.header.at(),lookup).empty());
-        Check(PickerLabel(demoPicker.header.at()).empty());
         Check(TraitLabel(curse.header.at(),lookup)=="Immune Curse");
         Check(!DemoTraitId("Picker_Demoralize"));
         FakeRecord bloodlust("Hate_EnragedOrcs"), mercBloodlust("Easterling_Hate_EnragedOrcs");
@@ -100,18 +99,6 @@ int main() {
         Put(slots.at(8), trait.header.at());
         Put<uint32_t>(member.at(0x4b8), 10);
         Check(VectorSize(member.at(0x1e0), 0x20) == 1);
-        Snapshot snapshot;
-        snapshot.session = 1;
-        snapshot.selected = {army.header.at(), 0, 42};
-        snapshot.targets.push_back({snapshot.selected, member.at(), "Test captain"});
-        Catalog catalog;
-        catalog["Faction/Traits/Picker"].push_back({picker.header.at(), "Picker_Test"});
-        Capture(snapshot, catalog);
-        Check(std::none_of(snapshot.fields.begin(),snapshot.fields.end(),[](const auto& f){return f.kind==Kind::View || f.kind==Kind::Picker;}));
-        auto level = std::find_if(snapshot.fields.begin(), snapshot.fields.end(), [](const auto& f) { return f.kind == Kind::Level; });
-        Check(level != snapshot.fields.end() && level->value == "11" && level->choices.empty());
-        Check(InCatalog(catalog, "Faction/Traits/Picker", picker.header.at()));
-        Check(!InCatalog(catalog, "Faction/Personalities", picker.header.at()));
         const auto original=Stamp(member.at());
         // Constrained generation is independent of the old captain's trait list.
         recipe::Catalog db;

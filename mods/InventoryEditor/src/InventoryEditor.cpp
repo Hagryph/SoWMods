@@ -513,10 +513,11 @@ bool SpawnWorldDrop(std::uintptr_t itemRow) {
 
 // This mod's single tab is auto-named after this.
 extern "C" __declspec(dllexport) const char* SoWMod_Name() { return "Item Spawner"; }
-extern "C" __declspec(dllexport) bool SoWMod_RegisterActionsV2(const sowmod::actions::Registrar* r) {
+extern "C" __declspec(dllexport) bool SoWMod_RegisterActionsV3(const sowmod::actions::Registrar* r) {
     using namespace sowmod::actions;
     static constexpr Input spawn[]={{"item","Item",Choice},{"count","Count",Integer,"1",1,kMaxWorldDropsPerClick}};
-    return r && r->version==SchemaVersion && r->Add({"spawn","Spawn item",true,spawn,2,
+    static constexpr const char* facets[]={"Category","Slot","Set","Rarity","Variant"};
+    return r && r->version==SchemaVersion && r->Add(Action{"spawn","Spawn item",true,spawn,2,
         [](const char* const* v,Emit emit,void* ctx){
             auto rows=LoadRuntimeRows();
             if(std::ranges::find(rows,v[0],&Row::record)==rows.end()){emit(ctx,"unknown spawnable item");return false;}
@@ -525,9 +526,13 @@ extern "C" __declspec(dllexport) bool SoWMod_RegisterActionsV2(const sowmod::act
             emit(ctx,("spawned "+std::to_string(i)+"/"+std::to_string(n)).c_str());return i==n;},
         [](unsigned,const char* const*,const char* search,Emit emit,void* ctx){
             unsigned shown=0;for(auto& row:LoadRuntimeRows())if(row.record.find(search)!=row.record.npos && shown++<200)emit(ctx,row.record.c_str());
-            return true;}}) &&
-        r->Add({"unlock_ring","Early unlock ring",true,nullptr,0,[](const char* const*,Emit emit,void* ctx){
-            bool ok=inventory_editor::RegisteredRingAction(true);emit(ctx,ok?"ring unlocked":"ring grant unavailable");return ok;}});
+            return true;}}.Catalog(facets,[](EmitRow emit,void* ctx){
+                auto rows=LoadRuntimeRows();
+                for(auto& r:rows){const char* tags[]={r.category.c_str(),r.slot.c_str(),r.set.c_str(),r.rarity.c_str(),r.variant.c_str()};
+                    emit(ctx,r.record.c_str(),r.display.c_str(),tags);}
+                return !rows.empty();})) &&
+        r->Add(Action{"unlock_ring","Early Unlock Ring",true,nullptr,0,[](const char* const*,Emit emit,void* ctx){
+            bool ok=inventory_editor::RegisteredRingAction(true);emit(ctx,ok?"ring unlocked":"ring grant unavailable");return ok;}}.TitleRow(inventory_editor::CanUnlockRing));
 }
 
 // Save-local: an item spawner only makes sense with a loaded save, so its tab appears in the hub

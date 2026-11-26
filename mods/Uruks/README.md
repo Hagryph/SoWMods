@@ -2,9 +2,9 @@
 
 Standalone global submod. First option: **Ignore Recruitment Level**.
 
-Under **Captains**, Inspect reads the selected seat; **Generator** provides preview and save.
+Open **Captain Generation** directly from the Uruks tab. Select a captain and edit all generation settings on that screen.
 The loader renders these forms from the [registered actions](../../docs/mod-actions.md).
-Creating a preview leaves the captain unchanged. Only **Save generated captain** commits it.
+Creating a preview leaves the captain unchanged. Only **Save Uruk** commits it.
 Build only; do not deploy beside the old
 UrukEditor.dll, since both DLLs would install the same recruitment hooks.
 
@@ -36,7 +36,7 @@ level adjustments are logged to `%LOCALAPPDATA%/SoWLoader/logs/Uruks.log`.
 ## Build
 
 Build the loader first to provide the static MinHook dependency, then run
-`mods/build_mods.ps1 -Only Uruks`. The V2 action schema and Loader Config API v1 are required.
+`mods/build_mods.ps1 -Only Uruks`. The V3 action schema and Loader Config API v1 are required.
 
 ## Native References
 
@@ -59,11 +59,11 @@ players. An actual above-level recruitment encounter still needs in-game testing
 
 ### Generator templates and save reports
 
-In **Generate captain preview**, **Take Over Template** replaces the draft settings
+In **Captain Generation**, **Take Over Template** replaces the draft settings
 with the selected captain's class, advanced class, tribe, rarity, and compatible
 optional active traits. It does not copy identity, cosmetics, equipment or fixed
 kit grants, and does not modify the captain. Edit the draft, generate a preview,
-then use **Save generated captain** to commit its ticket.
+then use **Save Uruk** to commit its ticket.
 
 The generator leaves the role random unless the selected class traits need a
 specific role. One role must satisfy all picks that the class cannot supply.

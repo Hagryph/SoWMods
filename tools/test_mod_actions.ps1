@@ -17,6 +17,10 @@ foreach($id in 'uruks.preview','uruks.save','uruks.inspect','inventoryeditor.spa
     if($id -notin $ids){throw "Missing action: $id"}
     $null=Request "help $id"
 }
+$layout=(Request 'layout').Split([char]10)
+$expected=@('Item Spawner | title | Early Unlock Ring','Item Spawner | catalog | Spawn item','Uruks | toggle | Ignore Recruitment Level','Uruks | submenu | Captain Generation','Uruks/Captain Generation | form | Generate')
+$ours=@($layout | Where-Object {$_ -match '^(Item Spawner|Uruks|Loader)[ /]'})
+if(Compare-Object $ours $expected){throw "Unexpected generated layout: $ours"}
 Rejected 'run unregistered' 'unregistered'
 Rejected 'run uruks.set_recruitment enabled=yes' 'expected true or false'
 Rejected 'run uruks.set_recruitment enabled=true enabled=false' 'expected unique'
@@ -24,11 +28,16 @@ Rejected 'run inventoryeditor.spawn item=invalid count=51' 'out of range'
 Rejected 'run uruks.preview nonexistent=x' 'unknown input'
 Rejected 'run uruks.save' 'missing ticket'
 if((Request 'read uruks.set_recruitment enabled') -ne (Request 'run uruks.get_recruitment')){throw 'Bound setting and handler disagree'}
-if((Request 'help uruks.preview') -notmatch 'menu=Captains/Generator' -or
+if((Request 'help uruks.preview') -notmatch 'menu=Captain Generation' -or
    (Request 'help uruks.preview') -notmatch 'advanced:choice \(refresh=3, dependencies=2'){throw 'Missing submenu or dependent choice metadata'}
 Rejected 'read uruks.preview missing' 'field has no such source'
 Write-Output "Discovery and validation passed: $($ids.Count) actions"
 if($DiscoveryOnly){return}
+$catalog=Request 'catalog inventoryeditor.spawn'
+if($catalog -notmatch '^[1-9][0-9]* rows$'){throw "Empty item catalog: $catalog"}
+$ring=Request 'visible inventoryeditor.unlock_ring'
+if($ring -notin 'true','false'){throw "Invalid ring visibility: $ring"}
+Write-Output "Item Spawner: $catalog; ring action visible=$ring"
 $target="captain=$Captain"
 $before=Request "run uruks.inspect $target"
 $template=Request "preset uruks.preview $target"

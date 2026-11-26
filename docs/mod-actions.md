@@ -1,18 +1,22 @@
 # Registered mod actions
 
-The loader requires a mod to export `SoWMod_RegisterActionsV2` before calling its optional
+The loader requires a mod to export `SoWMod_RegisterActionsV3` before calling its optional
 `SoWMod_Init`. Registration describes the actions; it must not read game state. Unregistered
 legacy DLLs are logged and their init is skipped. Action keys are namespaced by the lowercase DLL stem.
 
 Include `shared/ModActions.h`. Supply static-lifetime input descriptors, a handler, and optionally
-a choice provider. Return false if any registration fails. The loader creates one form per
-action; its optional `menu` path (e.g. `Captains/Generator`) groups subfunctions into nested
-submenus with Back navigation. Paths are relative to the mod; IPC IDs do not change when moving an action.
+a choice provider. Return false if any registration fails. Actions appear directly on the mod tab by default. Only an explicit `menu` creates a submenu.
+No-input actions become buttons; a Boolean input with a current-value source becomes a checkbox.
+`.Catalog(facetNames, rows)` supplies stable item IDs, labels, and facet values for the searchable
+item list. `.TitleRow(predicate)` places a visible action flush right on the title row.
+`.IpcOnly()` registers a handler without a control. `.FollowedBy("save")` binds a second button
+on the same form to the preview's returned key=value inputs; changing the draft invalidates it.
+Use IPC `layout` to inspect the generated hierarchy without screen capture. Paths are relative to the mod; IPC IDs do not change when moving an action.
 Submods do not create windows, pages, or widgets. Both standalone and aggregate builds run the
 submod boundary check.
 
 ```cpp
-extern "C" __declspec(dllexport) bool SoWMod_RegisterActionsV2(
+extern "C" __declspec(dllexport) bool SoWMod_RegisterActionsV3(
     const sowmod::actions::Registrar* r) {
     using namespace sowmod::actions;
     static constexpr Input args[]={{"enabled","Enabled",Boolean,"false"}};
@@ -20,7 +24,7 @@ extern "C" __declspec(dllexport) bool SoWMod_RegisterActionsV2(
         [](const char* const* v,Emit emit,void* ctx) {
             // Use the same implementation as the rest of the mod.
             return UpdateFeature(std::string_view(v[0])=="true",emit,ctx);
-        },nullptr,"Settings"});
+        }});
 }
 ```
 

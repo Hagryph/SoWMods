@@ -8,7 +8,9 @@ struct Command {
     std::string id;
     sowmod::actions::Action spec; // descriptors in the mod must have static lifetime
 };
-struct Result {bool ok; std::string text;};
+inline constexpr int CatalogRequest=-3, VisibilityRequest=-4;
+struct Row {std::string id,label;std::vector<std::string> facets;};
+struct Result {bool ok; std::string text; std::vector<Row> rows;};
 struct Job;
 bool RegisterMod(const std::string& prefix,sowmod::actions::Register fn,std::vector<Command>& added);
 std::vector<Command> Commands();
