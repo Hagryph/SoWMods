@@ -78,6 +78,11 @@ The encounter's Army rank is not a requirement for keeping its reward.
 For a rank-dependent picker the generator can verify the requested output at a
 different native rank. The captain keeps his real position and relationships;
 the Army screen still shows only traits active and visible there.
+When checking or generating a draft, campaign-progress predicates on trait
+pickers, roles and supported trait rewards do not require the current save to
+have reached that act or unlock. No campaign variable is written. Normal game
+updates outside generation still evaluate the actual campaign state; equipment,
+class, epic limits and mutually exclusive pickers are checked as before.
 Only one outcome of a single-draw list can be used. Builders with additional
 unmodelled setup and rewards with unknown actions are not replayed. The generation report records the chosen reward, builder and list.
 

@@ -83,6 +83,14 @@ $terrorChoices=(Request "choices uruks.generate class_traits $positionKit tribe=
 if('Quirk_Summoner_Spiders' -notin $terrorChoices){throw 'Terror encounter reward unavailable outside the source seat'}
 if('Quirk_Summoner_Spiders' -in (Request "choices uruks.generate class_traits $positionKit tribe=TribeDef_Warmonger").Split([char]10)){throw 'Encounter tribe requirement lost'}
 if('Hate_HenchmanDamage' -notin (Request "choices uruks.generate hates $positionKit tribe=TribeDef_Terror").Split([char]10)){throw 'Rank-conditioned Hate unavailable'}
+$gangKit="$target base=$base advanced=Marker_Specialization_Tank tribe=TribeDef_Terror rarity=Marker_OrcRarity_Legendary"
+$gangs=(Request "choices uruks.generate bonuses $gangKit search=Quirk_HasGang_Normal").Split([char]10)
+foreach($gang in 'Quirk_HasGang_Normal_Defenders','Quirk_HasGang_Normal_Savages'){
+    if($gang -notin $gangs){throw "Campaign-gated gang unavailable: $gang"}
+}
+if('Quirk_HasGang_Normal_Savages' -in (Request "choices uruks.generate bonuses $gangKit bonuses=Quirk_HasGang_Normal_Defenders search=Quirk_HasGang_Normal").Split([char]10)){
+    throw 'Campaign exception allowed two mutually exclusive gangs'
+}
 $traits=[ordered]@{
     immunities='Immune_Combat,Immune_Curse,Immune_Frost,Immune_Beast,Immune_Poison,Immune_Ranged,Immune_Stealth'
     hates='Hate_BodyguardDefeat,Hate_ExecutionAttacks,Hate_Unstable,Hate_Vault,Hate_EnragedOrcs,Hate_PowerfulEnemies,Hate_Injury'

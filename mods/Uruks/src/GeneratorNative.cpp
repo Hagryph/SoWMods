@@ -15,6 +15,31 @@ template<class R, class... A> R call(P va, A... args) {
     return reinterpret_cast<R(__fastcall*)(A...)>(game::FromRVA(va))(args...);
 }
 P faction() { return at<P>(at<P>(game::FromRVA(game::kGameSystemsSingleton))+0x6c68); }
+using CampaignTest=bool(*)(P);
+CampaignTest nativeCampaignTest=nullptr;
+thread_local const std::set<P>* generationPredicates=nullptr;
+bool campaignTest(P predicate){
+    if(generationPredicates && generationPredicates->contains(predicate))return true;
+    return nativeCampaignTest(predicate);
+}
+bool installCampaignTest(){
+    if(nativeCampaignTest)return true;
+    const P addr=game::FromRVA(0x1401e1118);
+    if(at<uint64_t>(addr)!=0x74894808245c8948ULL)return false;
+    auto target=reinterpret_cast<void*>(addr);
+    if(MH_CreateHook(target,reinterpret_cast<void*>(&campaignTest),reinterpret_cast<void**>(&nativeCampaignTest))!=MH_OK)return false;
+    if(MH_EnableHook(target)==MH_OK)return true;
+    MH_RemoveHook(target);nativeCampaignTest=nullptr;return false;
+}
+// Quest progress is not modified. Only generator-owned evaluations on this
+// thread can waive a typed predicate referenced by the Uruk catalog.
+template<class Work> bool withCampaignRules(const recipe::Catalog& db,Work work){
+    if(db.campaignPredicates.empty())return work();
+    if(!installCampaignTest())return false;
+    auto previous=generationPredicates;
+    __try {generationPredicates=&db.campaignPredicates;return work();}
+    __finally {generationPredicates=previous;}
+}
 P army(P m) { return call<P>(0x14018de04, faction()+0x98, at<P>(m+0x178)); }
 struct alignas(16) Context { unsigned char data[0x260]{}; P ptr() { return reinterpret_cast<P>(data); } };
 bool inspect(P p,Look& out) {
@@ -188,7 +213,7 @@ bool scopeDraws(recipe::Catalog& db,const recipe::Recipe& r,P armyRecord) {
 }
 }
 bool ScopeClassDraws(recipe::Catalog& db,const recipe::Recipe& r,P armyRecord) {
-    __try {return scopeDraws(db,r,armyRecord);}
+    __try {return withCampaignRules(db,[&]{return scopeDraws(db,r,armyRecord);});}
     __except(EXCEPTION_EXECUTE_HANDLER) {return false;}
 }
 namespace {
@@ -842,7 +867,7 @@ bool PlanGeneration(P m,P rank,const recipe::Catalog& db,const recipe::Recipe& r
     __try {
         __try {
             if (!beginHateScope(scope)) {error="Cannot apply the selected Hate's weakness exception.";return false;}
-            return makePlan(m,rank,db,r,p,error,session);
+            return withCampaignRules(db,[&]{return makePlan(m,rank,db,r,p,error,session);});
         } __finally {hateScope=previous;}
     }
     __except(EXCEPTION_EXECUTE_HANDLER) {error="Could not prepare the native generation inputs.";return false;}
@@ -864,8 +889,8 @@ ReplaceResult ReplaceCaptain(P m,const GenerationPlan& p,const recipe::Catalog& 
             if (!beginHateScope(scope)) return ReplaceResult::Rejected;
             if (!p.weapons.empty() && !installGearLocks()) return ReplaceResult::Rejected;
             gearScope=p.weapons.empty()?nullptr:&gear;
-            bool valid=replace(m,owned,p,db,r,write)==ReplaceResult::Replaced &&
-                restoreLevel(owned,p) && verifyRestored(owned,p,db);
+            bool valid=withCampaignRules(db,[&]{return replace(m,owned,p,db,r,write)==ReplaceResult::Replaced &&
+                restoreLevel(owned,p) && verifyRestored(owned,p,db);});
             gearScope=previousGear;hateScope=previous;
             if (!valid) return ReplaceResult::Rejected;
             if (!seatOwner(m,p)) return ReplaceResult::SeatUnavailable;
@@ -878,7 +903,7 @@ ReplaceResult ReplaceCaptain(P m,const GenerationPlan& p,const recipe::Catalog& 
             if (!seatOwner(m,p)) return ReplaceResult::SeatUnavailable;
             // Neither the Army slot nor either member's observer nodes move.
             auto outcome=membercopy::commit([&]{exchangeBuild(m,owned);},
-                [&]{return copyOwnedBuild(m,owned,true) && readbackBuild(m,p,db);},
+                [&]{return withCampaignRules(db,[&]{return copyOwnedBuild(m,owned,true) && readbackBuild(m,p,db);});},
                 [&]{return copyOwnedBuild(m,backup,true);});
             if (outcome==membercopy::Outcome::Applied) {
                 published=true;return ReplaceResult::Replaced;

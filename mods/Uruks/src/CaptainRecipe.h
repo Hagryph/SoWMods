@@ -40,6 +40,7 @@ struct Encounter {
     bool operator==(const Encounter&) const = default;
 };
 struct Catalog {
+    std::set<Id> campaignPredicates;
     std::vector<Encounter> encounters;
     std::set<Id> ranks,positionPickers;
     std::set<Id> encounterPickers,rolePickers,roleMarkers;

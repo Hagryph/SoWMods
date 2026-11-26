@@ -315,8 +315,9 @@ void LoadEncounters(const Catalog& catalog,recipe::Catalog& db) {
         }
         if (CellHash(builder,0xc7a758d,0) && origin.roles.empty()) continue;
         for (Ptr reward:Links(origin.list,0x0a535c57)) {
+            if (!std::ranges::all_of(Links(reward,0x9bf805e3),[&](Ptr p){return db.campaignPredicates.contains(p);})) continue;
             if (!EncounterRecord(reward,{0x5b7f9956,0xa22cf1b9,0xf273ff9a,0x8148127c,
-                0xdd4ea5f7,0xf15ea6b9,0x79f22fe8,0x99b5808a},ref->address)) continue;
+                0xdd4ea5f7,0xf15ea6b9,0x79f22fe8,0x99b5808a,0x9bf805e3},ref->address)) continue;
             auto e=origin;e.reward=reward;
             auto predicates=[&](unsigned field,unsigned link,auto add) {
                 for (Ptr group:Links(reward,field)) {
@@ -351,6 +352,15 @@ bool LoadRecipeCatalog(const Catalog& catalog,recipe::Catalog& db,Ptr army) {
         defs=catalog.find("Faction/Traits/Definitions"), pickers=catalog.find("Faction/Traits/Picker"),
         markers=catalog.find("Faction/Traits/Marker");
     if (nodes==catalog.end() || defs==catalog.end() || pickers==catalog.end() || markers==catalog.end()) return false;
+    auto campaign=[&](Ptr record,unsigned field){
+        for(Ptr p:Links(record,field))if(!db.campaignPredicates.contains(p)){
+            const Ptr category=Read<Ptr>(p+0x18);
+            if(category && Text(Read<Ptr>(category))=="Quest/GlobalVarPredicates")db.campaignPredicates.insert(p);
+        }
+    };
+    for(auto [category,field]:{std::pair{"Faction/Roles/Definitions",0xc941b8e0u},
+                               std::pair{"Faction/Rewards/Definitions",0x9bf805e3u}})
+        if(auto it=catalog.find(category);it!=catalog.end())for(const auto& rec:it->second)campaign(rec.address,field);
     if (auto it=catalog.find("Faction/RowRanks");it!=catalog.end())
         for (const auto& rank:it->second) db.ranks.insert(rank.address);
     std::map<Ptr,unsigned> groups;
@@ -495,6 +505,7 @@ bool LoadRecipeCatalog(const Catalog& catalog,recipe::Catalog& db,Ptr army) {
         bool hiddenOutput=false;
         for (auto e:Links(id,0x6bd57b1d)) {
             auto traits=Links(e,0xbcb47686);
+            campaign(e,0xaf84910a);
             if (!Links(e,0xfa3aba01).empty()) db.positionPickers.insert(id);
             auto requiresAny=Links(e,0xb05e2ca4);
             recipe::indexWeaknessGate(db,e,traits,requiresAny);
