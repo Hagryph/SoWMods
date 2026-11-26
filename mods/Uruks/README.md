@@ -2,9 +2,9 @@
 
 Standalone global submod. First option: **Ignore Recruitment Level**.
 
-Open **Captain Generation** directly from the Uruks tab. Select a captain and edit all generation settings on that screen.
+The generation form is on the **Uruks** tab. Select a captain and edit all generation settings on that screen.
 The loader renders these forms from the [registered actions](../../docs/mod-actions.md).
-Creating a preview leaves the captain unchanged. Only **Save Uruk** commits it.
+**Generate Captain** immediately replaces the selected captain in his Army seat at his current level.
 Build only; do not deploy beside the old
 UrukEditor.dll, since both DLLs would install the same recruitment hooks.
 
@@ -59,11 +59,10 @@ players. An actual above-level recruitment encounter still needs in-game testing
 
 ### Generator templates and save reports
 
-In **Captain Generation**, **Take Over Template** replaces the draft settings
+On the **Uruks** tab, **Take Over Template** replaces the draft settings
 with the selected captain's class, advanced class, tribe, rarity, and compatible
 optional active traits. It does not copy identity, cosmetics, equipment or fixed
-kit grants, and does not modify the captain. Edit the draft, generate a preview,
-then use **Save Uruk** to commit its ticket.
+kit grants, and does not modify the captain. Edit the draft and press **Generate Captain** once to apply it.
 
 The generator leaves the role random unless the selected class traits need a
 specific role. One role must satisfy all picks that the class cannot supply.
@@ -74,10 +73,9 @@ report records reserved slots alongside the equipment actually observed.
 
 The generator can also use a trait reward from an encounter builder. It checks
 the builder's tribe, Army rank, base class, allowed roles and markers, expands
-supported reward prerequisites, and plans the required weapons before Save.
+supported reward prerequisites, and plans the required weapons before replacement.
 Only one outcome of a single-draw list can be used. Builders with additional
-unmodelled setup and rewards with unknown actions are not replayed. The preview
-names the chosen reward; the save report records its builder and list.
+unmodelled setup and rewards with unknown actions are not replayed. The generation report records the chosen reward, builder and list.
 
 Generator saves append a timestamped report to
 `%LOCALAPPDATA%\SoWLoader\logs\Uruks-generation.log`. It compares requested

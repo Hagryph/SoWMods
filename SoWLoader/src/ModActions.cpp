@@ -191,7 +191,13 @@ std::string dispatch(std::string line) {
         j->done=true;j->result={false,"game did not tick; action cancelled"};
     }
     j->changed.wait(lock,[&]{return j->done;});
-    auto s=j->result.text;std::replace(s.begin(),s.end(),'\n',char(31));std::replace(s.begin(),s.end(),'\r',' ');
+    auto s=j->result.text;
+    // Providers may append a display label. IPC choice values remain stable IDs.
+    if((verb=="choices" || verb=="read") && choice>=0 && a.inputs[choice].type>=Choice && j->result.ok){
+        std::istringstream rows(s);s.clear();
+        for(std::string row;std::getline(rows,row);){if(!s.empty())s+='\n';s+=row.substr(0,row.find('\t'));}
+    }
+    std::replace(s.begin(),s.end(),'\n',char(31));std::replace(s.begin(),s.end(),'\r',' ');
     return std::string(j->result.ok?"ok ":"err ")+s;
 }
 void serve() {

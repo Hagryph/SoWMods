@@ -54,6 +54,10 @@ if(BUILD_TESTING)
     target_compile_definitions(PropertyEditorTests PRIVATE UNICODE _UNICODE)
     target_link_libraries(PropertyEditorTests PRIVATE imgui::imgui)
     add_test(NAME LoaderPropertyEditor COMMAND PropertyEditorTests)
+    add_executable(FormGridTests tests/FormGridTests.cpp)
+    target_include_directories(FormGridTests PRIVATE src)
+    target_link_libraries(FormGridTests PRIVATE imgui::imgui)
+    add_test(NAME LoaderFormGridAlignment COMMAND FormGridTests)
 endif()
 
 # The 796 forwarder exports come from #pragma comment(linker,"/EXPORT:...") in src/exports_forward.h

@@ -1,4 +1,4 @@
-# Default: discovery, schema validation and a non-writing generation plan.
+# Default: discovery, schema validation and non-writing template and choice checks.
 # -SaveCaptain explicitly commits the named recipe to the selected seat.
 param([string]$Captain='Faction_MinasIthil:271',[switch]$SaveCaptain,[switch]$DiscoveryOnly)
 $ErrorActionPreference='Stop'
@@ -13,24 +13,25 @@ function Rejected([string]$line,[string]$reason){
     if(!$r.StartsWith("err $reason")){throw "$line -> unexpected result: $r"}
 }
 $ids=(Request 'list').Split(' ')
-foreach($id in 'uruks.preview','uruks.save','uruks.inspect','inventoryeditor.spawn','inventoryeditor.unlock_ring','uruks.get_recruitment','uruks.set_recruitment'){
+foreach($id in 'uruks.generate','uruks.inspect','inventoryeditor.spawn','inventoryeditor.unlock_ring','uruks.get_recruitment','uruks.set_recruitment'){
     if($id -notin $ids){throw "Missing action: $id"}
     $null=Request "help $id"
 }
 $layout=(Request 'layout').Split([char]10)
-$expected=@('Item Spawner | title | Early Unlock Ring','Item Spawner | catalog | Spawn item','Uruks | toggle | Ignore Recruitment Level','Uruks | submenu | Captain Generation','Uruks/Captain Generation | form | Generate')
+$expected=@('Item Spawner | title | Early Unlock Ring','Item Spawner | catalog | Spawn item','Uruks | toggle | Ignore Recruitment Level','Uruks | form | Generate Captain')
 $ours=@($layout | Where-Object {$_ -match '^(Item Spawner|Uruks|Loader)[ /]'})
 if(Compare-Object $ours $expected){throw "Unexpected generated layout: $ours"}
 Rejected 'run unregistered' 'unregistered'
 Rejected 'run uruks.set_recruitment enabled=yes' 'expected true or false'
 Rejected 'run uruks.set_recruitment enabled=true enabled=false' 'expected unique'
 Rejected 'run inventoryeditor.spawn item=invalid count=51' 'out of range'
-Rejected 'run uruks.preview nonexistent=x' 'unknown input'
-Rejected 'run uruks.save' 'missing ticket'
+Rejected 'run uruks.generate nonexistent=x' 'unknown input'
+Rejected 'run uruks.save' 'unregistered'
+Rejected 'run uruks.generate' 'missing captain'
 if((Request 'read uruks.set_recruitment enabled') -ne (Request 'run uruks.get_recruitment')){throw 'Bound setting and handler disagree'}
-if((Request 'help uruks.preview') -notmatch 'menu=Captain Generation' -or
-   (Request 'help uruks.preview') -notmatch 'advanced:choice \(refresh=3, dependencies=2'){throw 'Missing submenu or dependent choice metadata'}
-Rejected 'read uruks.preview missing' 'field has no such source'
+if((Request 'help uruks.generate') -match 'menu=|followup=' -or
+   (Request 'help uruks.generate') -notmatch 'advanced:choice \(refresh=3, dependencies=2'){throw 'Unexpected generator placement or dependent choice metadata'}
+Rejected 'read uruks.generate missing' 'field has no such source'
 Write-Output "Discovery and validation passed: $($ids.Count) actions"
 if($DiscoveryOnly){return}
 $catalog=Request 'catalog inventoryeditor.spawn'
@@ -40,10 +41,10 @@ if($ring -notin 'true','false'){throw "Invalid ring visibility: $ring"}
 Write-Output "Item Spawner: $catalog; ring action visible=$ring"
 $target="captain=$Captain"
 $before=Request "run uruks.inspect $target"
-$template=Request "preset uruks.preview $target"
+$template=Request "preset uruks.generate $target"
 if($template -notmatch '(?m)^immunities=' -or $template -notmatch '(?m)^base=ClassMarker_Defender$'){throw 'Template did not return generator settings'}
 $base='ClassMarker_Defender'
-$specs=(Request "choices uruks.preview advanced $target base=$base").Split([char]10)
+$specs=(Request "choices uruks.generate advanced $target base=$base").Split([char]10)
 if('Marker_Specialization_Tank' -notin $specs){throw 'Tank not offered for Defender'}
 $traits=[ordered]@{
     immunities='Immune_Combat,Immune_Curse,Immune_Frost,Immune_Beast,Immune_Poison,Immune_Ranged,Immune_Stealth'
@@ -53,17 +54,15 @@ $traits=[ordered]@{
 }
 $kit="$target base=$base advanced=Marker_Specialization_Tank tribe=TribeDef_Warmonger rarity=Marker_OrcRarity_Legendary"
 $argsText=($traits.GetEnumerator() | ForEach-Object {"$($_.Key)=$($_.Value)"}) -join ' '
-$plan=Request "run uruks.preview $kit $argsText"
-if($plan -notmatch '^ticket=(\d+) '){throw "Invalid ticket: $plan"}
-$ticket=$Matches[1]
-if((Request 'read uruks.save ticket') -ne $ticket){throw 'Save form did not resolve the preview ticket'}
-if((Request "run uruks.inspect $target") -ne $before){throw 'Captain changed during preview'}
-Write-Output "Preview passed: $plan"
-if(!$SaveCaptain){return}
-Write-Output (Request "run uruks.save ticket=$ticket")
-Rejected "run uruks.save ticket=$ticket" 'unknown or consumed'
+if(!$SaveCaptain){Write-Output 'Read-only checks passed.';return}
+$beforeLevel=$before.Split([char]10) | Where-Object {$_ -match '^level=\d+$'}
+if(!$beforeLevel){throw 'Missing original level'}
+Write-Output (Request "run uruks.generate $kit $argsText")
 $state=(Request "run uruks.inspect $target").Split([char]10)
+if($beforeLevel -notin $state){throw 'Generation changed the level'}
+if('base=ClassMarker_Defender, advanced=Marker_Specialization_Tank, tribe=TribeDef_Warmonger, rarity=Marker_OrcRarity_Legendary' -notin $state){throw 'Generation changed the requested kit'}
+Write-Output "Seat $Captain : $($state[0]), $beforeLevel"
 $wanted=@($traits.Values | ForEach-Object {$_.Split(',')})
-foreach($id in $wanted){if($id -notin $state){throw "Missing after save: $id"}}
+foreach($id in $wanted){if($id -notin $state){throw "Missing after generation: $id"}}
 if('Vulnerable_Grabknockdown' -in $state){throw 'Unexpected Clumsy weakness'}
-Write-Output "Live readback: all $($wanted.Count) selected traits active, no Clumsy; preview ticket consumed."
+Write-Output "Live readback: all $($wanted.Count) selected traits active, no Clumsy; original level and kit verified."

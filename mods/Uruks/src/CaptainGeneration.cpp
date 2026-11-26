@@ -782,7 +782,7 @@ bool Commit(Ptr m,const Task& task,const Catalog& catalog,std::string& status) {
 namespace {
 namespace act=sowmod::actions;
 constexpr act::Input recipeInputs[]={
-    {"captain","Captain (Army:seat)",act::Choice},{"base","Base class",act::Choice},
+    {"captain","Captain",act::Choice},{"base","Base class",act::Choice},
     {"advanced","Advanced class",act::Choice,nullptr,0,0,nullptr,{nullptr,act::OnOpen|act::OnInputs,1u<<1}},{"tribe","Tribe",act::Choice},{"rarity","Rarity",act::Choice},
     {"immunities","Immunities",act::MultiChoice,""},{"hates","Hates",act::MultiChoice,""},
     {"class_traits","Class traits",act::MultiChoice,""},{"bonuses","Bonuses",act::MultiChoice,""},
@@ -795,9 +795,13 @@ bool findCaptain(const char* id,Target& target){
     for(auto& t:Targets())if(seatId(t)==id){target=t;return true;}
     return false;
 }
+bool matches(std::string_view s,std::string_view filter){
+    return filter.empty() || std::search(s.begin(),s.end(),filter.begin(),filter.end(),[](unsigned char a,unsigned char b){
+        return std::tolower(a)==std::tolower(b);})!=s.end();
+}
 bool actionChoices(unsigned n,const char* const* v,const char* search,act::Emit emit,void* ctx){
     if(!n){
-        for(auto& t:Targets()){auto id=seatId(t);if(id.find(search)!=id.npos || t.label.find(search)!=t.label.npos)emit(ctx,id.c_str());}
+        for(auto& t:Targets()){auto id=seatId(t);if(matches(id,search) || matches(t.label,search))emit(ctx,(id+"\t"+t.label).c_str());}
         return true;
     }
     Target t;if(n>=std::size(actionKinds) || !findCaptain(v[0],t)){emit(ctx,"select a captain first");return false;}
@@ -806,11 +810,10 @@ bool actionChoices(unsigned n,const char* const* v,const char* search,act::Emit 
     for(auto& f:s.fields)if(f.kind==Kind::Base)for(auto& c:f.choices)if(RecordName(c.value)==v[1])base=c.value;
     for(auto& f:s.fields)if(f.kind==actionKinds[n])for(auto& c:f.choices){
         if(n==2 && (!base || !recipe::fitsClass(s.recipeCatalog,base,c.value)))continue;
-        auto id=RecordName(c.value);if(id.find(search)!=id.npos || c.label.find(search)!=c.label.npos)emit(ctx,id.c_str());
+        auto id=RecordName(c.value);if(matches(id,search) || matches(c.label,search))emit(ctx,(id+"\t"+c.label).c_str());
     }
     return true;
 }
-std::optional<Task> actionPlan;std::string actionTicket;
 bool templateAction(const char* const* v,act::Emit emit,void* ctx){
     Target t;if(!findCaptain(v[0],t)){emit(ctx,"select a captain first");return false;}
     Snapshot s;s.selected=t.key;s.session=sowmod::SaveSession();RecipeFields(s,LoadCatalog());
@@ -826,8 +829,7 @@ bool templateAction(const char* const* v,act::Emit emit,void* ctx){
     }
     return true;
 }
-bool previewAction(const char* const* v,act::Emit emit,void* ctx) {
-    actionPlan.reset();actionTicket.clear();
+bool generateAction(const char* const* v,act::Emit emit,void* ctx) {
     Target t;if(!findCaptain(v[0],t) || !Writable(t.member)){emit(ctx,"captain unavailable");return false;}
     Task task;task.session=sowmod::SaveSession();task.selected=t.key;task.baseline=Stamp(t.member);
     if(!task.session)return false;
@@ -851,34 +853,24 @@ bool previewAction(const char* const* v,act::Emit emit,void* ctx) {
         emit(ctx,reason.empty()?"recipe not available":reason.c_str());return false;}
     Choice prepared{};prepared.generation=std::move(gen);
     task.draft.edits[Kind::Regenerate]={0,std::move(prepared)};
-    actionTicket=std::to_string(g_nextField.fetch_add(1));
-    actionPlan=std::move(task);emit(ctx,("ticket="+actionTicket+" captain="+seatId(t)).c_str());return true;
-}
-bool saveAction(const char* const* v,act::Emit emit,void* ctx){
-    if(!actionPlan || actionTicket!=v[0]){emit(ctx,"unknown or consumed preview ticket");return false;}
-    auto task=std::move(*actionPlan);actionPlan.reset();actionTicket.clear();
     if(sowmod::SaveSession()!=task.session){emit(ctx,"save session changed");return false;}
     for(auto& t:Targets())if(t.key==task.selected && Stamp(t.member)==task.baseline){
-        auto catalog=LoadCatalog();std::string status;bool ok=Commit(t.member,task,catalog,status);
+        std::string status;bool ok=Commit(t.member,task,catalog,status);
         if(status.empty())status="engine rejected save";
         if(!GenerationReport(task,catalog,t.member,status))status+=" (generation log unavailable)";
         emit(ctx,status.c_str());return ok;
     }
-    emit(ctx,"captain changed; preview again");return false;
+    emit(ctx,"Captain changed during generation. No build applied.");return false;
 }
 }
 bool RegisterGenerationActions(const act::Registrar& r){
-    static constexpr act::Input ticket[]={{"ticket","Preview ticket",act::Text,nullptr,0,0,nullptr,
-        {[](unsigned,const char* const*,const char*,act::Emit emit,void* ctx){
-            emit(ctx,actionPlan && actionPlan->session==sowmod::SaveSession()?actionTicket.c_str():"");return true;},act::OnOpen|act::AfterRun}}};
     return r.Add(act::Action{"inspect","Inspect captain",true,recipeInputs,1,[](const char* const* v,act::Emit emit,void* ctx){
         Target t;if(!findCaptain(v[0],t)){emit(ctx,"captain not found");return false;}
-        emit(ctx,t.label.c_str());recipe::Catalog db;
+        emit(ctx,t.label.c_str());emit(ctx,("level="+std::to_string(1+Read<unsigned>(t.member+0x4b8))).c_str());recipe::Catalog db;
         if(!LoadRecipeCatalog(LoadCatalog(),db,t.key.army))return false;
         emit(ctx,KitText(MemberKit(t.member,db)).c_str());
         std::vector<Ptr> active;if(!MemberRecords(t.member+0x198,active))return false;
         for(auto id:active)emit(ctx,RecordName(id).c_str());return true;},actionChoices}.IpcOnly()) &&
-        r.Add(act::Action{"preview","Generate",true,recipeInputs,unsigned(std::size(recipeInputs)),previewAction,actionChoices,"Captain Generation",templateAction,"Take Over Template"}.FollowedBy("save")) &&
-        r.Add(act::Action{"save","Save Uruk",true,ticket,1,saveAction}.IpcOnly());
+        r.Add(act::Action{"generate","Generate Captain",true,recipeInputs,unsigned(std::size(recipeInputs)),generateAction,actionChoices,nullptr,templateAction,"Take Over Template"});
 }
 }

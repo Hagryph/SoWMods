@@ -1,8 +1,10 @@
 #include "ModActions.h"
+#include "FormGrid.h"
 #include "GameHooks.h"
 #include "imgui.h"
 #include <algorithm>
 #include <array>
+#include <cctype>
 #include <map>
 #include <sstream>
 
@@ -13,9 +15,36 @@ struct Binding {
     std::shared_ptr<Job> query;
     std::string data,error;
     std::array<char,128> search{};
-    double due=0;
+    std::map<std::string,std::string> labels;
+    double due=0,searchDue=0;
     bool open=false,loaded=false;
 };
+struct FormTheme {
+    FormTheme(float em){
+        auto color=[](ImGuiCol key,ImU32 v){ImGui::PushStyleColor(key,v);};
+        color(ImGuiCol_Header,IM_COL32(91,70,36,255));
+        color(ImGuiCol_HeaderHovered,IM_COL32(77,61,36,255));
+        color(ImGuiCol_HeaderActive,IM_COL32(111,84,39,255));
+        color(ImGuiCol_TextSelectedBg,IM_COL32(171,131,55,150));
+        color(ImGuiCol_NavCursor,IM_COL32(224,179,74,255));
+        color(ImGuiCol_PopupBg,IM_COL32(29,26,22,255));
+        color(ImGuiCol_Border,IM_COL32(115,91,47,255));
+        color(ImGuiCol_FrameBg,IM_COL32(38,33,26,255));
+        color(ImGuiCol_FrameBgHovered,IM_COL32(51,43,31,255));
+        color(ImGuiCol_FrameBgActive,IM_COL32(61,49,32,255));
+        color(ImGuiCol_Button,IM_COL32(59,48,30,255));
+        color(ImGuiCol_ButtonHovered,IM_COL32(80,63,34,255));
+        color(ImGuiCol_ButtonActive,IM_COL32(103,79,39,255));
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding,em*.16f);
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize,1.f);
+        ImGui::PushStyleVar(ImGuiStyleVar_PopupRounding,em*.2f);
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding,ImVec2(em*.46f,em*.20f));
+    }
+    ~FormTheme(){ImGui::PopStyleVar(4);ImGui::PopStyleColor(13);}
+};
+std::string fold(std::string s){
+    for(char& c:s)c=char(std::tolower(static_cast<unsigned char>(c)));return s;
+}
 struct Form {
     std::vector<std::string> values;
     std::vector<Binding> bindings;
@@ -39,6 +68,7 @@ void DrawForm(const std::string& id) {
         f.bindings.resize(a.count);
         for(unsigned i=0;i<a.count;++i)f.values.emplace_back(a.inputs[i].initial?a.inputs[i].initial:"");
     }
+    const float em=ImGui::GetFontSize();FormTheme theme(em);
     bool enter=f.frame+1!=ImGui::GetFrameCount();f.frame=ImGui::GetFrameCount();
     Result result;bool ran=Poll(f.run,result);
     auto next=all.end();
@@ -72,17 +102,27 @@ void DrawForm(const std::string& id) {
             }else f.status=result.text;
             f.preset.reset();
         }
-        ImGui::BeginDisabled(bool(f.preset)||bool(f.run)||bool(f.commit));
+        ImGui::BeginDisabled(bool(f.preset)||bool(f.run)||bool(f.commit)||(a.count && f.values[0].empty()));
         if(ImGui::Button(a.presetLabel)){f.commitValues.clear();f.preset=Submit(*it,f.values,-2);}
         ImGui::EndDisabled();
     }
     ImGui::BeginDisabled(bool(f.preset)||bool(f.run)||bool(f.commit));
+    bool missing=false;
+    for(unsigned n=0;n<a.count;++n)missing|=!a.inputs[n].initial && f.values[n].empty();
+    if(a.preset)ImGui::SameLine();
+    ImGui::BeginDisabled(missing);
+    if(ImGui::Button(a.label)){f.commitValues.clear();f.run=Submit(*it,f.values);f.status="Running...";}
+    ImGui::EndDisabled();
+    if(!f.status.empty())ImGui::TextWrapped("%s",f.status.c_str());
+    ImGui::Spacing();
     std::uint32_t changed=0;
-    for(unsigned n=0;n<a.count;++n){
+    DrawFormGrid(a.count,[&](unsigned n){
+        ImGui::TextColored(ImVec4(.78f,.73f,.63f,1),"%s",a.inputs[n].label);
+    },[&](unsigned n){
         auto& in=a.inputs[n];auto& b=f.bindings[n];auto& value=f.values[n];
         const auto before=value;auto spec=in.source;const bool choice=in.type>=Choice;
         auto pull=[&]{
-            b.query=Submit(*it,f.values,n,b.search.data());b.loaded=true;b.data.clear();b.error.clear();
+            b.query=Submit(*it,f.values,n,b.search.data());b.loaded=true;b.error.clear();
             b.due=ImGui::GetTime()+spec.intervalMs/1000.0;
         };
         if(enter)b.open=false;
@@ -91,42 +131,70 @@ void DrawForm(const std::string& id) {
         if((spec.when&Periodic) && !b.query && ImGui::GetTime()>=b.due)pull();
         if(Poll(b.query,result)){
             if(!result.ok)b.error=result.text;
-            else if(choice)b.data=result.text;
+            else if(choice){
+                b.data=std::move(result.text);std::istringstream rows(b.data);
+                for(std::string row;std::getline(rows,row);){
+                    auto tab=row.find('\t');if(tab!=row.npos)b.labels[row.substr(0,tab)]=row.substr(tab+1);
+                }
+            }
             else value=result.text;
             b.query.reset();
         }
         ImGui::PushID(in.key);
+        ImGui::SetNextItemWidth(-1);
         if(!choice)ImGui::BeginDisabled(bool(b.query));
         if(in.type==Boolean){
-            bool on=value=="true";if(ImGui::Checkbox(in.label,&on))value=on?"true":"false";
+            bool on=value=="true";if(ImGui::Checkbox("##value",&on))value=on?"true":"false";
         }else if(in.type==Integer){
-            int i=atoi(value.c_str());if(ImGui::InputInt(in.label,&i))value=std::to_string(std::clamp(i,in.min,in.max));
+            int i=atoi(value.c_str());if(ImGui::InputInt("##value",&i))value=std::to_string(std::clamp(i,in.min,in.max));
         }else if(in.type==Text){
             std::array<char,4097> buf{};strncpy_s(buf.data(),buf.size(),value.c_str(),_TRUNCATE);
-            if(ImGui::InputText(in.label,buf.data(),buf.size()))value=buf.data();
-        }else if(ImGui::BeginCombo(in.label,value.empty()?"Select...":value.c_str())){
-            if(!b.open && (!b.loaded || (spec.when&OnOpen)))pull();
-            b.open=true;
-            if(ImGui::InputText("Filter",b.search.data(),b.search.size(),ImGuiInputTextFlags_EnterReturnsTrue))pull();
-            if(b.query)ImGui::TextUnformatted("Loading...");
-            std::istringstream rows(b.data);
-            for(std::string opt;std::getline(rows,opt);){
-                std::vector<std::string> parts;std::istringstream ss(value);
-                for(std::string part;std::getline(ss,part,',');)parts.push_back(part);
-                bool on=std::ranges::find(parts,opt)!=parts.end();
-                if(ImGui::Selectable(opt.c_str(),on,in.type==MultiChoice?ImGuiSelectableFlags_NoAutoClosePopups:0)){
-                    if(in.type==Choice)value=opt;
-                    else{if(on)std::erase(parts,opt);else parts.push_back(opt);
-                        value.clear();for(auto& part:parts){if(!value.empty())value+=',';value+=part;}}
+            if(ImGui::InputText("##value",buf.data(),buf.size()))value=buf.data();
+         }else{
+            std::vector<std::string> picks;std::istringstream selected(value);
+            for(std::string part;std::getline(selected,part,',');)picks.push_back(part);
+            const std::string preview=value.empty()?"Select...":in.type==MultiChoice?
+                std::to_string(picks.size())+" selected":b.labels.contains(value)?b.labels.at(value):value;
+            ImGui::SetNextWindowSizeConstraints(ImVec2(0,0),ImVec2(FLT_MAX,em*16));
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding,ImVec2(em*.50f,em*.40f));
+            if(ImGui::BeginCombo("##choice",preview.c_str())){
+                if(!b.open){
+                    b.search.fill(0);b.searchDue=0;
+                    if(!b.loaded || (spec.when&OnOpen))pull();
+                    ImGui::SetKeyboardFocusHere();
                 }
-            }
-            ImGui::EndCombo();
-        }else b.open=false;
+                b.open=true;ImGui::SetNextItemWidth(-1);
+                if(ImGui::InputTextWithHint("##filter","Search...",b.search.data(),b.search.size()))
+                    b.searchDue=ImGui::GetTime()+.20;
+                if(b.searchDue && ImGui::GetTime()>=b.searchDue){pull();b.searchDue=0;}
+                const auto needle=fold(b.search.data());
+                if(ImGui::BeginChild("##options",ImVec2(0,em*10))){
+                    std::istringstream rows(b.data);unsigned shown=0;
+                    for(std::string row;std::getline(rows,row);){
+                        auto tab=row.find('\t');auto opt=row.substr(0,tab);
+                        auto label=tab==row.npos?opt:row.substr(tab+1);
+                        if(!needle.empty() && fold(label).find(needle)==std::string::npos &&
+                            fold(opt).find(needle)==std::string::npos)continue;
+                        ++shown;bool on=std::ranges::find(picks,opt)!=picks.end();
+                        ImGui::PushID(opt.c_str());
+                        if(ImGui::Selectable(label.c_str(),on,ImGuiSelectableFlags_NoAutoClosePopups,ImVec2(0,em*1.35f))){
+                            if(in.type==Choice){value=opt;ImGui::CloseCurrentPopup();}
+                            else{if(on)std::erase(picks,opt);else picks.push_back(opt);
+                                value.clear();for(auto& p:picks){if(!value.empty())value+=',';value+=p;}}
+                        }
+                        ImGui::PopID();
+                    }
+                    if(!shown)ImGui::TextDisabled("%s",b.query?"Loading...":"No matches");
+                }
+                ImGui::EndChild();ImGui::EndCombo();
+            }else b.open=false;
+            ImGui::PopStyleVar();
+        }
         if(!choice)ImGui::EndDisabled();
         if(!b.error.empty())ImGui::TextWrapped("%s",b.error.c_str());
         if(value!=before)changed|=1u<<n;
         ImGui::PopID();
-    }
+    });
     // Invalidate even closed dependants. A late reply to the old request must not win.
     for(unsigned n=0;n<a.count;++n){
         auto& in=a.inputs[n];auto& b=f.bindings[n];
@@ -139,18 +207,12 @@ void DrawForm(const std::string& id) {
         b.data.clear();b.error.clear();b.loaded=true;
         b.query=Submit(*it,f.values,n,b.search.data());
     }
-    bool pending=false;
-    for(unsigned i=0;i<a.count;++i)pending|=a.inputs[i].type<Choice && bool(f.bindings[i].query);
-    ImGui::BeginDisabled(bool(f.run)||pending);
     if(changed){f.commitValues.clear();f.status.clear();}
-    if(ImGui::Button(a.label)){f.commitValues.clear();f.run=Submit(*it,f.values);f.status="Running...";}
-    ImGui::EndDisabled();
     if(next!=all.end()){
         ImGui::SameLine();ImGui::BeginDisabled(f.commitValues.empty());
         if(ImGui::Button(next->spec.label)){f.commit=Submit(*next,f.commitValues);f.commitValues.clear();f.status="Saving...";}
         ImGui::EndDisabled();
     }
-    if(!f.status.empty())ImGui::TextWrapped("%s",f.status.c_str());
     ImGui::EndDisabled();
 }
 }
