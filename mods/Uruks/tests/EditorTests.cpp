@@ -267,6 +267,8 @@ int main() {
         }
         {
             using namespace engine::membercopy;
+            Check(transferableBacking(0x1000,1) && transferableBacking(0,0));
+            Check(!transferableBacking(0x1000,0) && !transferableBacking(0x1000,2) && !transferableBacking(0,1));
             std::array<std::byte,0x528> live{},preview{};
             preview.fill(std::byte{0x7b});
             auto original=live,candidate=preview;

@@ -1081,9 +1081,12 @@ bool detachedNode(P n) {return at<P>(n)==n && at<P>(n+8)==n;}
 // These native vectors own heap storage. Exchanging both headers retains the
 // original buffers (including picker-slot state) intact for a possible undo.
 constexpr membercopy::Region buildVectors[]={{0x198,8},{0x1b0,8},{0x1e0,32},{0x228,8},{0x358,8}};
-bool independentBuildStorage(P a,P b) {
+bool independentBuildStorage(P a,P b,std::string& error) {
     for (unsigned off:{0x150,0x158,0x2d8}) {
-        if (!at<P>(a+off) || !at<P>(b+off) || at<P>(a+off)==at<P>(b+off)) return false;
+        if (!at<P>(a+off) || !at<P>(b+off) || at<P>(a+off)==at<P>(b+off)) {
+            error="Missing or shared build subobject at offset "+std::to_string(off)+". No build applied.";
+            return false;
+        }
     }
     auto internal=[&](P ptr){return (ptr>=a && ptr-a<0x528) || (ptr>=b && ptr-b<0x528);};
     struct Range { P start,end; };
@@ -1091,14 +1094,19 @@ bool independentBuildStorage(P a,P b) {
     for (P m:{a,b}) for (auto [off,stride]:buildVectors) {
         const P h=m+off,begin=at<P>(h),end=at<P>(h+8);
         const size_t cap=at<unsigned>(h+16);
-        if (at<unsigned char>(h+20) || cap>65536 || end<begin || (end-begin)%stride ||
-            end-begin>cap*stride || (!begin && cap) || internal(begin) || begin>UINTPTR_MAX-cap*stride) return false;
+        auto reject=[&](const char* why){
+            error=std::string(m==a?"Original":"Preview")+" vector at offset "+std::to_string(off)+": "+why+". No build applied.";
+            return false;
+        };
+        if (!membercopy::transferableBacking(begin,at<unsigned char>(h+20))) return reject("backing is not independently owned");
+        if (cap>65536 || end<begin || (end-begin)%stride ||
+            end-begin>cap*stride || (!begin && cap) || internal(begin) || begin>UINTPTR_MAX-cap*stride) return reject("invalid bounds");
         if (begin) {
             const auto limit=begin+cap*stride;
-            for (auto other:ranges) if (other.start==begin || (begin<other.end && other.start<limit)) return false;
-            if ((begin<a+0x528 && a<limit) || (begin<b+0x528 && b<limit)) return false;
+            for (auto other:ranges) if (other.start==begin || (begin<other.end && other.start<limit)) return reject("overlapping storage");
+            if ((begin<a+0x528 && a<limit) || (begin<b+0x528 && b<limit)) return reject("storage overlaps a captain");
             ranges.push_back({begin,limit});
-            for (P pos=begin;pos<end;pos+=sizeof(P)) if (internal(at<P>(pos))) return false;
+            for (P pos=begin;pos<end;pos+=sizeof(P)) if (internal(at<P>(pos))) return reject("entry references a captain directly");
         }
     }
     return true;
@@ -1196,10 +1204,7 @@ ReplaceResult ReplaceCaptain(P m,const GenerationPlan& p,const recipe::Catalog& 
             gearScope=previousGear;hateScope=previous;
             if (!valid) return ReplaceResult::Rejected;
             if (!seatOwner(m,p)) return ReplaceResult::SeatUnavailable;
-            if (!independentBuildStorage(m,owned)) {
-                detailMessage="Generated storage is shared, borrowed, or not independently owned. No build applied.";
-                return ReplaceResult::Rejected;
-            }
+            if (!independentBuildStorage(m,owned,detailMessage)) return ReplaceResult::Rejected;
             call<void>(0x1419ed468,&backup);
             if (!backup || !copyOwnedBuild(backup,m,false)) {
                 detailMessage="Could not back up the captain's owned build data. No build applied.";

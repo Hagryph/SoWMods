@@ -1,10 +1,16 @@
 #pragma once
 #include <cstddef>
+#include <cstdint>
 #include <cstring>
 #include <algorithm>
 
 namespace uruk::engine::membercopy {
 struct Region { unsigned offset, size; };
+// Both native grow paths mark new allocations with 1 and free the old
+// backing only when its ownership flag is set. A default empty header owns nothing.
+constexpr bool transferableBacking(std::uintptr_t begin, unsigned char ownership) {
+    return begin ? ownership==1 : ownership==0;
+}
 // Steam 1.21: regions belonging to the existing Army member, not its build.
 // The first region includes both intrusive nodes and the live actor handle.
 inline constexpr Region excluded[]={
