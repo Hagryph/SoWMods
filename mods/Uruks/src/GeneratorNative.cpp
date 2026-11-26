@@ -1,5 +1,6 @@
 #include "GeneratorNative.h"
 #include "MemberCopy.h"
+#include "RetainedTraits.h"
 #include "GameOffsets.h"
 #include <Windows.h>
 #include <algorithm>
@@ -239,6 +240,7 @@ thread_local HateGateScope* hateScope=nullptr;
 using AnyTraitFn=bool(*)(P,P);
 AnyTraitFn nativeAnyTrait=nullptr;
 bool anyTraitForRecipe(P entry,P ctx) {
+    if (retained::WeaknessWaived(entry,ctx)) return true;
     auto* scope=hateScope;
     if (scope && ctx) {
         const P traits=at<P>(ctx);
@@ -247,10 +249,8 @@ bool anyTraitForRecipe(P entry,P ctx) {
     }
     return nativeAnyTrait(entry,ctx);
 }
-bool beginHateScope(HateGateScope& scope) {
-    if (!std::ranges::any_of(scope.db.weaknessGatedHateEntries,[&](const auto& pair){
-        return recipe::waiveWeaknessGate(scope.db,scope.recipe,pair.first);
-    })) {hateScope=nullptr;return true;}
+}
+bool InstallAnyTraitPredicate() {
     if (!Supported()) return false;
     if (!nativeAnyTrait) {
         const P address=game::FromRVA(0x1403532bc);
@@ -260,6 +260,14 @@ bool beginHateScope(HateGateScope& scope) {
             return false;
         if (MH_EnableHook(target)!=MH_OK) {MH_RemoveHook(target);nativeAnyTrait=nullptr;return false;}
     }
+    return true;
+}
+namespace {
+bool beginHateScope(HateGateScope& scope) {
+    if (!std::ranges::any_of(scope.db.weaknessGatedHateEntries,[&](const auto& pair){
+        return recipe::waiveWeaknessGate(scope.db,scope.recipe,pair.first);
+    })) {hateScope=nullptr;return true;}
+    if (!InstallAnyTraitPredicate()) return false;
     hateScope=&scope;
     return true;
 }

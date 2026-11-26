@@ -201,6 +201,10 @@ inline constexpr std::uintptr_t kFactionMemberAddPicker = 0x1407cd03cull;
 inline constexpr std::uintptr_t kFactionMemberRemovePickerSlot = 0x1407a7378ull;
 inline constexpr std::uintptr_t kFactionMemberDeactivateTrait = 0x140353454ull;
 inline constexpr std::uintptr_t kFactionMemberUpdateTraits = 0x1403528a0ull;
+// Steam 1.21: per-member pass and the picker option's MinXPLevel accessor.
+// The later accessor at 0x140352b48 reads a separate mission condition.
+inline constexpr std::uintptr_t kFactionMemberEvaluatePass = 0x140f88230ull;
+inline constexpr std::uintptr_t kPickerOptionMinXPLevel = 0x140352d48ull;
 inline constexpr std::uintptr_t kAppearanceSetPiece = 0x1404c62ecull;
 inline constexpr std::uintptr_t kFactionMemberGiveItem = 0x140355474ull;
 inline constexpr std::uintptr_t kFactionMemberSetFlag = 0x141156740ull;

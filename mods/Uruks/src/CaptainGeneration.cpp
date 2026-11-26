@@ -4,6 +4,7 @@
 #include "Settings.h"
 #include "GeneratorNative.h"
 #include "CaptainRecipe.h"
+#include "RetainedTraits.h"
 #include <chrono>
 #include <Windows.h>
 #include <algorithm>
@@ -787,6 +788,11 @@ bool Commit(Ptr m,const Task& task,const Catalog& catalog,std::string& status) {
     else if (result==engine::ReplaceResult::Replaced)
         status="Applied the generated build to the original captain at his original level and Army seat.";
     else status=detail.empty()?"Candidate failed validation. No build applied.":detail;
+    if (result==engine::ReplaceResult::Replaced) {
+        auto keep=c->generation->automatic;
+        for (const auto& group:r.traits) keep.insert(group.begin(),group.end());
+        if (!retained::Remember(m,keep)) status+=" (could not retain reevaluation rules)";
+    }
     return result==engine::ReplaceResult::Replaced || result==engine::ReplaceResult::CleanupFailed;
 
 }

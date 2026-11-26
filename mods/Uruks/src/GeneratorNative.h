@@ -21,6 +21,7 @@ struct Look {
     bool operator==(const Look&) const = default;
 };
 bool Supported();
+bool InstallAnyTraitPredicate();
 // Native per-member trait visibility, independent of whether its picker was granted.
 std::optional<bool> ArmyTraitVisible(P member,P trait);
 bool TribeAvailable(P tribe);
