@@ -36,8 +36,9 @@ Global actions must be thread-safe and must not call native gameplay functions.
 
 `Input::source` binds a single widget to a provider with the same signature as a choice
 provider. For choices it emits available IDs; for scalar inputs it emits the current value.
-Register `OnOpen`, `OnInputs`, `AfterRun`, and/or `Periodic`; for `OnInputs` supply a bitmask
+Register `OnOpen`, `OnInputs`, `OnDraft`, `AfterRun`, and/or `Periodic`; for `OnInputs` supply a bitmask
 of earlier inputs to watch, for `Periodic` a visible-form interval of at least 250 ms.
+`OnDraft` invalidates choices after any draft edit, including edits to that same multiselect, without resetting its selection. Closed choice lists refresh on demand.
 Save-scoped reads are scheduled on the game thread. IPC `read ACTION FIELD` pulls the same
 source on demand. `help` exposes the menu, triggers, dependencies and interval.
 An optional action `preset` callback emits `key=value` lines to fill the form without

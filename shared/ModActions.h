@@ -5,7 +5,7 @@ namespace sowmod::actions {
 inline constexpr unsigned SchemaVersion=3;
 using Emit=void(*)(void*,const char*);
 using Choices=bool(*)(unsigned field,const char* const* values,const char* search,Emit,void*);
-enum Refresh : unsigned { OnOpen=1, OnInputs=2, AfterRun=4, Periodic=8 };
+enum Refresh : unsigned { OnOpen=1, OnInputs=2, AfterRun=4, Periodic=8, OnDraft=16 };
 struct Source {
     Choices pull=nullptr;
     unsigned when=OnOpen;

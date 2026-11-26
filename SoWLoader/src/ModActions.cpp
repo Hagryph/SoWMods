@@ -38,7 +38,7 @@ bool add(void* context,const Action* a) {
         if (!f.key || !key(f.key) || !f.label || !names.insert(f.key).second || f.type>MultiChoice ||
             (f.type==Integer && f.max<f.min) || ((f.type==Choice || f.type==MultiChoice) && !f.options && !a->choices && !f.source.pull)) return false;
         auto s=f.source;
-        if(!s.when || (s.when&~15u) || ((s.when&Periodic) && s.intervalMs<250) ||
+        if(!s.when || (s.when&~31u) || ((s.when&Periodic) && s.intervalMs<250) ||
            ((s.when&OnInputs)!=0)!=(s.dependencies!=0) || (s.dependencies>>i) ||
            (f.type<Choice && !s.pull && s.when!=OnOpen))return false;
     }

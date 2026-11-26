@@ -43,6 +43,14 @@ $target="captain=$Captain"
 $before=Request "run uruks.inspect $target"
 $template=Request "preset uruks.generate $target"
 if($template -notmatch '(?m)^immunities=' -or $template -notmatch '(?m)^base=ClassMarker_Defender$'){throw 'Template did not return generator settings'}
+$templateArgs=$template.Split([char]10) -join ' '
+$offered=@((Request "choices uruks.generate class_traits $target $templateArgs").Split([char]10) | Where-Object {$_})
+$selected=($template.Split([char]10) | Where-Object {$_ -like 'class_traits=*'}) -replace '^class_traits=',''
+foreach($pick in $selected.Split(',')){if($pick -and $pick -notin $offered){throw "Cannot remove imported class trait: $pick"}}
+if('Determination' -in $offered){throw 'Automatic Tank ability was offered as an optional class trait'}
+if((Request "choices uruks.generate class_traits $target").Trim()){throw 'Trait options leaked before choosing the kit'}
+if((Request "run uruks.inspect $target") -ne $before){throw 'Reading class traits changed the captain'}
+Write-Output "Template class traits ($($offered.Count)): $($offered -join ', ')"
 $base='ClassMarker_Defender'
 $specs=(Request "choices uruks.generate advanced $target base=$base").Split([char]10)
 if('Marker_Specialization_Tank' -notin $specs){throw 'Tank not offered for Defender'}

@@ -781,13 +781,16 @@ bool Commit(Ptr m,const Task& task,const Catalog& catalog,std::string& status) {
 }
 namespace {
 namespace act=sowmod::actions;
+constexpr act::Input traitInput(const char* key,const char* label){
+    return {key,label,act::MultiChoice,"",0,0,nullptr,{nullptr,act::OnOpen|act::OnInputs|act::OnDraft,0x1f}};
+}
 constexpr act::Input recipeInputs[]={
     {"captain","Captain",act::Choice},{"base","Base class",act::Choice},
     {"advanced","Advanced class",act::Choice,nullptr,0,0,nullptr,{nullptr,act::OnOpen|act::OnInputs,1u<<1}},{"tribe","Tribe",act::Choice},{"rarity","Rarity",act::Choice},
-    {"immunities","Immunities",act::MultiChoice,""},{"hates","Hates",act::MultiChoice,""},
-    {"class_traits","Class traits",act::MultiChoice,""},{"bonuses","Bonuses",act::MultiChoice,""},
-    {"mortal","Mortal weaknesses",act::MultiChoice,""},{"vulnerabilities","Vulnerabilities",act::MultiChoice,""},
-    {"dazed","Dazed by",act::MultiChoice,""},{"hints","Hints",act::MultiChoice,""}};
+    traitInput("immunities","Immunities"),traitInput("hates","Hates"),
+    traitInput("class_traits","Class traits"),traitInput("bonuses","Bonuses"),
+    traitInput("mortal","Mortal weaknesses"),traitInput("vulnerabilities","Vulnerabilities"),
+    traitInput("dazed","Dazed by"),traitInput("hints","Hints")};
 constexpr Kind actionKinds[]={Kind::Target,Kind::Base,Kind::Class,Kind::Tribe,Kind::Rarity,Kind::Immunities,
     Kind::Hates,Kind::Classes,Kind::Bonuses,Kind::Mortal,Kind::Vulnerable,Kind::Dazed,Kind::Hints};
 std::string seatId(const Target& t){return RecordName(t.key.army)+":"+std::to_string(t.key.index);}
@@ -799,6 +802,22 @@ bool matches(std::string_view s,std::string_view filter){
     return filter.empty() || std::search(s.begin(),s.end(),filter.begin(),filter.end(),[](unsigned char a,unsigned char b){
         return std::tolower(a)==std::tolower(b);})!=s.end();
 }
+bool ReadRecipeDraft(const Snapshot& s,const char* const* v,Draft& draft,act::Emit emit,void* ctx){
+    for(unsigned i=1;i<std::size(actionKinds);++i){
+        auto f=std::ranges::find(s.fields,actionKinds[i],&Field::kind);
+        if(f==s.fields.end()){emit(ctx,"recipe catalog unavailable");return false;}
+        std::string_view parts=v[i];Choice selected{};
+        while(!parts.empty()){
+            auto end=parts.find(',');auto id=parts.substr(0,end);
+            auto c=std::ranges::find_if(f->choices,[&](auto& ch){return RecordName(ch.value)==id;});
+            if(c==f->choices.end()){emit(ctx,("unknown "+std::string(recipeInputs[i].key)+": "+std::string(id)).c_str());return false;}
+            if(Bucket(f->kind))selected.pickers.push_back(c->value);else selected=*c;
+            if(end==parts.npos)break;parts.remove_prefix(end+1);
+        }
+        draft.stage(*f,selected);
+    }
+    return true;
+}
 bool actionChoices(unsigned n,const char* const* v,const char* search,act::Emit emit,void* ctx){
     if(!n){
         for(auto& t:Targets()){auto id=seatId(t);if(matches(id,search) || matches(t.label,search))emit(ctx,(id+"\t"+t.label).c_str());}
@@ -808,9 +827,29 @@ bool actionChoices(unsigned n,const char* const* v,const char* search,act::Emit 
     Snapshot s;s.selected=t.key;RecipeFields(s,LoadCatalog());
     Ptr base=0;
     for(auto& f:s.fields)if(f.kind==Kind::Base)for(auto& c:f.choices)if(RecordName(c.value)==v[1])base=c.value;
+    const bool trait=Bucket(actionKinds[n]);
+    recipe::Recipe r;const auto session=sowmod::SaveSession();
+    const auto rank=CellHash(Read<Ptr>(t.member+0x268),0x40c579dc,0);
+    if(trait){
+        Draft draft;if(!ReadRecipeDraft(s,v,draft,emit,ctx))return false;
+        r=BuildRecipe(draft);
+        if(!r.complete())return true;
+        if(!engine::ScopeClassDraws(s.recipeCatalog,r,t.key.army))return false;
+    }
     for(auto& f:s.fields)if(f.kind==actionKinds[n])for(auto& c:f.choices){
         if(n==2 && (!base || !recipe::fitsClass(s.recipeCatalog,base,c.value)))continue;
-        auto id=RecordName(c.value);if(matches(id,search) || matches(c.label,search))emit(ctx,(id+"\t"+c.label).c_str());
+        auto id=RecordName(c.value);
+        if(!matches(id,search) && !matches(c.label,search))continue;
+        if(trait){
+            auto& picks=r.traits[int(f.kind)-int(Kind::Immunities)];
+            if(std::ranges::find(picks,c.value)==picks.end()){
+                picks.push_back(c.value);
+                engine::GenerationPlan plan;std::string reason;
+                bool ok=engine::PlanGeneration(t.member,rank,s.recipeCatalog,r,plan,reason,session);
+                picks.pop_back();if(!ok)continue;
+            }
+        }
+        emit(ctx,(id+"\t"+c.label).c_str());
     }
     return true;
 }
@@ -834,19 +873,7 @@ bool generateAction(const char* const* v,act::Emit emit,void* ctx) {
     Task task;task.session=sowmod::SaveSession();task.selected=t.key;task.baseline=Stamp(t.member);
     if(!task.session)return false;
     Snapshot s;s.selected=t.key;s.session=task.session;auto catalog=LoadCatalog();RecipeFields(s,catalog);
-    for(unsigned i=1;i<std::size(actionKinds);++i){
-        auto f=std::ranges::find(s.fields,actionKinds[i],&Field::kind);
-        if(f==s.fields.end()){emit(ctx,"recipe catalog unavailable");return false;}
-        std::string_view parts=v[i];Choice selected{};
-        while(!parts.empty()){
-            auto end=parts.find(',');auto id=parts.substr(0,end);
-            auto c=std::ranges::find_if(f->choices,[&](auto& ch){return RecordName(ch.value)==id;});
-            if(c==f->choices.end()){emit(ctx,("unknown "+std::string(recipeInputs[i].key)+": "+std::string(id)).c_str());return false;}
-            if(Bucket(f->kind))selected.pickers.push_back(c->value);else selected=*c;
-            if(end==parts.npos)break;parts.remove_prefix(end+1);
-        }
-        task.draft.stage(*f,selected);
-    }
+    if(!ReadRecipeDraft(s,v,task.draft,emit,ctx))return false;
     auto r=BuildRecipe(task.draft);auto gen=std::make_shared<engine::GenerationPlan>();std::string reason;
     if(!engine::Supported() || !engine::ScopeClassDraws(s.recipeCatalog,r,t.key.army) ||
        !engine::PlanGeneration(t.member,CellHash(Read<Ptr>(t.member+0x268),0x40c579dc,0),s.recipeCatalog,r,*gen,reason,task.session)){

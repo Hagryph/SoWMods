@@ -95,9 +95,10 @@ void DrawForm(const std::string& id) {
                     auto eq=line.find('=');
                     if(eq==line.npos)continue;
                     for(unsigned i=0;i<a.count;++i)if(line.substr(0,eq)==a.inputs[i].key){
-                        f.values[i]=line.substr(eq+1);f.bindings[i]=Binding{};break;
+                        f.values[i]=line.substr(eq+1);break;
                     }
                 }
+                for(auto& binding:f.bindings)binding=Binding{};
                 f.status="Template loaded.";
             }else f.status=result.text;
             f.preset.reset();
@@ -198,14 +199,15 @@ void DrawForm(const std::string& id) {
     // Invalidate even closed dependants. A late reply to the old request must not win.
     for(unsigned n=0;n<a.count;++n){
         auto& in=a.inputs[n];auto& b=f.bindings[n];
-        if(!(in.source.dependencies&changed))continue;
-        if(in.type>=Choice){
+        const bool resetByParent=(in.source.dependencies&changed)!=0;
+        if(!resetByParent && !(changed && (in.source.when&OnDraft)))continue;
+        if(resetByParent && in.type>=Choice){
             auto reset=in.initial?in.initial:"";
             if(f.values[n]!=reset)changed|=1u<<n;
             f.values[n]=reset;
         }
-        b.data.clear();b.error.clear();b.loaded=true;
-        b.query=Submit(*it,f.values,n,b.search.data());
+        b.data.clear();b.error.clear();b.query.reset();b.loaded=false;b.searchDue=0;
+        if(b.open || in.type<Choice){b.query=Submit(*it,f.values,n,b.search.data());b.loaded=true;}
     }
     if(changed){f.commitValues.clear();f.status.clear();}
     if(next!=all.end()){
