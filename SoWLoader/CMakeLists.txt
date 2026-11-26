@@ -22,6 +22,8 @@ add_library(SoWLoader SHARED
     src/GameTaskQueue.cpp
     src/WindowWatch.cpp
     src/ModManager.cpp
+    src/ModActions.cpp
+    src/ModActionForms.cpp
     src/HagUI.cpp
     src/PropertyEditor.cpp
     src/HagApiExport.cpp
@@ -32,7 +34,7 @@ target_include_directories(SoWLoader PRIVATE src "${CMAKE_CURRENT_SOURCE_DIR}/..
 target_precompile_headers(SoWLoader PRIVATE src/PCH.h)
 target_compile_definitions(SoWLoader PRIVATE UNICODE _UNICODE)
 target_compile_options(SoWLoader PRIVATE /utf-8)
-target_link_libraries(SoWLoader PRIVATE minhook::minhook imgui::imgui d3d11 dxgi d3dcompiler)
+target_link_libraries(SoWLoader PRIVATE minhook::minhook imgui::imgui d3d11 dxgi d3dcompiler advapi32)
 
 # The output DLL MUST be named exactly steam_api64.dll (it impersonates the Steam API DLL).
 set_target_properties(SoWLoader PROPERTIES PREFIX "" OUTPUT_NAME "steam_api64")

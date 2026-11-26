@@ -19,6 +19,7 @@
 #include "GameOffsets.h"
 #include "HagUIAPI.h"    // ../../shared
 #include "SoWModAPI.h"   // ../../shared
+#include "ModActions.h"
 #include "EarlyRingUnlock.h"
 
 namespace {
@@ -609,6 +610,22 @@ void BuildPageOnFirstOpen(int page) {
 
 // This mod's single tab is auto-named after this.
 extern "C" __declspec(dllexport) const char* SoWMod_Name() { return "Item Spawner"; }
+extern "C" __declspec(dllexport) bool SoWMod_RegisterActions(const sowmod::actions::Registrar* r) {
+    using namespace sowmod::actions;
+    static constexpr Input spawn[]={{"item","Item",Choice},{"count","Count",Integer,"1",1,kMaxWorldDropsPerClick}};
+    return r && r->version==1 && r->Add({"spawn","Spawn item",true,spawn,2,
+        [](const char* const* v,Emit emit,void* ctx){
+            auto rows=LoadRuntimeRows();
+            if(std::ranges::find(rows,v[0],&Row::record)==rows.end()){emit(ctx,"unknown spawnable item");return false;}
+            std::string resolved;auto row=ResolveItemRow(v[0],resolved);
+            int n=atoi(v[1]),i=0;while(row && i<n && SpawnWorldDrop(row))++i;
+            emit(ctx,("spawned "+std::to_string(i)+"/"+std::to_string(n)).c_str());return i==n;},
+        [](unsigned,const char* const*,const char* search,Emit emit,void* ctx){
+            unsigned shown=0;for(auto& row:LoadRuntimeRows())if(row.record.find(search)!=row.record.npos && shown++<200)emit(ctx,row.record.c_str());
+            return true;}}) &&
+        r->Add({"unlock_ring","Early unlock ring",true,nullptr,0,[](const char* const*,Emit emit,void* ctx){
+            bool ok=inventory_editor::RegisteredRingAction(true);emit(ctx,ok?"ring unlocked":"ring grant unavailable");return ok;}});
+}
 
 // Save-local: an item spawner only makes sense with a loaded save, so its tab appears in the hub
 // only in-game (hidden at the main menu). See shared/SoWModAPI.h.

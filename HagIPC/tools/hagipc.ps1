@@ -14,6 +14,13 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 
+# Registered mod actions do not require starting the developer/debug server.
+$requested = @($Commands) + @($Command) | Where-Object { $_ }
+if ($requested -and !@($requested | Where-Object { $_ -notmatch '^mod ' }).Count) {
+    foreach ($line in $requested) { & (Join-Path $PSScriptRoot 'mod-action.ps1') $line.Substring(4) }
+    return
+}
+
 $client = [Net.Sockets.TcpClient]::new()
 $client.Connect($IPCHost, $Port)
 $stream = $client.GetStream()

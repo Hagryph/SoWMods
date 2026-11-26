@@ -1,4 +1,5 @@
 #include "Overlay.h"
+#include "ModActions.h"
 #include "Log.h"
 #include "HagUI.h"
 #include "PropertyEditor.h"
@@ -890,6 +891,12 @@ void Overlay::DrawHub() {
             AddTextCX(dl, fTab_, 21.0f * s, ImVec2(X(60), Y(titleY)), uText, pg.title.c_str(), XS);
             float headerRight = X(772);
             float ry = titleY + 44;
+            if (!pg.actionPrefix.empty()) {
+                ImGui::SetCursorScreenPos(ImVec2(X(60),Y(ry)));
+                if(ImGui::BeginChild("##registeredactions",ImVec2(712*sx,(bottom-ry)*sy)))
+                    actions::DrawForm(pg.actionPrefix);
+                ImGui::EndChild();
+            }
             for (int i = 0; i < (int)pg.widgets.size(); ++i) {
                 const HagUI::Widget& wd = pg.widgets[i];
                 if (!HagUI::WidgetVisible(wd)) continue;
@@ -1339,7 +1346,7 @@ void Overlay::DrawHub() {
                 ImGui::PopID();
                 if (wd.type != HagUI::WHeaderButton) ry += 40;
             }
-            if (pg.widgets.empty())
+            if (pg.widgets.empty() && pg.actionPrefix.empty())
                 txt(fBody_, 17.0f * s, 60, ry, uDim, "This page has no options yet.");
         }
 

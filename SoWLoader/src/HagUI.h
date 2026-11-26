@@ -29,6 +29,7 @@ public:
     void AddConditionalButton(int page, const char* label, void (*onClick)(), bool (*visible)());
     void AddHeaderButton(int page, const char* label, void (*onClick)(), bool (*visible)());
     int RegisterSubPage(int parent, const char* title);
+    void AddActionForms(int parent,const std::string& prefix);
     void AddSubPageButton(int page, const char* label, int child);
     void SetEditorFooterGenerator(int page,const char* label,std::uint64_t (*query)(void*));
     void AddPropertyEditor(int page, void* context, const HagUI_PropertySource* source, const HagUI_PopupActions* popup = nullptr, HagUI_SceneFn scene = nullptr,const HagUI_SetEditor* set=nullptr);
@@ -99,6 +100,7 @@ public:
         void (*onFirstOpenInSave)(int page) = nullptr;
         bool firstOpenInSaveDone = false;
         int parent = -1;
+        std::string actionPrefix;
     };  // scope: 0=global,1=local
     const std::vector<Page>& Pages() const { return pages_; }
 

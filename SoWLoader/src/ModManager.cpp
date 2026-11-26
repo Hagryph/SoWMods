@@ -1,4 +1,5 @@
 #include "ModManager.h"
+#include "ModActions.h"
 #include "ModConfigService.h"
 #include "Log.h"
 #include "HagUI.h"        // one tab per mod: the loader registers the mod's page
@@ -68,6 +69,14 @@ void ModManager::LoadAll() {
             continue;
         }
         // ONE tab per mod: name it via the mod's SoWMod_Name export, else the DLL name (minus .dll).
+        std::string prefix=nn.substr(0,nn.size()-4);
+        std::transform(prefix.begin(),prefix.end(),prefix.begin(),[](unsigned char c){return static_cast<char>(std::tolower(c));});
+        std::vector<actions::Command> commands;
+        auto registration=reinterpret_cast<sowmod::actions::Register>(GetProcAddress(mod,"SoWMod_RegisterActions"));
+        if (!actions::RegisterMod(prefix,registration,commands)) {
+            log.Error("[mods] "+nn+": missing or invalid action registration; skipping initialization");
+            continue;
+        }
         std::string tabName = nn;
         if (auto namefn = reinterpret_cast<SoWMod_Name_t>(::GetProcAddress(mod, "SoWMod_Name"))) {
             if (const char* n = namefn(); n && *n) tabName = n;
@@ -82,6 +91,7 @@ void ModManager::LoadAll() {
         const int page = HagUI::Get().RegisterPage(tabName.c_str());   // the loader owns tab creation
         HagUI::Get().SetPageScope(page, scope);
         BindModConfig(page, full);
+        HagUI::Get().AddActionForms(page,prefix);
 
         auto init = reinterpret_cast<SoWMod_Init_t>(::GetProcAddress(mod, "SoWMod_Init"));
         char l[300];
@@ -92,6 +102,7 @@ void ModManager::LoadAll() {
         if (init) init(page);   // outside the loader lock now (LoadLibrary returned) -> safe to do real work
     }
     log.Line("[mods] done");
+    actions::StartPipe();
 }
 
 }  // namespace sow

@@ -147,6 +147,14 @@ bool Visible() {
 void Unlock() { Queue(true); }
 }
 
+bool RegisteredRingAction(bool unlock) {
+    if(!g_ui)return false;
+    Snapshot state{};state.session=g_ui->SaveSession();
+    if(!state.session || !ReadState(state))return false;
+    if(unlock && !game::ring::Complete(state))
+        return game::ring::GrantMissing(state,[&]{return state.session==g_ui->SaveSession();},&Give,&ReadState);
+    return game::ring::Complete(state);
+}
 void AddEarlyRingUnlock(int page, HagUIAPI* ui, void (*log)(const char*)) {
     if (!ui || ui->abiVersion < 8) return;
     if (!InstallRingGrantGuard()) {

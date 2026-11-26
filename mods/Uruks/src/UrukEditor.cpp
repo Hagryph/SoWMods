@@ -1578,6 +1578,91 @@ void Close(void*,uint64_t field) {
     for (auto& f:g_snapshot.fields) if (f.id==field && Generator(f.kind)) f.choices.clear();
 }
 }
+namespace {
+namespace act=sowmod::actions;
+constexpr act::Input recipeInputs[]={
+    {"captain","Captain (Army:seat)",act::Choice},{"base","Base class",act::Choice},
+    {"advanced","Advanced class",act::Choice},{"tribe","Tribe",act::Choice},{"rarity","Rarity",act::Choice},
+    {"immunities","Immunities",act::MultiChoice,""},{"hates","Hates",act::MultiChoice,""},
+    {"class_traits","Class traits",act::MultiChoice,""},{"bonuses","Bonuses",act::MultiChoice,""},
+    {"mortal","Mortal weaknesses",act::MultiChoice,""},{"vulnerabilities","Vulnerabilities",act::MultiChoice,""},
+    {"dazed","Dazed by",act::MultiChoice,""},{"hints","Hints",act::MultiChoice,""}};
+constexpr Kind actionKinds[]={Kind::Target,Kind::Base,Kind::Class,Kind::Tribe,Kind::Rarity,Kind::Immunities,
+    Kind::Hates,Kind::Classes,Kind::Bonuses,Kind::Mortal,Kind::Vulnerable,Kind::Dazed,Kind::Hints};
+std::string seatId(const Target& t){return RecordName(t.key.army)+":"+std::to_string(t.key.index);}
+bool findCaptain(const char* id,Target& target){
+    for(auto& t:Targets())if(seatId(t)==id){target=t;return true;}
+    return false;
+}
+bool actionChoices(unsigned n,const char* const* v,const char* search,act::Emit emit,void* ctx){
+    if(!n){
+        for(auto& t:Targets()){auto id=seatId(t);if(id.find(search)!=id.npos || t.label.find(search)!=t.label.npos)emit(ctx,id.c_str());}
+        return true;
+    }
+    Target t;if(n>=std::size(actionKinds) || !findCaptain(v[0],t)){emit(ctx,"select a captain first");return false;}
+    Snapshot s;s.selected=t.key;RecipeFields(s,LoadCatalog());
+    Ptr base=0;
+    for(auto& f:s.fields)if(f.kind==Kind::Base)for(auto& c:f.choices)if(RecordName(c.value)==v[1])base=c.value;
+    for(auto& f:s.fields)if(f.kind==actionKinds[n])for(auto& c:f.choices){
+        if(n==2 && (!base || !recipe::fitsClass(s.recipeCatalog,base,c.value)))continue;
+        auto id=RecordName(c.value);if(id.find(search)!=id.npos || c.label.find(search)!=c.label.npos)emit(ctx,id.c_str());
+    }
+    return true;
+}
+std::optional<Task> actionPlan;std::string actionTicket;
+bool previewAction(const char* const* v,act::Emit emit,void* ctx) {
+    actionPlan.reset();actionTicket.clear();
+    Target t;if(!g_ui || !findCaptain(v[0],t) || !Writable(t.member)){emit(ctx,"captain unavailable");return false;}
+    Task task;task.session=g_ui->SaveSession();task.selected=t.key;task.baseline=Stamp(t.member);
+    if(!task.session)return false;
+    Snapshot s;s.selected=t.key;s.session=task.session;auto catalog=LoadCatalog();RecipeFields(s,catalog);
+    for(unsigned i=1;i<std::size(actionKinds);++i){
+        auto f=std::ranges::find(s.fields,actionKinds[i],&Field::kind);
+        if(f==s.fields.end()){emit(ctx,"recipe catalog unavailable");return false;}
+        std::string_view parts=v[i];Choice selected{};
+        while(!parts.empty()){
+            auto end=parts.find(',');auto id=parts.substr(0,end);
+            auto c=std::ranges::find_if(f->choices,[&](auto& ch){return RecordName(ch.value)==id;});
+            if(c==f->choices.end()){emit(ctx,("unknown "+std::string(recipeInputs[i].key)+": "+std::string(id)).c_str());return false;}
+            if(Bucket(f->kind))selected.pickers.push_back(c->value);else selected=*c;
+            if(end==parts.npos)break;parts.remove_prefix(end+1);
+        }
+        task.draft.stage(*f,selected);
+    }
+    auto r=BuildRecipe(task.draft);auto gen=std::make_shared<engine::GenerationPlan>();std::string reason;
+    if(!engine::Supported() || !engine::ScopeClassDraws(s.recipeCatalog,r,t.key.army) ||
+       !engine::PlanGeneration(t.member,CellHash(Read<Ptr>(t.member+0x268),0x40c579dc,0),s.recipeCatalog,r,*gen,reason,task.session)){
+        emit(ctx,reason.empty()?"recipe not available":reason.c_str());return false;}
+    Choice prepared{};prepared.generation=std::move(gen);
+    task.draft.edits[Kind::Regenerate]={0,std::move(prepared)};
+    actionTicket=std::to_string(g_nextField.fetch_add(1));
+    actionPlan=std::move(task);emit(ctx,("ticket="+actionTicket+" captain="+seatId(t)).c_str());return true;
+}
+bool saveAction(const char* const* v,act::Emit emit,void* ctx){
+    if(!actionPlan || actionTicket!=v[0]){emit(ctx,"unknown or consumed preview ticket");return false;}
+    auto task=std::move(*actionPlan);actionPlan.reset();actionTicket.clear();
+    if(!g_ui || g_ui->SaveSession()!=task.session){emit(ctx,"save session changed");return false;}
+    for(auto& t:Targets())if(t.key==task.selected && Stamp(t.member)==task.baseline){
+        auto catalog=LoadCatalog();std::string status;bool ok=Commit(t.member,task,catalog,status);
+        if(status.empty())status="engine rejected save";
+        if(!GenerationReport(task,catalog,t.member,status))status+=" (generation log unavailable)";
+        emit(ctx,status.c_str());return ok;
+    }
+    emit(ctx,"captain changed; preview again");return false;
+}
+}
+bool RegisterEditorActions(const act::Registrar& r){
+    static constexpr act::Input ticket[]={{"ticket","Preview ticket",act::Text}};
+    return r.Add({"inspect","Inspect captain",true,recipeInputs,1,[](const char* const* v,act::Emit emit,void* ctx){
+        Target t;if(!findCaptain(v[0],t)){emit(ctx,"captain not found");return false;}
+        emit(ctx,t.label.c_str());recipe::Catalog db;
+        if(!LoadRecipeCatalog(LoadCatalog(),db,t.key.army))return false;
+        emit(ctx,KitText(MemberKit(t.member,db)).c_str());
+        std::vector<Ptr> active;if(!MemberRecords(t.member+0x198,active))return false;
+        for(auto id:active)emit(ctx,RecordName(id).c_str());return true;},actionChoices}) &&
+        r.Add({"preview","Generate captain preview",true,recipeInputs,unsigned(std::size(recipeInputs)),previewAction,actionChoices}) &&
+        r.Add({"save","Save generated captain",true,ticket,1,saveAction});
+}
 void AddUrukEditor(int parent, HagUIAPI* ui) {
     if (!ui || ui->abiVersion < 11 || !ui->AddPopupEditor) return;
     g_ui = ui;
