@@ -1090,10 +1090,7 @@ bool registeredAttachment(P m,P target) {
     }
     return false;
 }
-const char* attachmentSeatError(P m,P target) {
-    if (at<P>(m+0x4f0)!=target) return "source attachment changed";
-    if (!registeredAttachment(m,target)) return "source observer is not registered correctly";
-    if (!target) return nullptr;
+const char* participantSeatError(P m,P target) {
     // The native attachment walker (141bf0264) resolves each participant's
     // army/index pair at +0x28, not a cached FactionMember pointer.
     P b=at<P>(target+0x18),e=at<P>(target+0x20);
@@ -1146,7 +1143,8 @@ ReplaceResult ReplaceCaptain(P m,const GenerationPlan& p,const recipe::Catalog& 
         __try {
             if (!Supported() || !seatOwner(m,p)) return ReplaceResult::SeatUnavailable;
             const P attachment=at<P>(m+0x4f0);
-            if (auto error=attachmentSeatError(m,attachment)) {
+            if (auto error=!registeredAttachment(m,attachment)?"source observer is not registered correctly":
+                attachment?participantSeatError(m,attachment):nullptr) {
                 detailMessage="Before generation: ";detailMessage+=error;
                 return ReplaceResult::AttachmentUnavailable;
             }
@@ -1165,10 +1163,9 @@ ReplaceResult ReplaceCaptain(P m,const GenerationPlan& p,const recipe::Catalog& 
             published=detail::publishCandidate(m,owned,valid,[&]{return reinterpret_cast<P*>(seatOwner(m,p));},
                 [&](P old,P candidate) {
                     if (!detachedNode(candidate+0x18)) return false;
-                    attachmentError=attachmentSeatError(old,attachment);
-                    if (!attachmentError)
-                        attachmentError=detail::transferAttachment(old,candidate,attachment,at<P>(candidate+0x4f0),
-                            registeredAttachment,[](P dst,P src){call<void>(0x141bb6d98,dst+0x4d0,src+0x4d0);});
+                    attachmentError=detail::handoffSeatAttachment(old,candidate,attachment,
+                        [](P member){return at<P>(member+0x4f0);},registeredAttachment,participantSeatError,
+                        [](P dst,P src){call<void>(0x141bb6d98,dst+0x4d0,src+0x4d0);});
                     if (attachmentError) return false;
                     if (!detachedNode(old+0x18)) call<void>(0x140f9a2c0,old+0x18,candidate+0x18);
                     return true;

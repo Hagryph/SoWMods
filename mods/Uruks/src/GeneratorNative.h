@@ -35,6 +35,21 @@ const char* transferAttachment(P source,P candidate,P expected,P current,Registe
     if (!registered(candidate,expected)) return "candidate observer was not registered by native assignment";
     return nullptr;
 }
+template<class Read,class Registered,class SeatError,class Bind>
+const char* handoffSeatAttachment(P source,P candidate,P initial,Read read,Registered registered,
+                                  SeatError seatError,Bind bind) {
+    const P live=read(source),next=read(candidate);
+    if (!registered(source,live)) return "source observer is not registered correctly";
+    if (live) {
+        if (auto error=seatError(source,live)) return error;
+    } else if (next && next==initial) {
+        // The engine already moved the observer. Validate its current target
+        // against the still-published seat, not against the unpublished member.
+        if (!registered(candidate,next)) return "candidate observer is not registered correctly";
+        return seatError(source,next);
+    }
+    return transferAttachment(source,candidate,live,next,registered,bind);
+}
 }
 struct Look {
     P base{}, head{}, pieces[23]{}, designs[15]{};

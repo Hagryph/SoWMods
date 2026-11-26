@@ -291,6 +291,31 @@ int main() {
                 [](Ptr,Ptr){return false;},bind)!=nullptr && binds==1);
         }
         {
+            // The seat and candidate can stay valid while the native observer
+            // expires, moves, or switches to another encounter during generation.
+            auto attempt=[](Ptr source,Ptr next,Ptr seatTarget,bool observerOk,bool expectSwap,int expectedBinds) {
+                Ptr slot=1,owned=2;int binds=0;
+                const bool swapped=engine::detail::publishCandidate(1,owned,true,[&]{return &slot;},
+                    [&](Ptr old,Ptr candidate) {
+                        auto read=[&](Ptr m){return m==old?source:next;};
+                        return !engine::detail::handoffSeatAttachment(old,candidate,9,read,
+                            [&](Ptr m,Ptr target){return (m==old || observerOk) && read(m)==target;},
+                            [&](Ptr m,Ptr target)->const char* {return m==old && target==seatTarget?nullptr:"wrong seat";},
+                            [&](Ptr dst,Ptr src){Check(src==old && dst==candidate);next=source;++binds;});
+                    });
+                Check(swapped==expectSwap && slot==(swapped?2:1) && owned==(swapped?1:2) && binds==expectedBinds);
+            };
+            attempt(0,0,0,true,true,0);
+            attempt(10,0,10,true,true,1);
+            attempt(10,10,10,true,true,0);
+            attempt(0,9,9,true,true,0);
+            attempt(0,9,10,true,false,0);
+            attempt(0,9,9,false,false,0);
+            attempt(0,11,11,true,false,0);
+            attempt(10,0,9,true,false,0);
+            attempt(10,9,10,true,false,0);
+        }
+        {
             recipe::Catalog kits;recipe::Recipe request;request.base=1;request.specialization=2;
             kits.types[1]=3;
             recipe::ClassKit poison,curse,strip;
