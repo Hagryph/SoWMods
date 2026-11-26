@@ -180,10 +180,11 @@ void HagUI::AddSubPageButton(int page, const char* label, int child) {
     pages_[page].widgets.back().type = WSubPage;
     pages_[page].widgets.back().child = child;
 }
-void HagUI::AddActionForms(int parent,const std::string& prefix) {
+void HagUI::AddActionForms(int parent,const std::vector<actions::Command>& commands) {
     std::map<std::pair<int,std::string>,int> children;
-    for(auto& cmd:actions::Commands()) {
-        if(cmd.spec.ipcOnly || !cmd.id.starts_with(prefix+".")) continue;
+    int run=0, previousTogglePage=-1;
+    for(const auto& cmd:commands) {
+        if(cmd.spec.ipcOnly) continue;
         int at=parent;
         std::istringstream path(cmd.spec.menu?cmd.spec.menu:"");
         for(std::string part;std::getline(path,part,'/');) {
@@ -200,6 +201,11 @@ void HagUI::AddActionForms(int parent,const std::string& prefix) {
         Widget w{}; w.text=a.label;w.command=std::make_shared<actions::Command>(cmd);
         w.type=a.rows?WList:a.titleRow?WHeaderButton:!a.count?WButton:
             a.count==1 && a.inputs[0].type==sowmod::actions::Boolean && a.inputs[0].source.pull?WToggle:WForm;
+        if(w.type==WToggle) {
+            if(previousTogglePage!=at) ++run;
+            w.toggleRun=run;
+            previousTogglePage=at;
+        } else previousTogglePage=-1;
         pages_[at].widgets.push_back(std::move(w));
     }
     // Fixed-height controls precede widgets which consume the remaining content band.

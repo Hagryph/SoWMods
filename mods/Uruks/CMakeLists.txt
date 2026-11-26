@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 list(APPEND CMAKE_PREFIX_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../../SoWLoader/build/vcpkg_installed/x64-windows-static-md")
 find_package(minhook CONFIG REQUIRED)
-add_library(Uruks SHARED src/Uruks.cpp src/Settings.cpp src/RecruitmentHooks.cpp src/CaptainGeneration.cpp src/GeneratorNative.cpp)
+add_library(Uruks SHARED src/Uruks.cpp src/Settings.cpp src/GarrisonCost.cpp src/RecruitmentHooks.cpp src/CaptainGeneration.cpp src/GeneratorNative.cpp)
 add_custom_target(CheckHeadlessMods COMMAND "${CMAKE_COMMAND}" -P "${CMAKE_CURRENT_SOURCE_DIR}/../../tools/HeadlessMods.cmake" VERBATIM)
 add_dependencies(Uruks CheckHeadlessMods)
 target_include_directories(Uruks PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../../shared")

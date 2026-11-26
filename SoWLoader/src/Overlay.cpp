@@ -892,6 +892,7 @@ void Overlay::DrawHub() {
             AddTextCX(dl, fTab_, 21.0f * s, ImVec2(X(60), Y(titleY)), uText, pg.title.c_str(), XS);
             float headerRight = X(772);
             float ry = titleY + 44;
+            int rightToggle = -1;
 
             for (int i = 0; i < (int)pg.widgets.size(); ++i) {
                 const HagUI::Widget& wd = pg.widgets[i];
@@ -912,25 +913,49 @@ void Overlay::DrawHub() {
                     DrawPropertyEditor(wd, ImVec2(X(60), Y(ry)), ImVec2(712 * sx, (bottom - ry) * sy), sx, sy, fBody_);
                     ry = bottom;
                 } else if (wd.type == HagUI::WToggle) {
-                    // full-width clickable row (AS: invisible hit rect w x 30, flips the box)
-                    ImGui::SetCursorScreenPos(ImVec2(X(60), Y(ry)));
-                    ImGui::InvisibleButton("##row", ImVec2(712.0f * sx, 30.0f * sy));
+                    const bool right = i == rightToggle;
+                    constexpr float halfWidth = 350, gutter = 12;
+                    const auto fits = [&](const HagUI::Widget& w) {
+                        return measureW(fBody_,17*s,w.text.c_str()) <= (halfWidth-36)*sx;
+                    };
+                    if (!right && i+1 < (int)pg.widgets.size()) {
+                        const auto& next=pg.widgets[i+1];
+                        if (next.type==HagUI::WToggle && next.toggleRun==wd.toggleRun &&
+                            HagUI::WidgetVisible(next) && fits(wd) && fits(next)) rightToggle=i+1;
+                    }
+                    const float x=60+(right ? halfWidth+gutter : 0);
+                    const float width=(right || rightToggle==i+1) ? halfWidth : 712.f;
+                    ImGui::SetCursorScreenPos(ImVec2(X(x), Y(ry)));
+                    ImGui::InvisibleButton("##row", ImVec2(width*sx, 30.0f*sy));
                     const bool hov = ImGui::IsItemHovered();
                     if (ImGui::IsItemClicked()) HagUI::FlipToggle(wd);
                     const bool on = HagUI::ToggleValue(wd);
                     // gold checkbox (AS paintCheckbox): 22x22 r5; border a42 (hover a82);
                     // fill a6 (checked a22); gold 2px check glyph (5,11)-(9,16)-(17,6) when on
-                    const ImVec2 ka(X(60), Y(ry + 4)), kb(X(60) + 22.0f * sx, Y(ry + 4) + 22.0f * sy);
+                    const ImVec2 ka(X(x), Y(ry + 4)), kb(X(x+22), Y(ry + 26));
                     const float kr = 5.0f * s;
                     dl->AddRectFilled(ka, kb, IM_COL32(0xE0, 0xB3, 0x4A, on ? 56 : 15), kr);
                     dl->AddRect(ka, kb, IM_COL32(0xE0, 0xB3, 0x4A, hov ? 209 : 107), kr, 0, 1.0f * s);
                     if (on) {
-                        const ImVec2 pts[3] = { ImVec2(X(60 + 5), Y(ry + 4 + 11)),
-                                                ImVec2(X(60 + 9), Y(ry + 4 + 16)),
-                                                ImVec2(X(60 + 17), Y(ry + 4 + 6)) };
+                        const ImVec2 pts[3] = { ImVec2(X(x + 5), Y(ry + 4 + 11)),
+                                                ImVec2(X(x + 9), Y(ry + 4 + 16)),
+                                                ImVec2(X(x + 17), Y(ry + 4 + 6)) };
                         dl->AddPolyline(pts, 3, uAccent, 0, 2.0f * s);
                     }
-                    txt(fBody_, 17.0f * s, 60 + 36, ry + 3, uText, wd.text.c_str());
+                    const float px = 17.0f * s;
+                    const int first = dl->VtxBuffer.Size;
+                    AddTextCX(dl, fBody_, px, ImVec2(X(x+36), (ka.y + kb.y - px) * 0.5f),
+                              uText, wd.text.c_str(), XS);
+                    // Center the visible glyphs, not the font's ascent/descent box.
+                    if (first < dl->VtxBuffer.Size) {
+                        float top = dl->VtxBuffer[first].pos.y, bottomY = top;
+                        for (int j = first + 1; j < dl->VtxBuffer.Size; ++j) {
+                            top = std::min(top, dl->VtxBuffer[j].pos.y);
+                            bottomY = std::max(bottomY, dl->VtxBuffer[j].pos.y);
+                        }
+                        const float dy = std::round((ka.y + kb.y - top - bottomY) * 0.5f);
+                        for (int j = first; j < dl->VtxBuffer.Size; ++j) dl->VtxBuffer[j].pos.y += dy;
+                    }
                 } else if (wd.type == HagUI::WButton || wd.type == HagUI::WHeaderButton || wd.type == HagUI::WSubPage) {
                     if (wd.type == HagUI::WSubPage && pages[wd.child].scope == SOWMOD_LOCAL && !inSave) { ImGui::PopID(); continue; }
                     // gold button (AS paintButton): rr7, vgrad a18->6 border a42; hover a34/14/78
@@ -1350,7 +1375,7 @@ void Overlay::DrawHub() {
                     txt(fBody_, 17.0f * s, 60, ry + 3, uDim, wd.text.c_str());
                 }
                 ImGui::PopID();
-                if (wd.type != HagUI::WHeaderButton) ry += 40;
+                if (wd.type != HagUI::WHeaderButton && rightToggle != i+1) ry += 40;
             }
             if (pg.widgets.empty())
                 txt(fBody_, 17.0f * s, 60, ry, uDim, "This page has no options yet.");

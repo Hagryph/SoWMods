@@ -30,5 +30,7 @@ typedef const char* (*SoWMod_Name_t)();
 typedef int (*SoWMod_Scope_t)();
 // Optional worker-thread initialization after successful action registration.
 typedef void (*SoWMod_Init_t)(int owner);
+// Optional game-thread callback after the native campaign world is ready.
+typedef void (*SoWMod_WorldLoaded_t)();
 
 }  // extern "C"

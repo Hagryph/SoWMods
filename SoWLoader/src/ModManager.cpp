@@ -14,6 +14,12 @@ namespace sow {
 
 ModManager& ModManager::Get() { static ModManager m; return m; }
 
+void ModManager::WorldLoaded() {
+    std::vector<SoWMod_WorldLoaded_t> callbacks;
+    { std::lock_guard lock(callbacksLock_); callbacks = worldCallbacks_; }
+    for (auto callback : callbacks) callback();
+}
+
 // mods\ at the GAME INSTALL ROOT, not next to our DLL:
 //   ...\ShadowOfWar\x64\steam_api64.dll  ->  ...\ShadowOfWar\mods\
 // (our DLL lives in the x64\ subfolder; go up one level to the install root, then \mods).
@@ -96,7 +102,7 @@ void ModManager::LoadAll() {
         const int page = HagUI::Get().RegisterPage(tabName.c_str());   // the loader owns tab creation
         HagUI::Get().SetPageScope(page, scope);
         BindModConfig(page, full);
-        HagUI::Get().AddActionForms(page,prefix);
+        HagUI::Get().AddActionForms(page,commands);
 
         auto init = reinterpret_cast<SoWMod_Init_t>(::GetProcAddress(mod, "SoWMod_Init"));
         char l[300];
@@ -105,6 +111,10 @@ void ModManager::LoadAll() {
                     init ? "" : " (no SoWMod_Init)");
         log.Good(l);
         if (init) init(page);   // outside the loader lock now (LoadLibrary returned) -> safe to do real work
+        if (auto callback = reinterpret_cast<SoWMod_WorldLoaded_t>(GetProcAddress(mod,"SoWMod_WorldLoaded"))) {
+            std::lock_guard lock(callbacksLock_);
+            worldCallbacks_.push_back(callback);
+        }
     }
     log.Line("[mods] done");
     actions::StartPipe();

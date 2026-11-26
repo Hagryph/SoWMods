@@ -30,7 +30,7 @@ public:
     void AddConditionalButton(int page, const char* label, void (*onClick)(), bool (*visible)());
     void AddHeaderButton(int page, const char* label, void (*onClick)(), bool (*visible)());
     int RegisterSubPage(int parent, const char* title);
-    void AddActionForms(int parent,const std::string& prefix);
+    void AddActionForms(int parent,const std::vector<actions::Command>& commands);
     void AddSubPageButton(int page, const char* label, int child);
     void SetEditorFooterGenerator(int page,const char* label,std::uint64_t (*query)(void*));
     void AddPropertyEditor(int page, void* context, const HagUI_PropertySource* source, const HagUI_PopupActions* popup = nullptr, HagUI_SceneFn scene = nullptr,const HagUI_SetEditor* set=nullptr);
@@ -96,6 +96,7 @@ public:
         mutable char choiceSearch[128]{};
         mutable bool applyFailed = false;
         std::shared_ptr<actions::Command> command;
+        int toggleRun = -1;
         mutable std::shared_ptr<actions::Job> query,write;
         mutable uint64_t due=0,session=UINT64_MAX;
         bool gate=false,value=false,loaded=false;

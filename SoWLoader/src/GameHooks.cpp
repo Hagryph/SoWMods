@@ -1,5 +1,6 @@
 #include "GameHooks.h"
 #include "CampaignLoad.h"
+#include "ModManager.h"
 #include "Log.h"
 #include "Overlay.h"
 #include "GameOffsets.h"   // ../shared : game::FromRVA + the hand-found RVAs
@@ -110,6 +111,7 @@ static void __fastcall HookOnWorldLoad(void* self, void* worldInfo, void* factio
     oOnWorldLoad(self, worldInfo, faction);
     ::InterlockedExchange(&g_inSave, 1);
     ::InterlockedExchange64(&g_activeSession, ::InterlockedIncrement64(&g_sessionCounter));
+    ModManager::Get().WorldLoaded();
     CampaignWorldLoaded();
     ::InterlockedExchange(&g_pendingMenuClear, 0);
     ::InterlockedExchange(&g_nonRootFrontEndLogged, 0);

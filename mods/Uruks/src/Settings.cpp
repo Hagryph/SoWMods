@@ -9,6 +9,7 @@ namespace uruk {
 namespace {
 sowmod::Config g_config;
 sowmod::Option<bool> g_ignoreLevel;
+sowmod::Option<bool> g_freeGarrison;
 }
 
 static HANDLE OpenLog(const wchar_t* filename) {
@@ -56,6 +57,7 @@ bool LoadSettings(int page) {
     try {
         g_config = sowmod::Config(page);
         g_ignoreLevel = g_config.Register<bool>("Recruitment", "IgnoreRecruitmentLevel", false);
+        g_freeGarrison = g_config.Register<bool>("Garrison", "FreeGarrisonPlacement", false);
         Log(IgnoreRecruitmentLevel() ? "Loader config loaded: recruitment bypass enabled" : "Loader config loaded: recruitment bypass disabled");
         return true;
     } catch (...) { return false; }
@@ -65,6 +67,11 @@ bool IgnoreRecruitmentLevel() {
     try { return g_config.Read(g_ignoreLevel); }
     catch (...) { return false; }
 }
+
+bool FreeGarrisonPlacement() {
+    try { return g_config.Read(g_freeGarrison); } catch (...) { return false; }
+}
+bool SaveFreeGarrisonPlacement(bool enabled) { return g_config.Update(g_freeGarrison, enabled); }
 
 void SetIgnoreRecruitmentLevel(bool enabled) {
     if (!g_config.Update(g_ignoreLevel, enabled)) {

@@ -1,5 +1,8 @@
 #pragma once
 #include "PCH.h"
+#include "SoWModAPI.h"
+#include <mutex>
+#include <vector>
 
 namespace sow {
 
@@ -11,6 +14,7 @@ class ModManager {
 public:
     static ModManager& Get();
     void LoadAll();
+    void WorldLoaded();
 
     ModManager(const ModManager&) = delete;
     ModManager& operator=(const ModManager&) = delete;
@@ -18,6 +22,8 @@ public:
 private:
     ModManager() = default;
     bool loaded_ = false;
+    std::mutex callbacksLock_;
+    std::vector<SoWMod_WorldLoaded_t> worldCallbacks_;
 };
 
 }  // namespace sow
